@@ -1,0 +1,71 @@
+import { Sequelize } from 'sequelize';
+import { sequelize } from '../config/db.js';
+import UsuarioModel from './Usuario.js';
+import RolModel from './Rol.js';
+import Usuario_RolModel from './Usuario_Rol.js';
+import EmpresaModel from './Empresa.js';
+import TiendaModel from './Tienda.js';
+import atiendeModel from './atiende.js';
+import CategoriaModel from './Categoria.js';
+import ProductoModel from './Producto.js';
+import CarritoModel from './Carrito.js';
+import Carrito_ProductoModel from './Carrito_Producto.js';
+import PedidoModel from './Pedido.js';
+import Producto_PedidoModel from './Producto_Pedido.js';
+import pedido_vendedorModel from './pedido_vendedor.js';
+import pedido_compradorModel from './pedido_comprador.js';
+import pedido_repartidorModel from './pedido_repartidor.js';
+import CalificacionModel from './Calificacion.js';
+import Ruta_frecuenteModel from './Ruta_frecuente.js';
+import BloqueoModel from './Bloqueo.js';
+import ValoracionModel from './Valoracion.js';
+import LiquidacionModel from './Liquidacion.js';
+import Boleta_HonorariosModel from './Boleta_Honorarios.js';
+import NotificacionModel from './Notificacion.js'; // AGREGAR ESTA LÍNEA
+
+const sequelize_instance = sequelize;
+const db = {};
+
+// Inicializar todos los modelos
+db.Usuario = UsuarioModel(sequelize_instance);
+db.Rol = RolModel(sequelize_instance);
+db.Usuario_Rol = Usuario_RolModel(sequelize_instance);
+db.Empresa = EmpresaModel(sequelize_instance);
+db.Tienda = TiendaModel(sequelize_instance);
+db.atiende = atiendeModel(sequelize_instance);
+db.Categoria = CategoriaModel(sequelize_instance);
+db.Producto = ProductoModel(sequelize_instance);
+db.Carrito = CarritoModel(sequelize_instance);
+db.Carrito_Producto = Carrito_ProductoModel(sequelize_instance);
+db.Pedido = PedidoModel(sequelize_instance);
+db.Producto_Pedido = Producto_PedidoModel(sequelize_instance);
+db.pedido_vendedor = pedido_vendedorModel(sequelize_instance);
+db.pedido_comprador = pedido_compradorModel(sequelize_instance);
+db.pedido_repartidor = pedido_repartidorModel(sequelize_instance);
+db.Calificacion = CalificacionModel(sequelize_instance);
+db.Ruta_frecuente = Ruta_frecuenteModel(sequelize_instance);
+db.Bloqueo = BloqueoModel(sequelize_instance);
+db.Valoracion = ValoracionModel(sequelize_instance);
+db.Liquidacion = LiquidacionModel(sequelize_instance);
+db.Boleta_Honorarios = Boleta_HonorariosModel(sequelize_instance);
+db.Notificacion = NotificacionModel(sequelize_instance); // AGREGAR ESTA LÍNEA
+
+// Ejecutar asociaciones
+Object.keys(db).forEach(modelName => {
+  if (db[modelName].associate) {
+    db[modelName].associate(db);
+  }
+});
+
+db.sequelize = sequelize_instance;
+db.Sequelize = Sequelize;
+
+db.sequelize.sync({ alter: true })
+  .then(() => {
+    console.log("✅ Base de datos sincronizada con alter");
+  })
+  .catch(err => {
+    console.error("❌ Error al sincronizar la base de datos:", err);
+  });
+
+export default db;
