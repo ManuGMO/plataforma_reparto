@@ -25,6 +25,11 @@ export default (sequelize) => {
       ),
       defaultValue: 'pendiente'
     },
+    tiene_repartidor: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+      allowNull: false
+    },
     fecha_creacion: {
       type: DataTypes.DATE,
       defaultValue: DataTypes.NOW
@@ -34,23 +39,41 @@ export default (sequelize) => {
     },
     hora_entrega: {
       type: DataTypes.TIME
+    },
+    latitud: {
+      type: DataTypes.DECIMAL(10, 7),
+      allowNull: true,
+    },
+    longitud: {
+      type: DataTypes.DECIMAL(10, 7),
+      allowNull: true,
     }
   }, {
     tableName: 'Pedido',
     timestamps: false,
     hooks: {
-      afterUpdate: async (pedido, options) => {
-        // Solo ejecutar si el estado cambió
-        if (pedido.changed('estado')) {
-          const estadoAnterior = pedido._previousDataValues.estado;
-          const estadoNuevo = pedido.estado;
-          
-          // Importar dinámicamente para evitar circular dependencies
+  afterUpdate: async (pedido, options) => {
+    if (pedido.changed('estado')) {
+      const estadoAnterior = pedido._previousDataValues.estado;
+      const estadoNuevo = pedido.estado;
+
+      if (options.transaction) {
+        options.transaction.afterCommit(async () => {
           const { enviarNotificacionCambioEstado } = await import('../services/notificationService.js');
-          await enviarNotificacionCambioEstado(pedido, estadoAnterior, estadoNuevo);
-        }
+          try {
+            await enviarNotificacionCambioEstado(pedido, estadoAnterior, estadoNuevo);
+          } catch (err) {
+            console.error("❌ Error enviando notificación:", err);
+          }
+        });
+      } else {
+        // Si no hay transacción, ejecutar directo
+        const { enviarNotificacionCambioEstado } = await import('../services/notificationService.js');
+        await enviarNotificacionCambioEstado(pedido, estadoAnterior, estadoNuevo);
       }
     }
+  }
+}
   });
 
   Pedido.associate = (models) => {
@@ -79,7 +102,7 @@ export default (sequelize) => {
    
     // Calificación
     Pedido.hasMany(models.Calificacion, { foreignKey: 'id_pedido' });
-    
+   
     // Notificaciones
     Pedido.hasMany(models.Notificacion, { foreignKey: 'id_pedido' });
   };

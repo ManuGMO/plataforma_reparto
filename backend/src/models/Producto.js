@@ -25,6 +25,10 @@ export default (sequelize) => {
       type: DataTypes.STRING(100),
       allowNull: false
     },
+    descripcion: {
+      type: DataTypes.TEXT,
+      allowNull: true
+    },
     stock: {
       type: DataTypes.INTEGER,
       defaultValue: 0
@@ -63,21 +67,19 @@ export default (sequelize) => {
       }
     }
   });
-
   Producto.associate = (models) => {
-    Producto.belongsTo(models.Usuario, { 
-      foreignKey: 'id_usuario', 
+    Producto.belongsTo(models.Usuario, {
+      foreignKey: 'id_usuario',
       as: 'Vendedor',
       onDelete: 'CASCADE',
       onUpdate: 'CASCADE'
     });
-
-    Producto.belongsTo(models.Categoria, { 
+    Producto.belongsTo(models.Categoria, {
       foreignKey: 'id_categoria',
       onDelete: 'CASCADE',
       onUpdate: 'CASCADE'
     });
-    
+   
     // Relaciones muchos a muchos con cascade
     Producto.belongsToMany(models.Carrito, {
       through: models.Carrito_Producto,
@@ -85,7 +87,6 @@ export default (sequelize) => {
       onDelete: 'CASCADE',
       onUpdate: 'CASCADE'
     });
-
     Producto.belongsToMany(models.Pedido, {
       through: models.Producto_Pedido,
       foreignKey: 'id_producto',
@@ -93,6 +94,5 @@ export default (sequelize) => {
       onUpdate: 'CASCADE'
     });
   };
-
   return Producto;
 };

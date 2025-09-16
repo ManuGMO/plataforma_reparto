@@ -3,6 +3,8 @@ import { useState } from "react";
 export default function ProductViewModal({ isOpen, onClose, producto }) {
   if (!isOpen || !producto) return null;
 
+  console.log("Producto en ProductViewModal:", producto);
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
@@ -86,22 +88,10 @@ export default function ProductViewModal({ isOpen, onClose, producto }) {
                     {producto.Categorium ? producto.Categorium.nombre : 'Sin categoría'}
                   </span>
                 </div>
+      
 
                 {/* Información adicional */}
                 <div className="space-y-3 text-sm text-gray-600">
-                  <div className="flex justify-between">
-                    <span className="font-medium">ID del Producto:</span>
-                    <span>{producto.id_producto}</span>
-                  </div>
-                  
-                  {producto.codigo && (
-                    <div className="flex justify-between">
-                      <span className="font-medium">Código:</span>
-                      <span className="font-mono bg-gray-100 px-2 py-1 rounded">
-                        {producto.codigo}
-                      </span>
-                    </div>
-                  )}
                   
                   {producto.descripcion && (
                     <div className="mt-4">

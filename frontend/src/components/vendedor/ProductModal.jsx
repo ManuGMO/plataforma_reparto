@@ -10,6 +10,7 @@ export default function ProductModal({ isOpen, onClose, onProductAdded }) {
   const [notification, setNotification] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [imagen, setImagen] = useState(null);
+  const [descripcion, setDescripcion] = useState("");
   
   // Estados para validación de nombre
   const [nameValidation, setNameValidation] = useState({ isValid: true, message: "" });
@@ -147,7 +148,6 @@ export default function ProductModal({ isOpen, onClose, onProductAdded }) {
 
   const handleSave = async () => {
     if (isLoading) return;
-
     // Validaciones
     if (!nombre.trim()) {
       setNotification("El nombre es obligatorio");
@@ -169,36 +169,33 @@ export default function ProductModal({ isOpen, onClose, onProductAdded }) {
       setNotification("Debes seleccionar una categoría o crear una nueva");
       return;
     }
-
     setIsLoading(true);
     setNotification("");
-
     try {
       const formData = new FormData();
       formData.append("nombre", nombre.trim());
+      formData.append("descripcion", descripcion.trim());
       formData.append("precio", parseInt(precio));
       formData.append("stock", parseInt(stock));
       formData.append("id_categoria", parseInt(idCategoria));
       if (imagen) {
         formData.append("imagen", imagen);
       }
-
       await axios.post("http://localhost:3001/api/productos/publicar/1", formData, {
         headers: { "Content-Type": "multipart/form-data" }
       });
-
       // Limpiar formulario
       handleClose();
       onProductAdded();
-      
+    
     } catch (error) {
       console.error("Error agregando producto:", error);
-      
+    
       // Manejar error específico de producto duplicado
       if (error.response && error.response.status === 400) {
         const errorData = error.response.data;
         setNotification(errorData.message);
-        
+      
         // Si hay información del producto duplicado, generar sugerencias
         if (errorData.duplicateProduct) {
           const suggestions = [
@@ -218,18 +215,18 @@ export default function ProductModal({ isOpen, onClose, onProductAdded }) {
     }
   };
 
+  // También actualizar la función handleClose para limpiar la descripción
   const handleClose = () => {
     setNombre("");
+    setDescripcion(""); // Agregar esta línea
     setPrecio("");
     setStock("");
     setIdCategoria("");
+    setImagen(null);
+    setNotification("");
+    setNameSuggestions([]);
     setNuevaCategoria("");
     setShowNewCategoryInput(false);
-    setNotification("");
-    setImagen(null);
-    setNameValidation({ isValid: true, message: "" });
-    setNameSuggestions([]);
-    setIsValidatingName(false);
     onClose();
   };
 
@@ -282,28 +279,6 @@ export default function ProductModal({ isOpen, onClose, onProductAdded }) {
               }`}>
                 {nameValidation.message}
               </p>
-            )}
-            
-            {/* Sugerencias de nombres */}
-            {nameSuggestions.length > 0 && (
-              <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded-lg">
-                <p className="text-xs font-medium text-yellow-800 mb-1">Sugerencias:</p>
-                <div className="flex flex-wrap gap-1">
-                  {nameSuggestions.map((suggestion, index) => (
-                    <button
-                      key={index}
-                      type="button"
-                      onClick={() => {
-                        setNombre(suggestion);
-                        setNameSuggestions([]);
-                      }}
-                      className="text-xs px-2 py-1 bg-yellow-100 text-yellow-800 rounded hover:bg-yellow-200 transition-colors"
-                    >
-                      {suggestion}
-                    </button>
-                  ))}
-                </div>
-              </div>
             )}
           </div>
 
@@ -401,6 +376,23 @@ export default function ProductModal({ isOpen, onClose, onProductAdded }) {
               step="1"
             />
             <p className="text-xs text-gray-500 mt-1">Cantidad disponible para venta</p>
+          </div>
+          {/* Descripción del producto */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Descripción (opcional)
+            </label>
+            <textarea
+              placeholder="Describe tu producto..."
+              value={descripcion}
+              onChange={(e) => setDescripcion(e.target.value)}
+              className="w-full border border-gray-300 px-3 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-vertical min-h-[80px]"
+              rows="3"
+              maxLength={500}
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Opcional: Añade detalles que ayuden a los compradores ({descripcion.length}/500 caracteres)
+            </p>
           </div>
 
           {/* Imagen */}

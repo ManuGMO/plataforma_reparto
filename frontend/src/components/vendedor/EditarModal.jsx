@@ -8,6 +8,7 @@ export default function EditProductModal({ isOpen, onClose, onProductUpdated, pr
   const [idCategoria, setIdCategoria] = useState("");
   const [categorias, setCategorias] = useState([]);
   const [notification, setNotification] = useState("");
+  const [descripcion, setDescripcion] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   
   // Estados para validación de nombre
@@ -32,6 +33,7 @@ export default function EditProductModal({ isOpen, onClose, onProductUpdated, pr
       setPrecio(producto.precio || "");
       setStock(producto.stock || "");
       setIdCategoria(producto.id_categoria || "");
+      setDescripcion(producto.descripcion || "");
       
       // Configurar imagen actual
       if (producto.imagen) {
@@ -146,49 +148,6 @@ export default function EditProductModal({ isOpen, onClose, onProductUpdated, pr
 
     return () => clearTimeout(timeoutId);
   }, [nombre, producto?.id_producto]);
-  
-  const handleCreateCategory = async () => {
-    if (!nuevaCategoria.trim()) {
-      setNotification("El nombre de la categoría es obligatorio");
-      return;
-    }
-
-    const categoriaExistente = categorias.find(
-      cat => cat.nombre.toLowerCase() === nuevaCategoria.trim().toLowerCase()
-    );
-    
-    if (categoriaExistente) {
-      setNotification("Esta categoría ya existe");
-      return;
-    }
-
-    setIsCreatingCategory(true);
-    setNotification("");
-
-    try {
-      const res = await axios.post("http://localhost:3001/api/categorias/crear", {
-        nombre: nuevaCategoria.trim()
-      });
-
-      const nuevaCat = res.data;
-      setCategorias(prev => [...prev, nuevaCat]);
-      setIdCategoria(nuevaCat.id_categoria);
-      setNuevaCategoria("");
-      setShowNewCategoryInput(false);
-      
-    } catch (error) {
-      console.error("Error creando categoría:", error);
-      setNotification(error.response?.data?.message || "Error al crear la categoría");
-    } finally {
-      setIsCreatingCategory(false);
-    }
-  };
-
-  const handleCancelNewCategory = () => {
-    setNuevaCategoria("");
-    setShowNewCategoryInput(false);
-    setNotification("");
-  };
 
   const handleCategorySelectChange = (e) => {
     const value = e.target.value;
@@ -203,7 +162,6 @@ export default function EditProductModal({ isOpen, onClose, onProductUpdated, pr
 
   const handleSave = async () => {
     if (isLoading || !producto) return;
-
     // Validaciones
     if (nombre !== undefined && nombre.trim() === "") {
       setNotification("El nombre no puede estar vacío");
@@ -225,21 +183,28 @@ export default function EditProductModal({ isOpen, onClose, onProductUpdated, pr
       setNotification("Debes seleccionar una categoría");
       return;
     }
-
     setIsLoading(true);
     setNotification("");
-
     try {
       // Crear FormData para manejar archivo
       const formData = new FormData();
-      
+    
       // Solo agregar campos que han cambiado
       let hasChanges = false;
-      
+    
       if (nombre.trim() !== producto.nombre) {
         formData.append('nombre', nombre.trim());
         hasChanges = true;
       }
+      
+      // Comparar descripción (manejar null/undefined vs string vacío)
+      const descripcionActual = producto.descripcion || "";
+      const descripcionNueva = descripcion.trim();
+      if (descripcionNueva !== descripcionActual) {
+        formData.append('descripcion', descripcionNueva);
+        hasChanges = true;
+      }
+      
       if (parseInt(precio) !== producto.precio) {
         formData.append('precio', parseInt(precio));
         hasChanges = true;
@@ -252,7 +217,7 @@ export default function EditProductModal({ isOpen, onClose, onProductUpdated, pr
         formData.append('id_categoria', parseInt(idCategoria));
         hasChanges = true;
       }
-      
+    
       // Manejar imagen
       if (imagenFile) {
         formData.append('imagen', imagenFile);
@@ -262,15 +227,15 @@ export default function EditProductModal({ isOpen, onClose, onProductUpdated, pr
         formData.append('removeImage', 'true');
         hasChanges = true;
       }
-
+      
       // Si no hay cambios, cerrar modal
       if (!hasChanges) {
         handleClose();
         return;
       }
-
+      
       const res = await axios.put(
-        `http://localhost:3001/api/productos/actualizar/${producto.id_producto}`, 
+        `http://localhost:3001/api/productos/actualizar/${producto.id_producto}`,
         formData,
         {
           headers: {
@@ -278,11 +243,10 @@ export default function EditProductModal({ isOpen, onClose, onProductUpdated, pr
           },
         }
       );
-
       setNotification("");
       onProductUpdated(res.data.producto);
       onClose();
-      
+    
     } catch (error) {
       console.error("Error actualizando producto:", error);
       setNotification(error.response?.data?.message || "Error al actualizar producto");
@@ -293,6 +257,7 @@ export default function EditProductModal({ isOpen, onClose, onProductUpdated, pr
 
   const handleClose = () => {
     setNombre("");
+    setDescripcion("");
     setPrecio("");
     setStock("");
     setIdCategoria("");
@@ -453,38 +418,6 @@ export default function EditProductModal({ isOpen, onClose, onProductUpdated, pr
               </select>
             ) : (
               <div className="space-y-2">
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    placeholder="Nombre de la nueva categoría"
-                    value={nuevaCategoria}
-                    onChange={(e) => setNuevaCategoria(e.target.value)}
-                    className="flex-1 border border-gray-300 px-3 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    maxLength={100}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        handleCreateCategory();
-                      }
-                      if (e.key === 'Escape') {
-                        handleCancelNewCategory();
-                      }
-                    }}
-                  />
-                  <button
-                    onClick={handleCreateCategory}
-                    disabled={isCreatingCategory || !nuevaCategoria.trim()}
-                    className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
-                  >
-                    {isCreatingCategory ? "..." : "✓"}
-                  </button>
-                  <button
-                    onClick={handleCancelNewCategory}
-                    className="px-3 py-2 bg-gray-400 text-white rounded-lg hover:bg-gray-500 text-sm font-medium"
-                  >
-                    ✕
-                  </button>
-                </div>
               </div>
             )}
           </div>
@@ -529,6 +462,23 @@ export default function EditProductModal({ isOpen, onClose, onProductUpdated, pr
               Deja vacío para mantener: {producto.stock} unidades
             </p>
           </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Descripción
+          </label>
+          <textarea
+            placeholder={producto.descripcion || "Sin descripción"}
+            value={descripcion}
+            onChange={(e) => setDescripcion(e.target.value)}
+            className="w-full border border-gray-300 px-3 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-vertical min-h-[80px]"
+            rows="3"
+            maxLength={500}
+          />
+          <p className="text-xs text-gray-500 mt-1">
+            Deja vacío para mantener: "{producto.descripcion || 'Sin descripción'}" ({descripcion.length}/500 caracteres)
+          </p>
         </div>
 
         {/* Botones */}

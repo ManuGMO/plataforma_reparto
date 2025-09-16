@@ -1,5 +1,4 @@
 import { DataTypes } from 'sequelize';
-
 export default (sequelize) => {
   const Usuario = sequelize.define('Usuario', {
     id_usuario: {
@@ -26,6 +25,14 @@ export default (sequelize) => {
     fecha_registro: {
       type: DataTypes.DATE,
       defaultValue: DataTypes.NOW
+    },
+    latitud: {
+      type: DataTypes.DECIMAL(10, 7),
+      allowNull: true
+    },
+    longitud: {
+      type: DataTypes.DECIMAL(10, 7),
+      allowNull: true
     }
   }, {
     tableName: 'Usuario',

@@ -13,7 +13,7 @@ export const getProductos = async (req, res) => {
         model: Categoria,
         attributes: ['id_categoria', 'nombre']
       }],
-      attributes: ["id_producto", "nombre", "stock", "precio", "id_categoria", "imagen"],
+      attributes: ["id_producto", "nombre", "stock", "precio", "id_categoria", "imagen","descripcion"],
     });
 
     // Mapear para agregar URL completa de la imagen
@@ -42,10 +42,10 @@ export const getProductos = async (req, res) => {
 export const createProduct = async (req, res) => {
   try {
     const { id } = req.params;
-    const { nombre, precio, stock, id_categoria } = req.body;
+    const { nombre, descripcion, precio, stock, id_categoria } = req.body;
     const imagen = req.file ? req.file.filename : null;
     const id_usuario = id;
-
+    
     // Verificar si ya existe un producto con el mismo nombre para este usuario
     const productoExistente = await Producto.findOne({
       where: {
@@ -53,9 +53,9 @@ export const createProduct = async (req, res) => {
         id_usuario: id_usuario
       }
     });
-
+    
     if (productoExistente) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         message: "Ya tienes un producto con este nombre. Elige un nombre diferente.",
         duplicateProduct: {
           nombre: productoExistente.nombre,
@@ -66,13 +66,14 @@ export const createProduct = async (req, res) => {
    
     const nuevoProducto = await Producto.create({
       nombre: nombre.trim(), // Asegurar que se guarde sin espacios extra
+      descripcion: descripcion ? descripcion.trim() : null, // Manejar descripción opcional
       precio,
       stock,
       id_usuario,
       id_categoria,
       imagen
     });
-    
+   
     // Obtener el producto creado con su categoría
     const productoCompleto = await Producto.findByPk(nuevoProducto.id_producto, {
       include: [{
@@ -194,14 +195,14 @@ export const eliminarProducto = async (req, res) => {
 export const actualizarProducto = async (req, res) => {
   try {
     const { id } = req.params;
-    const { nombre, stock, precio, id_categoria } = req.body;
+    const { nombre, descripcion, stock, precio, id_categoria } = req.body;
     const imagen = req.file ? req.file.filename : undefined;
-    
+   
     const producto = await Producto.findByPk(id);
     if (!producto) {
       return res.status(404).json({ error: "Producto no encontrado" });
     }
-
+    
     // Si se está actualizando el nombre, verificar duplicados
     if (nombre !== undefined && nombre.trim() !== producto.nombre) {
       const productoExistente = await Producto.findOne({
@@ -211,9 +212,8 @@ export const actualizarProducto = async (req, res) => {
           id_producto: { [Op.ne]: id } // Excluir el producto actual
         }
       });
-
       if (productoExistente) {
-        return res.status(400).json({ 
+        return res.status(400).json({
           message: "Ya tienes un producto con este nombre. Elige un nombre diferente.",
           duplicateProduct: {
             nombre: productoExistente.nombre,
@@ -222,16 +222,17 @@ export const actualizarProducto = async (req, res) => {
         });
       }
     }
-    
+   
     // Solo actualizar campos que se envían
     if (nombre !== undefined) producto.nombre = nombre.trim();
+    if (descripcion !== undefined) producto.descripcion = descripcion.trim() || null; // Guardar como null si está vacío
     if (stock !== undefined) producto.stock = stock;
     if (precio !== undefined) producto.precio = precio;
     if (id_categoria !== undefined) producto.id_categoria = id_categoria;
     if (imagen !== undefined) producto.imagen = imagen;
-    
+   
     await producto.save();
-    
+   
     // Obtener el producto actualizado con su categoría
     const productoCompleto = await Producto.findByPk(id, {
       include: [{
@@ -239,7 +240,7 @@ export const actualizarProducto = async (req, res) => {
         attributes: ['id_categoria', 'nombre']
       }]
     });
-    
+   
     res.json({ message: "Producto actualizado correctamente", producto: productoCompleto });
   } catch (error) {
     console.error("Error al actualizar producto:", error);

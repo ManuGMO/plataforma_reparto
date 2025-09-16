@@ -24,6 +24,7 @@ export default function PedidosTab({ setNotification }) {
     try {
       await axios.patch(`http://localhost:3001/api/pedidos/${id_pedido}/estado`, {
         estado: nuevoEstado,
+        id_vendedor: 1 
       });
       setNotification(mensaje);
       cargarPedidos(); // refresca lista
@@ -255,16 +256,10 @@ export default function PedidosTab({ setNotification }) {
                   </button>
                 ) : pedido.estado === "listo_para_recoger" ? (
                   <button
-                    onClick={() =>
-                      cambiarEstado(
-                        pedido.id_pedido,
-                        "en_reparto",
-                        "Pedido recogido por repartidor. En camino al cliente."
-                      )
-                    }
-                    className="flex-1 bg-blue-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+                    disabled
+                    className="flex-1 bg-gray-400 text-white py-2 rounded-lg text-sm font-medium cursor-not-allowed"
                   >
-                    Confirmar Recogida
+                    ⏳ Esperando repartidor
                   </button>
                 ) : pedido.estado === "en_reparto" ? (
                   <div className="flex-1 text-center py-2">

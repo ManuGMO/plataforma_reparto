@@ -6,25 +6,38 @@ export default function CarritoTab({ setNotification }) {
   const [carritoData, setCarritoData] = useState({
     items: [],
     subtotal: 0,
-    deliveryFee: 3.50,
     total: 0
   });
   const [loading, setLoading] = useState(true);
   const [procesandoPedido, setProcesandoPedido] = useState(false);
-
   const [showCheckout, setShowCheckout] = useState(false);
+  const [modalKey, setModalKey] = useState(0);
 
   // ID del comprador (actualmente hardcodeado)
   const ID_COMPRADOR = 2;
+
+  // Función para calcular totales
+  const calcularTotales = (items) => {
+    const subtotal = items.reduce((acc, item) => acc + (item.precio * item.cantidad), 0);
+    const total = subtotal;
+    return { subtotal, total };
+  };
 
   // Cargar carrito
   const cargarCarrito = async () => {
     try {
       setLoading(true);
       const response = await axios.get(`http://localhost:3001/api/carrito/comprador/${ID_COMPRADOR}`);
-
       console.log("Carrito", response.data);
-      setCarritoData(response.data);
+      
+      // Calcular totales correctos en el frontend
+      const { subtotal, total } = calcularTotales(response.data.items);
+      
+      setCarritoData({
+        ...response.data,
+        subtotal: subtotal,
+        total: total
+      });
     } catch (error) {
       console.error("Error al cargar carrito:", error);
       setNotification("Error al cargar carrito");
@@ -67,28 +80,24 @@ export default function CarritoTab({ setNotification }) {
     }
   };
 
-    const handleConfirmOrder = async ({ direccion, metodoPago }) => {
+  const handleConfirmOrder = async ({ direccion, metodoPago }) => {
     try {
-      
       const response = await axios.post('http://localhost:3001/api/pedidos/comprador/desde-carrito', {
         id_comprador: ID_COMPRADOR,
         direccion: direccion,
         metodo_pago: metodoPago
       });
-      
-      
+
       setNotification("¡Pedido creado exitosamente!");
       
       // Limpiar carrito después del pedido exitoso
       setCarritoData({
         items: [],
         subtotal: 0,
-        deliveryFee: 3.50,
         total: 0
       });
       
       console.log("Pedido confirmado con dirección:", direccion, "y método:", metodoPago);
-      
     } catch (error) {
       console.error("Error al crear pedido:", error);
       const mensaje = error.response?.data?.message || "Error al procesar pedido";
@@ -117,7 +126,7 @@ export default function CarritoTab({ setNotification }) {
         <div className="text-center py-8">
           <span className="text-6xl">🛒</span>
           <p className="text-gray-600 mt-4">Tu carrito está vacío</p>
-          <p className="text-sm text-gray-500 mt-2">Explora productos </p>
+          <p className="text-sm text-gray-500 mt-2">Explora productos</p>
         </div>
       </div>
     );
@@ -126,18 +135,14 @@ export default function CarritoTab({ setNotification }) {
   return (
     <div className="p-4 pb-24">
       <h2 className="text-xl font-bold text-gray-900 mb-4">Mi Carrito</h2>
-     
+      
       <div className="space-y-4 mb-6">
         {carritoData.items.map((item) => (
           <div key={item.id} className="bg-white rounded-lg p-4 shadow-sm">
             <div className="flex items-center space-x-3">
               <div className="aspect-square bg-gradient-to-br flex w-24 h-24 items-center justify-center">
-                  <img
-                    src={item.imagen}
-                    alt={item.nombre}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
+                <img src={item.imagen} alt={item.nombre} className="w-full h-full object-cover" />
+              </div>
               <div className="flex-1">
                 <h3 className="font-semibold text-gray-900">{item.nombre}</h3>
                 <p className="text-sm text-gray-600">{item.vendedor}</p>
@@ -145,7 +150,7 @@ export default function CarritoTab({ setNotification }) {
                 <div className="flex items-center space-x-2 mt-2">
                   <span className="text-lg font-bold text-green-600">${item.precio}</span>
                   <span className="text-sm text-gray-500 whitespace-nowrap">x {item.cantidad}</span>
-                  <span className="text-sm font-semibold">= ${item.subtotal}</span>
+                  <span className="text-sm font-semibold">= ${(item.precio * item.cantidad)}</span>
                 </div>
               </div>
               <div className="flex flex-col items-center space-y-2">
@@ -170,7 +175,7 @@ export default function CarritoTab({ setNotification }) {
                 {/* Botón eliminar */}
                 <button
                   onClick={() => handleRemove(item)}
-                  className=" bg-gray-100 text-red-600 hover:text-red-800 p-1"
+                  className="bg-gray-100 text-red-600 hover:text-red-800 p-1"
                 >
                   🗑️
                 </button>
@@ -179,7 +184,7 @@ export default function CarritoTab({ setNotification }) {
           </div>
         ))}
       </div>
-     
+
       <div className="bg-white rounded-lg p-4 shadow-sm mb-6">
         <h3 className="font-semibold text-gray-900 mb-3">Resumen del pedido</h3>
         <div className="space-y-2 text-sm text-gray-600">
@@ -187,16 +192,18 @@ export default function CarritoTab({ setNotification }) {
             <span>Subtotal ({carritoData.items.length} productos):</span>
             <span>${carritoData.subtotal}</span>
           </div>
-
           <div className="border-t pt-2 flex justify-between font-semibold text-lg">
             <span>Total:</span>
             <span className="text-green-600">${carritoData.total}</span>
           </div>
         </div>
       </div>
-     
-      <button 
-        onClick={() => setShowCheckout(true)}
+
+      <button
+        onClick={() => {
+          setModalKey(prev => prev + 1); // Forzar recreación
+          setShowCheckout(true);
+        }}
         disabled={carritoData.items.length === 0}
         className={`w-full py-4 rounded-lg font-semibold text-lg transition-colors ${
           carritoData.items.length === 0
@@ -207,13 +214,16 @@ export default function CarritoTab({ setNotification }) {
         Proceder al Pago
       </button>
 
-      {/* Modal de Checkout */}
-      <CheckoutModal 
-        isOpen={showCheckout}
-        onClose={() => setShowCheckout(false)}
-        carritoData={carritoData}
-        onConfirmOrder={handleConfirmOrder}
-      />
+      {/* Modal con key para forzar recreación */}
+      {showCheckout && (
+        <CheckoutModal
+          key={modalKey} // Esto fuerza recreación completa del componente
+          isOpen={showCheckout}
+          onClose={() => setShowCheckout(false)}
+          carritoData={carritoData}
+          onConfirmOrder={handleConfirmOrder}
+        />
+      )}
     </div>
   );
 }

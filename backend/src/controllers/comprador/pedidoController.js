@@ -7,7 +7,7 @@ import Pedido from "../../models/Pedido.js";
 export const crearPedidoDesdeCarrito = async (req, res) => {
   const t = await db.sequelize.transaction();
   try {
-    const { id_comprador, direccion } = req.body;
+    const { id_comprador, direccion, latitud, longitud } = req.body;
     
     if (!id_comprador) {
       return res.status(400).json({ message: "ID de comprador es requerido" });
@@ -38,7 +38,7 @@ export const crearPedidoDesdeCarrito = async (req, res) => {
       return res.status(400).json({ message: "El carrito está vacío" });
     }
 
-    // Verificar stock de todos los productos
+    // Verificar stock
     for (const producto of carrito.Productos) {
       if (producto.stock < producto.Carrito_Producto.cantidad) {
         return res.status(400).json({ 
@@ -47,38 +47,39 @@ export const crearPedidoDesdeCarrito = async (req, res) => {
       }
     }
 
-    // Calcular total y obtener vendedores únicos
+    // Calcular total
     let total = 0;
-    const vendedoresSet = new Set(); // Para almacenar IDs de vendedores únicos
+    const vendedoresSet = new Set();
     
     const items = carrito.Productos.map(p => {
       const cantidad = p.Carrito_Producto.cantidad;
       const precio_unitario = Number(p.precio);
       total += precio_unitario * cantidad;
-      
-      // Agregar ID del vendedor al Set (evita duplicados automáticamente)
+
       if (p.Vendedor && p.Vendedor.id_usuario) {
         vendedoresSet.add(p.Vendedor.id_usuario);
       }
-      
+
       return {
         id_producto: p.id_producto,
-        cantidad: cantidad,
-        precio_unitario: precio_unitario
+        cantidad,
+        precio_unitario
       };
     });
 
-    // Crear pedido
+    // Crear pedido con dirección y ubicación
     const pedido = await db.Pedido.create(
       {
         direccion: direccion || null,
+        latitud: latitud || null,
+        longitud: longitud || null,
         total: Math.round(total),
         estado: "pendiente"
       },
       { transaction: t }
     );
 
-    // Insertar detalle en Producto_Pedido
+    // Insertar detalle
     const detalleRows = items.map(it => ({
       id_pedido: pedido.id_pedido,
       id_producto: it.id_producto,
@@ -94,7 +95,7 @@ export const crearPedidoDesdeCarrito = async (req, res) => {
       { transaction: t }
     );
 
-    // NUEVO: Vincular todos los vendedores únicos del pedido
+    // Vincular vendedores
     const vendedorRows = Array.from(vendedoresSet).map(id_vendedor => ({
       id_pedido: pedido.id_pedido,
       id_usuario: id_vendedor
@@ -104,9 +105,9 @@ export const crearPedidoDesdeCarrito = async (req, res) => {
       await db.pedido_vendedor.bulkCreate(vendedorRows, { transaction: t });
     }
 
-    // Actualizar stock de productos
+    // Actualizar stock
     for (const item of items) {
-      await db.Producto.decrement('stock', {
+      await db.Producto.decrement("stock", {
         by: item.cantidad,
         where: { id_producto: item.id_producto },
         transaction: t
@@ -121,7 +122,6 @@ export const crearPedidoDesdeCarrito = async (req, res) => {
 
     await t.commit();
 
-    // Devolver pedido completo
     const pedidoCompleto = await db.Pedido.findByPk(pedido.id_pedido, {
       include: [
         {
@@ -129,7 +129,7 @@ export const crearPedidoDesdeCarrito = async (req, res) => {
           include: [
             {
               model: db.Categoria,
-              attributes: ['nombre']
+              attributes: ["nombre"]
             }
           ],
           through: { attributes: ["cantidad", "precio_unitario"] }
@@ -149,6 +149,7 @@ export const crearPedidoDesdeCarrito = async (req, res) => {
     });
   }
 };
+
 
 
 export const crearPedido = async (req, res) => {

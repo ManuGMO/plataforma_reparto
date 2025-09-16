@@ -28,7 +28,6 @@ export const getProductos = async (req, res) => {
       order: [['nombre', 'ASC']]
     });
 
-    console.log("Productos: ", productos);
     // Transformar los datos para que coincidan con el frontend
     const productosTransformados = productos.map(producto => {
 
@@ -46,6 +45,7 @@ export const getProductos = async (req, res) => {
         vendedor: producto.Vendedor.nombre,
         ubicacion: "alguna distancia", // Esto podría calcularse con geolocalización real
         stock: producto.stock,
+        descripcion: producto.descripcion,
         id_categoria: producto.id_categoria,
         id_vendedor: producto.id_usuario
       };

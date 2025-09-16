@@ -114,6 +114,7 @@ export default function ProductosTab({ openModal, refreshTrigger }) {
         </div>
         <div className="flex-1">
           <h3 className="font-semibold text-gray-900">{producto.nombre}</h3>
+
           <p className="text-sm text-gray-600">
             Stock: <span className={producto.stock <= 5 ? "text-red-600 font-medium" : ""}>{producto.stock}</span> unidades
             {producto.stock <= 5 && <span className="text-red-500 ml-1">⚠️</span>}

@@ -134,6 +134,16 @@ function ProductModal({ producto, isOpen, onClose, onAddToCart }) {
             <span className="text-sm">Stock disponible: {producto.stock} unidades</span>
           </div>
 
+          {/* Description */} 
+          {producto.descripcion && (
+            <div className="mt-4">
+              <span className="font-medium text-gray-700 block mb-2">Descripción:</span>
+              <p className="text-gray-600 bg-gray-50 p-3 rounded-lg">
+                {producto.descripcion}
+              </p>
+            </div>
+          )}
+
           {/* Quantity Selector */}
           <div className="mb-6">
             <label className="block text-sm font-medium text-gray-700 mb-2">

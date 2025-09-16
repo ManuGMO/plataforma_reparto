@@ -53,6 +53,11 @@ import productoRoutes from "./src/routes/comprador/productoRoutes.js";
 import carritoRoutes from "./src/routes/comprador/carritoRoutes.js";
 
 import notificacionesRoutes from "./src/routes/notificacionesRoutes.js";
+import usuarioRoutes from "./src/routes/usuarioRoutes.js";
+
+import repartidorRoutes from './src/routes/repartidor/repartidorRoutes.js';
+
+app.use("/api/usuarios", usuarioRoutes);
 
 // vendedor
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
@@ -67,7 +72,13 @@ app.use("/api/pedidos/comprador", pedidoRoutes);
 app.use("/api/productos/comprador", productoRoutes);
 app.use("/api/carrito/comprador", carritoRoutes);
 
+
+// Repartidor
+app.use("/api/repartidor", repartidorRoutes);
+
 // Notificacion
 app.use("/api/notificaciones", notificacionesRoutes);
+
+
 
 startServer();
