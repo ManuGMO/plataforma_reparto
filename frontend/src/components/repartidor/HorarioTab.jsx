@@ -11,7 +11,6 @@ export default function HorarioTab({ repartidorId }) {
           <span className="text-2xl">⏰</span>
         </div>
         <h3 className="text-lg font-semibold text-gray-700 mb-2">Sin horarios configurados</h3>
-        <p className="text-gray-500 text-sm">Agrega tu disponibilidad para optimizar las entregas</p>
       </div>
       
       <button className="w-full bg-blue-600 text-white py-3 rounded-lg font-medium">

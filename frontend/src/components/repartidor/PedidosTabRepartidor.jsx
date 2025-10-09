@@ -64,6 +64,24 @@ export default function PedidosTabRepartidor({ repartidorId, isOnline, setNewOrd
     }
   };
 
+  // 🔧 NUEVA FUNCIÓN: Actualizar pedido específico en el estado local
+  const updateOrderInState = (orderId, updates) => {
+    setOrders(prevOrders => 
+      prevOrders.map(order => 
+        order.id_pedido === orderId ? { ...order, ...updates } : order
+      )
+    );
+    setFilteredOrders(prevOrders => 
+      prevOrders.map(order => 
+        order.id_pedido === orderId ? { ...order, ...updates } : order
+      )
+    );
+    // También actualizar el selectedOrder si es el mismo pedido
+    if (selectedOrder && selectedOrder.id_pedido === orderId) {
+      setSelectedOrder(prev => ({ ...prev, ...updates }));
+    }
+  };
+
   useEffect(() => {
     loadOrders();
   }, [repartidorId, isOnline]);
@@ -113,14 +131,15 @@ export default function PedidosTabRepartidor({ repartidorId, isOnline, setNewOrd
     }
   };
 
-
   const handleViewOrder = (order) => {
-    setSelectedOrder(order);
+    // 🔧 MEJORADO: Buscar la versión más actualizada del pedido en el estado
+    const updatedOrder = orders.find(o => o.id_pedido === order.id_pedido) || order;
+    setSelectedOrder(updatedOrder);
     
     // Determinar qué vista mostrar según el estado del pedido
-    if (order.estado === 'listo_para_recoger' && !order.tiene_repartidor) {
+    if (updatedOrder.estado === 'listo_para_recoger' && !updatedOrder.tiene_repartidor) {
       setCurrentView('detail');
-    } else if (order.tiene_repartidor && ['listo_para_recoger', 'en_reparto'].includes(order.estado)) {
+    } else if (updatedOrder.tiene_repartidor && ['listo_para_recoger', 'en_reparto'].includes(updatedOrder.estado)) {
       setCurrentView('active_delivery');
     } else {
       setCurrentView('detail');
@@ -141,54 +160,61 @@ export default function PedidosTabRepartidor({ repartidorId, isOnline, setNewOrd
       if (data.success) {
         setNotification('Pedido aceptado exitosamente');
         setCurrentView('active_delivery');
-        const updatedOrder = { ...selectedOrder, tiene_repartidor: true };
-        setSelectedOrder(updatedOrder);
-        await loadOrders();
-        return true;   // 👈 ÉXITO
+        
+        // 🔧 ACTUALIZAR ESTADO LOCAL inmediatamente
+        const orderUpdates = { 
+          tiene_repartidor: true,
+          id_repartidor: repartidorId,
+          estado: 'listo_para_recoger' // Asumiendo que después de aceptar queda listo para recoger
+        };
+        
+        updateOrderInState(orderId, orderUpdates);
+        
+        // Opcional: recargar desde el servidor para estar seguros
+        // await loadOrders();
+        return true;
       } else {
         throw new Error(data.error || 'Error al aceptar pedido');
       }
     } catch (error) {
       console.error('Error al aceptar pedido:', error);
       setNotification('Error al aceptar pedido: ' + error.message);
-      return false;   // 👈 ERROR
+      return false;
     } finally {
       setLoading(false);
     }
   };
 
-
   const handleConfirmPickup = async (orderId) => {
-  try {
-    setLoading(true);
-    const response = await fetch(`http://localhost:3001/api/repartidor/${orderId}/recoger`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id_repartidor: repartidorId })
-    });
+    try {
+      setLoading(true);
+      const response = await fetch(`http://localhost:3001/api/repartidor/${orderId}/recoger`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id_repartidor: repartidorId })
+      });
 
-    const data = await response.json();
+      const data = await response.json();
 
-    if (data.success) {
-      setNotification('Recogida confirmada');
-      const updatedOrder = { ...selectedOrder, estado: 'en_reparto' };
-      setSelectedOrder(updatedOrder);
-      await loadOrders();
-      return true;   // 👈 ÉXITO
-    } else {
-      throw new Error(data.error || 'Error al confirmar recogida');
+      if (data.success) {
+        setNotification('Recogida confirmada');
+        
+        // 🔧 ACTUALIZAR ESTADO LOCAL
+        const orderUpdates = { estado: 'en_reparto' };
+        updateOrderInState(orderId, orderUpdates);
+        
+        return true;
+      } else {
+        throw new Error(data.error || 'Error al confirmar recogida');
+      }
+    } catch (error) {
+      console.error('Error al confirmar recogida:', error);
+      setNotification('Error al confirmar recogida: ' + error.message);
+      return false;
+    } finally {
+      setLoading(false);
     }
-  } catch (error) {
-    console.error('Error al confirmar recogida:', error);
-    setNotification('Error al confirmar recogida: ' + error.message);
-    return false;   // 👈 ERROR
-  } finally {
-    setLoading(false);
-  }
-};
-
-
-
+  };
 
   const handleConfirmDelivery = async (orderId) => {
     try {
@@ -207,8 +233,15 @@ export default function PedidosTabRepartidor({ repartidorId, isOnline, setNewOrd
 
       if (data.success) {
         setNotification('Entrega confirmada exitosamente');
+        
+        // 🔧 ACTUALIZAR ESTADO LOCAL
+        const orderUpdates = { estado: 'entregado' };
+        updateOrderInState(orderId, orderUpdates);
+        
         setCurrentView('list');
         setSelectedOrder(null);
+        
+        // Opcional: recargar lista después de entregar
         await loadOrders();
       } else {
         throw new Error(data.error || 'Error al confirmar entrega');
@@ -285,7 +318,6 @@ export default function PedidosTabRepartidor({ repartidorId, isOnline, setNewOrd
         >
           🔄 {loading ? "Cargando..." : "Actualizar"}
         </button>
-
       </div>
 
       {error && (
@@ -407,7 +439,8 @@ function OrderCard({ order, onViewOrder, timeAgo }) {
           </span>
         </div>
         <div className="text-right">
-          <p className="text-lg font-bold text-green-600">${order.total || 0}</p>
+        <p className="text-lg font-bold text-green-600">${order.total || 0}</p>
+        <p className="text-sm text-gray-600">Ganancia: ${order.pago_reparto || order.precio_reparto || 0}</p>
         </div>
       </div>
       
@@ -430,13 +463,93 @@ function OrderCard({ order, onViewOrder, timeAgo }) {
   );
 }
 
+// 🔧 COMPONENTE MEJORADO: OrderDetailAndDelivery actualizado
 function OrderDetailAndDelivery({ order, currentView, onBack, onAccept, onConfirmPickup, onConfirmDelivery, notification, setNotification, loading }) {
-  const [currentStep, setCurrentStep] = useState(() => {
+  const [loadingAddress, setLoadingAddress] = useState(false);
+  const [vendorAddress, setVendorAddress] = useState('');
+  // 🔧 Calcular currentStep basado en el estado actual del pedido
+
+  // Token de Mapbox - REEMPLAZA CON TU TOKEN REAL
+  const MAPBOX_TOKEN = 'pk.eyJ1IjoibWFudWdtbyIsImEiOiJjbWZocHBobnkwZTFzMmpteTBqejdjM2NyIn0.szPCGrt15ZmioZVcXyGycA';
+
+  // Función para convertir coordenadas a dirección usando Mapbox
+  const geocodeReverse = async (lat, lng) => {
+    try {
+      const response = await fetch(
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${MAPBOX_TOKEN}&types=address,poi,place&language=es&limit=1`
+      );
+      
+      if (!response.ok) {
+        throw new Error('Error en geocoding');
+      }
+      
+      const data = await response.json();
+      
+      if (data.features && data.features.length > 0) {
+        const place = data.features[0];
+        // Obtener una dirección más limpia
+        const placeName = place.place_name || place.text || 'Dirección no disponible';
+        // Si es muy largo, intentar usar solo el contexto más relevante
+        const shortAddress = placeName.split(',').slice(0, 2).join(',') || placeName;
+        return shortAddress;
+      }
+      
+      return 'Dirección no encontrada';
+    } catch (error) {
+      console.error('Error en geocoding:', error);
+      return 'Dirección no disponible';
+    }
+  };
+
+  // useEffect para procesar la dirección del vendedor cuando cambie la orden
+  useEffect(() => {
+    const procesarDireccionVendedor = async () => {
+      if (!order) {
+        setVendorAddress('Dirección no disponible');
+        return;
+      }
+
+      // Si ya tiene una dirección hardcodeada en el vendedor, usarla
+      if (order.Vendedor?.[0]?.direccion) {
+        setVendorAddress(order.Vendedor[0].direccion);
+        return;
+      }
+
+      // Si tiene coordenadas del vendedor, convertir a dirección
+      const vendorLat = order.Vendedor?.[0]?.latitud;
+      const vendorLng = order.Vendedor?.[0]?.longitud;
+
+      if (vendorLat && vendorLng && 
+          !isNaN(vendorLat) && !isNaN(vendorLng) &&
+          MAPBOX_TOKEN && MAPBOX_TOKEN !== 'TU_MAPBOX_ACCESS_TOKEN') {
+        
+        setLoadingAddress(true);
+        try {
+          const direccion = await geocodeReverse(vendorLat, vendorLng);
+          setVendorAddress(direccion);
+        } catch (error) {
+          console.error('Error procesando dirección del vendedor:', error);
+          setVendorAddress('Dirección no disponible');
+        } finally {
+          setLoadingAddress(false);
+        }
+      } else {
+        setVendorAddress('Dirección no disponible');
+      }
+    };
+
+    procesarDireccionVendedor();
+  }, [order, MAPBOX_TOKEN]);
+
+  const getCurrentStep = () => {
     if (!order.tiene_repartidor) return 1; // Disponible para aceptar
     if (order.estado === 'listo_para_recoger') return 2; // Listo para recoger
     if (order.estado === 'en_reparto') return 3; // En reparto
+    if (order.estado === 'entregado') return 4; // Entregado
     return 1;
-  });
+  };
+
+  const currentStep = getCurrentStep();
 
   if (!order) return null;
 
@@ -491,16 +604,13 @@ function OrderDetailAndDelivery({ order, currentView, onBack, onAccept, onConfir
     switch (currentAction.action) {
       case 'accept':
         success = await onAccept(order.id_pedido);
-        if (success) setCurrentStep(2);
         break;
       case 'pickup':
         success = await onConfirmPickup(order.id_pedido);
-        if (success) setCurrentStep(3);
         break;
       case 'delivery':
         success = await onConfirmDelivery(order.id_pedido);
         break;
-
     }
   };
 
@@ -592,7 +702,12 @@ function OrderDetailAndDelivery({ order, currentView, onBack, onAccept, onConfir
             <div>
               <p className="text-sm text-gray-600">Recoger en:</p>
               <p className="font-medium text-gray-500">{vendorName}</p>
-              <p className="text-sm text-gray-500">📍 Direccion</p>
+              <p className="text-sm text-gray-500"> 📍{loadingAddress ? (
+                    <span className="inline-flex items-center">
+                      <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-gray-400 mr-2"></div>
+                      Obteniendo dirección...
+                    </span>
+                  ) :vendorAddress}</p>
             </div>
             <div>
               <p className="text-sm text-gray-600">Entregar a:</p>
@@ -612,7 +727,19 @@ function OrderDetailAndDelivery({ order, currentView, onBack, onAccept, onConfir
                 )}
               </div>
             </div>
-            <div className="pt-2 border-t">
+            <div className="pt-2 border-t space-y-2">
+              <div className="flex justify-between text-sm">
+                <span>Subtotal:</span>
+                <span className="text-gray-700">${order.precio_bruto || order.subtotal || 0}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span>Comisión servicio:</span>
+                <span className="text-gray-700">${order.comision_servicio || 0}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span>Ganancia del repartidor:</span>
+                <span className="text-gray-700">${order.pago_reparto || order.precio_reparto || 0}</span>
+              </div>
               <div className="flex justify-between font-semibold">
                 <span>Total:</span>
                 <span className="text-green-600">${order.total}</span>
@@ -620,7 +747,6 @@ function OrderDetailAndDelivery({ order, currentView, onBack, onAccept, onConfir
             </div>
           </div>
         </div>
-        
         
         {/* Action Button */}
         <button 
@@ -630,8 +756,6 @@ function OrderDetailAndDelivery({ order, currentView, onBack, onAccept, onConfir
         >
           {loading ? 'Procesando...' : currentAction.button}
         </button>
-        
-
       </div>
     </div>
   );

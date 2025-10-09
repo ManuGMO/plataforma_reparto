@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
+import PedidosModal from "./PedidosModal";
 
 export default function PedidosTab({ setNotification }) {
   const [pedidoSeleccionado, setPedidoSeleccionado] = useState(null);
   const [pedidos, setPedidos] = useState([]);
-  const [filtroEstado, setFiltroEstado] = useState('todos'); // 🔥 Nuevo estado para filtro
+  const [filtroEstado, setFiltroEstado] = useState('todos');
+  const [loadingDetalle, setLoadingDetalle] = useState(false);
 
   useEffect(() => {
     cargarPedidos();
@@ -14,9 +16,35 @@ export default function PedidosTab({ setNotification }) {
     try {
       const res = await axios.get("http://localhost:3001/api/pedidos/vendedor/1");
       setPedidos(res.data);
-      console.log("AAAAA: ", res.data);
+      console.log(res.data);
     } catch (error) {
       console.error("Error cargando pedidos:", error);
+    }
+  };
+
+  // Cargar detalles completos del pedido
+  const cargarDetallePedido = async (id_pedido) => {
+    try {
+      setLoadingDetalle(true);
+      const res = await axios.get(`http://localhost:3001/api/pedidos/detalle/${id_pedido}?vendedorId=1`);
+      
+      const estadoKey = `pedido_${id_pedido}_fecha_estado`;
+    const fechaGuardada = localStorage.getItem(estadoKey);
+    
+    if (!fechaGuardada && res.data.fecha_ultimo_cambio_estado) {
+      localStorage.setItem(estadoKey, res.data.fecha_ultimo_cambio_estado);
+    }
+    
+    setPedidoSeleccionado({
+      ...res.data,
+      fecha_estado_anterior_guardada: fechaGuardada
+    });
+
+    } catch (error) {
+      console.error("Error cargando detalle:", error);
+      setNotification("Error al cargar detalles del pedido");
+    } finally {
+      setLoadingDetalle(false);
     }
   };
 
@@ -27,14 +55,17 @@ export default function PedidosTab({ setNotification }) {
         id_vendedor: 1 
       });
       setNotification(mensaje);
-      cargarPedidos(); // refresca lista
+      cargarPedidos();
+      // Actualizar detalle si está abierto
+      if (pedidoSeleccionado?.id_pedido === id_pedido) {
+        await cargarDetallePedido(id_pedido);
+      }
     } catch (error) {
       console.error("Error cambiando estado:", error);
       setNotification("Error al cambiar el estado del pedido");
     }
   };
 
-  // 🔥 Función para obtener el estilo del estado
   const getEstadoStyle = (estado) => {
     const styles = {
       'pendiente': "bg-yellow-100 text-yellow-800",
@@ -48,7 +79,6 @@ export default function PedidosTab({ setNotification }) {
     return styles[estado] || "bg-gray-100 text-gray-800";
   };
 
-  // 🔥 Función para obtener el nombre legible del estado
   const getEstadoNombre = (estado) => {
     const nombres = {
       'pendiente': 'Pendiente',
@@ -62,14 +92,16 @@ export default function PedidosTab({ setNotification }) {
     return nombres[estado] || estado;
   };
 
-  // 🔥 Filtrar pedidos según el estado seleccionado
   const pedidosFiltrados = filtroEstado === 'todos' 
     ? pedidos 
     : pedidos.filter(pedido => pedido.estado === filtroEstado);
 
-  // 🔥 Contar pedidos por estado
   const contarPedidosPorEstado = (estado) => {
     return pedidos.filter(pedido => pedido.estado === estado).length;
+  };
+
+  const cerrarModal = () => {
+    setPedidoSeleccionado(null);
   };
 
   return (
@@ -81,7 +113,7 @@ export default function PedidosTab({ setNotification }) {
         </div>
       </div>
 
-      {/* 🔥 Sistema de Filtros */}
+      {/* Sistema de Filtros */}
       <div className="mb-6 bg-white rounded-lg border p-4">
         <label className="block text-sm font-medium text-gray-700 mb-3">
           Filtrar por estado:
@@ -166,15 +198,13 @@ export default function PedidosTab({ setNotification }) {
                 : `No hay pedidos ${getEstadoNombre(filtroEstado).toLowerCase()}`
               }
             </p>
-            <p className="text-sm">
-              {filtroEstado !== 'todos' && 'Prueba con otro filtro o'}
-            </p>
           </div>
         ) : (
           pedidosFiltrados.map((pedido) => (
             <div
               key={pedido.id_pedido}
-              className="order-card bg-white border rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow"
+              onClick={() => cargarDetallePedido(pedido.id_pedido)}
+              className="order-card bg-white border rounded-lg p-4 shadow-sm hover:shadow-md transition-all cursor-pointer hover:border-blue-300"
             >
               <div className="flex justify-between items-start mb-3">
                 <div>
@@ -186,13 +216,32 @@ export default function PedidosTab({ setNotification }) {
                     {new Date(pedido.fecha_creacion).toLocaleString()}
                   </p>
                 </div>
-                <span className={`px-2 py-1 rounded-full text-xs font-medium ${getEstadoStyle(pedido.estado)}`}>
-                  {getEstadoNombre(pedido.estado)}
-                </span>
+                <div className="flex flex-col items-end space-y-2">
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${getEstadoStyle(pedido.estado)}`}>
+                    {getEstadoNombre(pedido.estado)}
+                  </span>
+                  
+                  {/* Indicador de comprobante */}
+                  {pedido.comprobante_pago && (
+                    <div className={`flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                      pedido.pago_confirmado 
+                        ? 'bg-green-100 text-green-800' 
+                        : 'bg-orange-100 text-orange-800'
+                    }`}>
+                      {pedido.pago_confirmado ? '✔ Pago confirmado' : '⏳ Pago pendiente'}
+                    </div>
+                  )}
+                  
+                  {pedido.tiene_repartidor && (
+                    <div className="flex items-center bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium">
+                      🚚 Repartidor asignado
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="space-y-2 mb-4">
-                {pedido.items.map((item, i) => (
+                {pedido.items.slice(0, 2).map((item, i) => (
                   <div
                     key={i}
                     className="flex justify-between text-sm text-gray-500"
@@ -203,83 +252,20 @@ export default function PedidosTab({ setNotification }) {
                         <span className="text-red-500 text-xs ml-1">(Eliminado)</span>
                       )}
                     </span>
-                    <span>${item.precio_unitario}</span>
+                    <span>${item.precio_unitario * item.cantidad}</span>
                   </div>
                 ))}
-                <div className="border-t pt-2 flex justify-between font-semibold">
+                {pedido.items.length > 2 && (
+                  <p className="text-xs text-gray-400">+{pedido.items.length - 2} productos más...</p>
+                )}
+                <div className="border-t pt-2 flex justify-between font-semibold text-gray-700">
                   <span>Total:</span>
                   <span className="text-green-600">${pedido.total}</span>
                 </div>
               </div>
 
-              {/* 🔥 Botones dinámicos según estado actualizado */}
-              <div className="flex space-x-2">
-                {pedido.estado === "pendiente" ? (
-                  <>
-                    <button
-                      onClick={() =>
-                        cambiarEstado(
-                          pedido.id_pedido,
-                          "aceptado",
-                          "Pedido aceptado. Comenzando preparación."
-                        )
-                      }
-                      className="flex-1 bg-green-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition-colors"
-                    >
-                      Aceptar
-                    </button>
-                    <button
-                      onClick={() =>
-                        cambiarEstado(
-                          pedido.id_pedido,
-                          "rechazado",
-                          "Pedido rechazado. Cliente notificado."
-                        )
-                      }
-                      className="flex-1 bg-red-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-red-700 transition-colors"
-                    >
-                      Rechazar
-                    </button>
-                  </>
-                ) : pedido.estado === "aceptado" ? (
-                  <button
-                    onClick={() =>
-                      cambiarEstado(
-                        pedido.id_pedido,
-                        "listo_para_recoger",
-                        "Pedido listo para recoger. Repartidor notificado."
-                      )
-                    }
-                    className="flex-1 bg-purple-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-purple-700 transition-colors"
-                  >
-                    🍽️ Marcar como Listo
-                  </button>
-                ) : pedido.estado === "listo_para_recoger" ? (
-                  <button
-                    disabled
-                    className="flex-1 bg-gray-400 text-white py-2 rounded-lg text-sm font-medium cursor-not-allowed"
-                  >
-                    ⏳ Esperando repartidor
-                  </button>
-                ) : pedido.estado === "en_reparto" ? (
-                  <div className="flex-1 text-center py-2">
-                    <p className="text-sm font-medium text-green-600">
-                      En camino al cliente
-                    </p>
-                  </div>
-                ) : pedido.estado === "entregado" ? (
-                  <div className="flex-1 text-center py-2">
-                    <p className="text-sm font-medium text-emerald-600">
-                    Pedido Entregado
-                    </p>
-                  </div>
-                ) : pedido.estado === "rechazado" ? (
-                  <div className="flex-1 text-center py-2">
-                    <p className="text-sm font-medium text-red-600">
-                    Pedido Rechazado
-                    </p>
-                  </div>
-                ) : null}
+              <div className="text-center text-xs text-blue-600">
+                Click para ver detalles completos →
               </div>
             </div>
           ))
@@ -288,48 +274,13 @@ export default function PedidosTab({ setNotification }) {
 
       {/* Modal de Detalles */}
       {pedidoSeleccionado && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-lg w-full max-w-md p-6">
-            <h3 className="text-lg font-bold text-gray-900 mb-4">
-              Detalles del Pedido #{pedidoSeleccionado.id_pedido}
-            </h3>
-            <p className="text-sm text-gray-600 mb-2">
-              Cliente: {pedidoSeleccionado.cliente}
-            </p>
-            <p className="text-xs text-gray-500 mb-4">
-              {new Date(pedidoSeleccionado.fecha_creacion).toLocaleString()}
-            </p>
-
-            <div className="space-y-2">
-              {pedidoSeleccionado.items.map((item, i) => (
-                <div
-                  key={i}
-                  className="flex justify-between text-sm text-gray-500 border-b pb-1"
-                >
-                  <span>
-                    {item.cantidad}x {item.nombre}
-                  </span>
-                  <span>${item.precio_unitario}</span>
-                </div>
-              ))}
-              <div className="pt-2 flex justify-between font-semibold">
-                <span>Total:</span>
-                <span className="text-green-600">
-                  ${pedidoSeleccionado.total}
-                </span>
-              </div>
-            </div>
-
-            <div className="mt-6 flex justify-end">
-              <button
-                onClick={() => setPedidoSeleccionado(null)}
-                className="bg-red-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-600 transition-colors"
-              >
-                Cerrar
-              </button>
-            </div>
-          </div>
-        </div>
+        <PedidosModal
+          pedido={pedidoSeleccionado}
+          loadingDetalle={loadingDetalle}
+          onCerrar={cerrarModal}
+          onCambiarEstado={cambiarEstado}
+          getEstadoNombre={getEstadoNombre}
+        />
       )}
     </div>
   );

@@ -3,8 +3,7 @@ import Header from "../components/repartidor/Header";
 import TabsRepartidor from "../components/repartidor/TabsRepartidor";
 import PedidosTabRepartidor from "../components/repartidor/PedidosTabRepartidor";
 import EntregasTab from "../components/repartidor/EntregasTab";
-import RutasTab from "../components/repartidor/RutasTab";
-import HorarioTab from "../components/repartidor/HorarioTab";
+import RutasHorariosTab from "../components/repartidor/RutasHorariosTab";
 import PerfilTab from "../components/repartidor/PerfilTab";
 import OrderDetail from "../components/repartidor/OrderDetail";
 import ActiveDelivery from "../components/repartidor/ActiveDelivery";
@@ -98,8 +97,7 @@ export default function Repartidor() {
                   />
                 )}
                 {activeTab === "entregas" && <EntregasTab repartidorId={ID_REPARTIDOR} />}
-                {activeTab === "rutas" && <RutasTab repartidorId={ID_REPARTIDOR} />}
-                {activeTab === "horario" && <HorarioTab repartidorId={ID_REPARTIDOR} />}
+                {activeTab === "rutas" && <RutasHorariosTab repartidorId={ID_REPARTIDOR} />}
                 {activeTab === "perfil" && <PerfilTab repartidorId={ID_REPARTIDOR} />}
               </div>
             </main>
@@ -116,12 +114,7 @@ export default function Repartidor() {
   return (
     <>
       {renderScreen()}
-      <Notification message={notification} onClose={() => setNotification("")} />
-      <NewOrderNotification
-        notification={newOrderNotification}
-        onView={() => handleViewNewOrder(newOrderNotification)}
-        onDismiss={() => setNewOrderNotification(null)}
-      />
+
     </>
   );
 }

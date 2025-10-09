@@ -2,6 +2,8 @@
 import { useState, useEffect, useRef } from "react";
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
+import PaymentReceiptModal from "./PaymentReceiptModal";
+import axios from "axios";
 
 // Configurar tu token de Mapbox (regístrate en https://mapbox.com)
 mapboxgl.accessToken = 'pk.eyJ1IjoibWFudWdtbyIsImEiOiJjbWZocHBobnkwZTFzMmpteTBqejdjM2NyIn0.szPCGrt15ZmioZVcXyGycA';
@@ -17,6 +19,10 @@ export default function PaymentModal({ isOpen, onClose, carritoData, onConfirmOr
   const [cargandoGeolocalizacion, setCargandoGeolocalizacion] = useState(false);
   const [indiceSugerenciaActiva, setIndiceSugerenciaActiva] = useState(-1);
   const [mostrarSugerencias, setMostrarSugerencias] = useState(false);
+
+  const [showReceiptModal, setShowReceiptModal] = useState(false);
+  const [pedidoCreado, setPedidoCreado] = useState(null);
+
 
   const mapContainer = useRef(null);
   const map = useRef(null);
@@ -76,6 +82,14 @@ export default function PaymentModal({ isOpen, onClose, carritoData, onConfirmOr
       );
     }
   };
+
+  const calcularComision = (total) => {
+    const comision = 500 + (total * 0.07);
+    return Math.min(comision, 2500); // límite superior
+  }
+
+  // En tu modal, muestra la comisión junto al resumen:
+  const comisionAplicacion = calcularComision(carritoData.total);
 
   // Función para actualizar marcador en el mapa
   const actualizarUbicacion = (lng, lat) => {
@@ -235,32 +249,58 @@ export default function PaymentModal({ isOpen, onClose, carritoData, onConfirmOr
     e.preventDefault();
     if (!direccion.trim() || !ubicacion) return;
 
-    setProcesando(true);
+    // Guardar datos temporales para pasarlos al modal de comprobante
+    setPedidoCreado({
+      direccion: direccionCompleta,
+      direccionDisplay: direccion,
+      metodoPago,
+      latitud: ubicacion.lat,
+      longitud: ubicacion.lng,
+      carritoData
+    });
+    
+    // Abrir modal de comprobante SIN crear el pedido todavía
+    setShowReceiptModal(true);
+  };
+
+  // NUEVA FUNCIÓN: Manejar subida de comprobante
+  const handleUploadReceipt = async (file) => {
     try {
-      await onConfirmOrder({
-        direccion: direccionCompleta, // Enviar dirección completa a la DB
-        direccionDisplay: direccion, // Dirección formateada para mostrar
-        metodoPago,
-        latitud: ubicacion.lat,
-        longitud: ubicacion.lng
+      // Crear el pedido CON el comprobante en una sola operación
+      const result = await onConfirmOrder({
+        direccion: pedidoCreado.direccion,
+        direccionDisplay: pedidoCreado.direccionDisplay,
+        metodoPago: pedidoCreado.metodoPago,
+        latitud: pedidoCreado.latitud,
+        longitud: pedidoCreado.longitud,
+        comprobante: file // Pasar el archivo también
       });
       
-      // Limpiar estado y cerrar modal
+      // Cerrar ambos modales
+      setShowReceiptModal(false);
       onClose();
       
-      // Reset estados del modal (opcional, mantener datos para mejor UX)
-      // setDireccion("");
-      // setDireccionCompleta("");
-      // setUbicacion(null);
-      // setSugerencias([]);
-      // setMostrarMapa(false);
-      // setMostrarSugerencias(false);
+      // Limpiar estado
+      setDireccion("");
+      setDireccionCompleta("");
+      setUbicacion(null);
+      setSugerencias([]);
+      setMostrarMapa(false);
+      setMostrarSugerencias(false);
+      setPedidoCreado(null);
+      
+      alert("✅ ¡Pedido creado y comprobante enviado exitosamente!");
       
     } catch (error) {
-      console.error("Error al confirmar pedido:", error);
-    } finally {
-      setProcesando(false);
+      console.error('Error creando pedido con comprobante:', error);
+      throw error;
     }
+  };
+
+  // NUEVA FUNCIÓN: Cerrar modal de comprobante
+  const handleCloseReceiptModal = () => {
+    setShowReceiptModal(false);
+    // No cerrar el modal principal para permitir modificaciones
   };
 
   if (!isOpen) return null;
@@ -444,8 +484,18 @@ export default function PaymentModal({ isOpen, onClose, carritoData, onConfirmOr
                     </div>
                   ))}
                   <div className="border-t-2 border-green-200 pt-3 flex justify-between items-center bg-white rounded-lg p-3 shadow-md">
-                    <span className="text-xl font-bold text-gray-900">Total:</span>
-                    <span className="text-2xl font-bold text-green-600">${carritoData.total || "0"}</span>
+                    <span className="  text-gray-900">Comisión de la app:</span>
+                    <span className="text-lg font-bold text-green-600">${carritoData.comision}</span>
+                  </div>
+                  <div className="border-t-2 border-green-200 pt-3 flex justify-between items-center bg-white rounded-lg p-3 shadow-md">
+                    <span className="text-gray-900">Pago reparto:</span>
+                    <span className="text-lg font-bold text-green-600">${carritoData.precio_reparto}</span>
+                  </div>
+                  <div className="border-t-2 border-green-200 pt-3 flex justify-between items-center bg-white rounded-lg p-3 shadow-md">
+                    <span className="text-xl font-bold text-gray-900">Total a pagar:</span>
+                    <span className="text-2xl font-bold text-green-600">
+                      ${carritoData.total}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -471,15 +521,23 @@ export default function PaymentModal({ isOpen, onClose, carritoData, onConfirmOr
                   {procesando ? (
                     <span className="flex items-center justify-center">
                       <div className="animate-spin w-5 h-5 border-2 border-white border-t-transparent rounded-full mr-2"></div>
-                      Procesando...
+                      Creando pedido...
                     </span>
                   ) : (
-                    "Confirmar y Pagar 🚀"
+                    "Crear Pedido"  // <- CAMBIÓ DE "Confirmar y Pagar" A "Crear Pedido"
                   )}
                 </button>
               </div>
 
             </form>
+            {/* Modal de Comprobante de Pago */}
+            <PaymentReceiptModal
+              isOpen={showReceiptModal}
+              onClose={handleCloseReceiptModal}
+              onUploadReceipt={handleUploadReceipt}
+              pedidoData={pedidoCreado}
+              procesando={false}
+            />
           </div>
         </div>
       </div>

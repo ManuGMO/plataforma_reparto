@@ -1,16 +1,48 @@
 // controllers/repartidorController.js
 import db from '../../models/indexModels.js';
 import { Op } from 'sequelize';
+import { calcularRuta } from '../../services/routeService.js';
 
 
 const { sequelize, Pedido, Usuario, Producto, pedido_repartidor, Producto_Pedido, pedido_comprador, pedido_vendedor } = db;
+
+export const asignarRepartidor = async (req, res) => {
+  try {
+    const { pedidoId, repartidorId } = req.body;
+    
+    const pedido = await db.Pedido.findByPk(pedidoId);
+    const repartidor = await db.Usuario.findByPk(repartidorId);
+    
+    // Calcular ruta y tiempo estimado
+    const ruta = await calcularRuta(
+      repartidor.latitud_actual,
+      repartidor.longitud_actual,
+      pedido.latitud,
+      pedido.longitud
+    );
+    
+    await pedido.update({
+      tiene_repartidor: true,
+      tiempo_estimado_entrega: Math.ceil(ruta.duracion / 60), // minutos
+      distancia_entrega: Math.ceil(ruta.distancia / 1000) // km
+    });
+    
+    res.json({ 
+      success: true, 
+      ruta,
+      tiempo_estimado: `${Math.ceil(ruta.duracion / 60)} minutos`
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
 
 
 export const obtenerPedidosDisponibles = async (req, res) => {
   try {
     const pedidos = await Pedido.findAll({
       where: {
-        estado: 'aceptado'
+        estado: ['aceptado','listo_para_recoger']
       },
       include: [
         {
@@ -33,6 +65,9 @@ export const obtenerPedidosDisponibles = async (req, res) => {
         }
       ]
     });
+
+    console.log('Pedidos disponibles:', pedidos);
+
 
     res.json(pedidos);
   } catch (error) {
@@ -151,6 +186,9 @@ export const getPedidosDisponibles = async (req, res) => {
       id_pedido: pedido.id_pedido,
       direccion: pedido.direccion,
       total: pedido.total,
+      precio_bruto: pedido.precio_bruto || 0,
+      comision_servicio: pedido.comision_servicio || 0,
+      pago_reparto: pedido.pago_reparto || 0,
       estado: pedido.estado,
       fecha_creacion: pedido.fecha_creacion,
       fecha_entrega: pedido.fecha_entrega,
@@ -247,6 +285,9 @@ export const getPedidosDisponiblesOptimized = async (req, res) => {
       id_pedido: pedido.id_pedido,
       direccion: pedido.direccion,
       total: pedido.total,
+      precio_bruto: pedido.precio_bruto || 0,
+      comision_servicio: pedido.comision_servicio || 0,
+      pago_reparto: pedido.pago_reparto || 0,
       estado: pedido.estado,
       fecha_creacion: pedido.fecha_creacion,
       fecha_entrega: pedido.fecha_entrega,
@@ -333,10 +374,28 @@ export const aceptarPedido = async (req, res) => {
       ]
     });
 
+    // Formatear respuesta con desglose monetario para el repartidor
+    const p = pedidoActualizado;
+    const pedidoFormateado = {
+      id_pedido: p.id_pedido,
+      estado: p.estado,
+      tiene_repartidor: p.tiene_repartidor,
+      direccion: p.direccion,
+      fecha_creacion: p.fecha_creacion,
+      total: p.total,
+      precio_bruto: p.precio_bruto || 0,
+      comision_servicio: p.comision_servicio || 0,
+      pago_reparto: p.pago_reparto || 0,
+      Comprador: p.Comprador,
+      Vendedor: p.Vendedor,
+      Repartidor: p.Repartidor,
+      Productos: p.Productos
+    };
+
     return res.json({
       success: true,
       message: 'Pedido aceptado para reparto',
-      pedido: pedidoActualizado
+      pedido: pedidoFormateado
     });
 
   } catch (error) {
@@ -402,7 +461,11 @@ export const confirmarRecogida = async (req, res) => {
       pedido: {
         id_pedido: pedido.id_pedido,
         estado: 'en_reparto',
-        tiene_repartidor: true
+        tiene_repartidor: true,
+        total: pedido.total,
+        precio_bruto: pedido.precio_bruto || 0,
+        comision_servicio: pedido.comision_servicio || 0,
+        pago_reparto: pedido.pago_reparto || 0
       }
     });
   } catch (error) {
@@ -478,7 +541,11 @@ export const confirmarEntrega = async (req, res) => {
         estado: 'entregado',
         tiene_repartidor: true,
         fecha_entrega: new Date(),
-        hora_entrega: new Date().toTimeString().slice(0, 8)
+        hora_entrega: new Date().toTimeString().slice(0, 8),
+        total: pedido.total,
+        precio_bruto: pedido.precio_bruto || 0,
+        comision_servicio: pedido.comision_servicio || 0,
+        pago_reparto: pedido.pago_reparto || 0
       }
     });
   } catch (error) {
@@ -571,7 +638,7 @@ export const getEntregasRepartidor = async (req, res) => {
     const entregasCompletadas = entregas.filter(e => e.estado === 'entregado');
     const entregasCanceladas = entregas.filter(e => e.estado === 'cancelado');
     
-    const totalEarnings = entregasCompletadas.reduce((sum, e) => sum + parseInt(e.total || 0), 0);
+  const totalEarnings = entregasCompletadas.reduce((sum, e) => sum + parseInt(e.pago_reparto || e.total || 0), 0);
     
     // Estimación de distancia basada en coordenadas (simulado)
     const distanciaPromedio = 2.5; // km por entrega
@@ -586,8 +653,22 @@ export const getEntregasRepartidor = async (req, res) => {
         Math.round(totalEarnings / entregasCompletadas.length) : 0
     };
 
+    // Map entregas to include monetary breakdown for frontend
+    const entregasFormateadas = entregas.map(e => ({
+      id_pedido: e.id_pedido,
+      estado: e.estado,
+      fecha_creacion: e.fecha_creacion,
+      total: e.total,
+      precio_bruto: e.precio_bruto || 0,
+      comision_servicio: e.comision_servicio || 0,
+      pago_reparto: e.pago_reparto || 0,
+      Comprador: e.Comprador,
+      Vendedor: e.Vendedor,
+      Productos: e.Productos
+    }));
+
     res.json({
-      deliveries: entregas,
+      deliveries: entregasFormateadas,
       stats,
       period: filter,
       repartidor: {
@@ -722,7 +803,21 @@ export const getPedidosActivos = async (req, res) => {
       order: [['fecha_creacion', 'ASC']]
     });
 
-    res.json(pedidosActivos);
+    // Formatear pedidos activos para incluir desglose
+    const activosFormateados = pedidosActivos.map(p => ({
+      id_pedido: p.id_pedido,
+      estado: p.estado,
+      fecha_creacion: p.fecha_creacion,
+      total: p.total,
+      precio_bruto: p.precio_bruto || 0,
+      comision_servicio: p.comision_servicio || 0,
+      pago_reparto: p.pago_reparto || 0,
+      Comprador: p.Comprador,
+      Vendedor: p.Vendedor,
+      Productos: p.Productos
+    }));
+
+    res.json(activosFormateados);
   } catch (error) {
     console.error('Error al obtener pedidos activos:', error);
     res.status(500).json({ 

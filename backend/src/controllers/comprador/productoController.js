@@ -16,7 +16,7 @@ export const getProductos = async (req, res) => {
         {
           model: db.Usuario,
           as: 'Vendedor',
-          attributes: ['id_usuario', 'nombre']
+          attributes: ['id_usuario', 'nombre','latitud','longitud']
         }
       ],
       where: {
@@ -44,6 +44,8 @@ export const getProductos = async (req, res) => {
         categoria: categoriaNombre,
         vendedor: producto.Vendedor.nombre,
         ubicacion: "alguna distancia", // Esto podría calcularse con geolocalización real
+        latitud: producto.Vendedor.latitud,
+        longitud: producto.Vendedor.longitud,
         stock: producto.stock,
         descripcion: producto.descripcion,
         id_categoria: producto.id_categoria,

@@ -22,7 +22,7 @@ export default (sequelize) => {
       }
     },
     tipo: {
-      type: DataTypes.ENUM('comprador_a_repartidor', 'repartidor_a_comprador'),
+      type: DataTypes.ENUM('comprador_a_repartidor', 'comprador_a_vendedor'),
       allowNull: false
     },
     calificacion: {

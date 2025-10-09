@@ -115,7 +115,9 @@ function ProductModal({ producto, isOpen, onClose, onAddToCart }) {
           {/* Location */}
           <div className="flex items-center space-x-2 text-gray-600 mb-4">
             <MapPin className="h-4 w-4" />
-            <span className="text-sm">{producto.ubicacion}</span>
+            <span className="text-sm" title={producto.ubicacion}>
+              {producto.ubicacion}
+            </span>
           </div>
 
           {/* Category */}
@@ -198,16 +200,98 @@ function ProductModal({ producto, isOpen, onClose, onAddToCart }) {
 
 export default function ProductosTabComprador({ setNotification }) {
   const [productos, setProductos] = useState([]);
+  const [productosConDireccion, setProductosConDireccion] = useState([]);
   const [categorias, setCategorias] = useState([]);
   const [activeCategory, setActiveCategory] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
+  const [loadingAddresses, setLoadingAddresses] = useState(false);
   const [error, setError] = useState(null);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   // ID del comprador (actualmente hardcodeado)
   const ID_COMPRADOR = 2;
+
+  // Token de Mapbox - REEMPLAZA CON TU TOKEN REAL
+  const MAPBOX_TOKEN = 'pk.eyJ1IjoibWFudWdtbyIsImEiOiJjbWZocHBobnkwZTFzMmpteTBqejdjM2NyIn0.szPCGrt15ZmioZVcXyGycA';
+
+  // Función para convertir coordenadas a dirección usando Mapbox
+  const geocodeReverse = async (lat, lng) => {
+    try {
+      const response = await fetch(
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${MAPBOX_TOKEN}&types=address,poi,place&language=es&limit=1`
+      );
+      
+      if (!response.ok) {
+        throw new Error('Error en geocoding');
+      }
+      
+      const data = await response.json();
+      
+      if (data.features && data.features.length > 0) {
+        const place = data.features[0];
+        // Obtener una dirección más limpia
+        const placeName = place.place_name || place.text || 'Dirección no disponible';
+        // Si es muy largo, intentar usar solo el contexto más relevante
+        const shortAddress = placeName.split(',').slice(0, 2).join(',') || placeName;
+        return shortAddress;
+      }
+      
+      return 'Dirección no encontrada';
+    } catch (error) {
+      console.error('Error en geocoding:', error);
+      return 'Dirección no disponible';
+    }
+  };
+
+  // Procesar direcciones de productos
+  const procesarDirecciones = async (productosOriginales) => {
+    if (!productosOriginales || productosOriginales.length === 0) {
+      return [];
+    }
+
+    setLoadingAddresses(true);
+
+    try {
+      const productosConDireccionPromises = productosOriginales.map(async (producto) => {
+        // Si ya tiene una ubicación hardcodeada y no tiene coordenadas, mantener la ubicación
+        if (producto.ubicacion && (!producto.latitud || !producto.longitud)) {
+          return producto;
+        }
+        
+        // Si tiene coordenadas válidas, convertir a dirección
+        if (producto.latitud && producto.longitud && 
+            !isNaN(producto.latitud) && !isNaN(producto.longitud) &&
+            MAPBOX_TOKEN && MAPBOX_TOKEN !== 'TU_MAPBOX_ACCESS_TOKEN') {
+          
+          const direccion = await geocodeReverse(producto.latitud, producto.longitud);
+          return {
+            ...producto,
+            ubicacion: direccion
+          };
+        }
+        
+        // Si no tiene ni ubicación ni coordenadas válidas
+        return {
+          ...producto,
+          ubicacion: producto.ubicacion || 'Ubicación no disponible'
+        };
+      });
+
+      const productosResueltos = await Promise.all(productosConDireccionPromises);
+      return productosResueltos;
+    } catch (error) {
+      console.error('Error procesando direcciones:', error);
+      // En caso de error, devolver productos con ubicaciones originales
+      return productosOriginales.map(producto => ({
+        ...producto,
+        ubicacion: producto.ubicacion || 'Ubicación no disponible'
+      }));
+    } finally {
+      setLoadingAddresses(false);
+    }
+  };
 
   // Cargar productos
   useEffect(() => {
@@ -218,7 +302,11 @@ export default function ProductosTabComprador({ setNotification }) {
         const data = await response.json();
         setProductos(data);
 
-        console.log(data);
+        console.log('Productos cargados:', data);
+
+        // Procesar direcciones
+        const productosConDir = await procesarDirecciones(data);
+        setProductosConDireccion(productosConDir);
 
         // Extraer categorías únicas de los productos
         const categoriasUnicas = [...new Set(data.map(p => p.categoria))];
@@ -238,7 +326,7 @@ export default function ProductosTabComprador({ setNotification }) {
   }, [setNotification]);
 
   // Filtrar productos por categoría y término de búsqueda
-  const productosFiltrados = productos.filter(producto => {
+  const productosFiltrados = productosConDireccion.filter(producto => {
     const matchesCategory = activeCategory === 'all' || producto.categoria === activeCategory;
     const matchesSearch = producto.nombre.toLowerCase().includes(searchTerm.toLowerCase());
     return matchesCategory && matchesSearch;
@@ -347,6 +435,15 @@ export default function ProductosTabComprador({ setNotification }) {
       <SearchBar searchTerm={searchTerm} setSearchTerm={setSearchTerm} />
       
       <div className="flex-1 overflow-y-auto p-4">
+        {loadingAddresses && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+            <div className="flex items-center space-x-2">
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+              <span className="text-sm text-blue-600">Cargando direcciones...</span>
+            </div>
+          </div>
+        )}
+        
         {productosFiltrados.length === 0 ? (
           <div className="text-center py-8">
             <span className="text-6xl">🔍</span>
@@ -383,7 +480,9 @@ export default function ProductosTabComprador({ setNotification }) {
                 <div className="p-3">
                   <h3 className="font-semibold text-gray-900 text-sm mb-1 line-clamp-2">{producto.nombre}</h3>
                   <p className="text-xs text-gray-600 mb-1">{producto.vendedor}</p>
-                  <p className="text-xs text-gray-500 mb-2">{producto.ubicacion}</p>
+                  <p className="text-xs text-gray-500 mb-2 line-clamp-1" title={producto.ubicacion}>
+                    📍 {producto.ubicacion}
+                  </p>
                   <div className="flex items-center justify-between mb-2">
                     <span className="font-bold text-green-600">${producto.precio}</span>
                     <div className="flex items-center space-x-1">

@@ -10,6 +10,15 @@ export default (sequelize) => {
     direccion: {
       type: DataTypes.STRING(200)
     },
+    precio_bruto: {
+      type: DataTypes.INTEGER
+    },
+    comision_servicio: {
+      type: DataTypes.INTEGER
+    },
+    pago_reparto: {
+      type: DataTypes.INTEGER
+    },
     total: {
       type: DataTypes.INTEGER
     },
@@ -47,33 +56,62 @@ export default (sequelize) => {
     longitud: {
       type: DataTypes.DECIMAL(10, 7),
       allowNull: true,
+    },
+
+    comprobante_pago: {
+      type: DataTypes.STRING(500),
+      allowNull: true,
+    },
+    pago_confirmado: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+      allowNull: false,
+    },
+    fecha_confirmacion_pago: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    fecha_ultimo_cambio_estado: {
+      type: DataTypes.DATE,
+      allowNull: true
+    },
+    estado_anterior: {
+      type: DataTypes.STRING(50),
+      allowNull: true
     }
   }, {
     tableName: 'Pedido',
     timestamps: false,
     hooks: {
-  afterUpdate: async (pedido, options) => {
-    if (pedido.changed('estado')) {
-      const estadoAnterior = pedido._previousDataValues.estado;
-      const estadoNuevo = pedido.estado;
-
-      if (options.transaction) {
-        options.transaction.afterCommit(async () => {
-          const { enviarNotificacionCambioEstado } = await import('../services/notificationService.js');
-          try {
+      beforeUpdate: async (pedido, options) => {
+        if (pedido.changed('estado')) {
+          // Guardar el estado anterior y su fecha
+          pedido.estado_anterior = pedido._previousDataValues.estado;
+          pedido.fecha_estado_anterior = pedido._previousDataValues.fecha_ultimo_cambio_estado || pedido._previousDataValues.fecha_creacion;
+          pedido.fecha_ultimo_cambio_estado = new Date();
+        }
+      },
+      afterUpdate: async (pedido, options) => {
+        if (pedido.changed('estado')) {
+          const estadoAnterior = pedido.estado_anterior;
+          const estadoNuevo = pedido.estado;
+          
+          if (options.transaction) {
+            options.transaction.afterCommit(async () => {
+              const { enviarNotificacionCambioEstado } = await import('../services/notificationService.js');
+              try {
+                await enviarNotificacionCambioEstado(pedido, estadoAnterior, estadoNuevo);
+              } catch (err) {
+                console.error("Error enviando notificación:", err);
+              }
+            });
+          } else {
+            const { enviarNotificacionCambioEstado } = await import('../services/notificationService.js');
             await enviarNotificacionCambioEstado(pedido, estadoAnterior, estadoNuevo);
-          } catch (err) {
-            console.error("❌ Error enviando notificación:", err);
           }
-        });
-      } else {
-        // Si no hay transacción, ejecutar directo
-        const { enviarNotificacionCambioEstado } = await import('../services/notificationService.js');
-        await enviarNotificacionCambioEstado(pedido, estadoAnterior, estadoNuevo);
+        }
       }
     }
-  }
-}
   });
 
   Pedido.associate = (models) => {

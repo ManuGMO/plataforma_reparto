@@ -84,7 +84,9 @@ export default function EntregasTab({ repartidorId }) {
         </select>
       </div>
       
-      {/* Deliveries List */}
+      {/*
+      
+            
       <div className="space-y-4 mb-6">
         {loading ? (
           <div className="text-center py-8">
@@ -106,7 +108,7 @@ export default function EntregasTab({ repartidorId }) {
         )}
       </div>
       
-      {/* Earnings Summary */}
+    
       <div className="bg-white rounded-lg p-4 shadow-sm">
         <h3 className="font-semibold text-gray-900 mb-3">Resumen de Ganancias</h3>
         <div className="space-y-2">
@@ -124,6 +126,10 @@ export default function EntregasTab({ repartidorId }) {
           </div>
         </div>
       </div>
+
+
+        */}
+
     </div>
   );
 }

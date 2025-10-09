@@ -56,6 +56,15 @@ import notificacionesRoutes from "./src/routes/notificacionesRoutes.js";
 import usuarioRoutes from "./src/routes/usuarioRoutes.js";
 
 import repartidorRoutes from './src/routes/repartidor/repartidorRoutes.js';
+import rutaRoutes from './src/routes/repartidor/rutaRoutes.js';
+
+import comprobanteRoutes from "./src/routes/administrador/comprobanteRoutes.js";
+import pagosVendedorRoutes from "./src/routes/administrador/pagosVendedorRoutes.js";
+import pagosRepartidorRoutes from "./src/routes/administrador/pagosRepartidorRoutes.js";
+import usuariosRoutes from "./src/routes/administrador/usuariosRoutes.js";
+import dashboardRoutes from "./src/routes/administrador/dashboardRoutes.js";
+
+
 
 app.use("/api/usuarios", usuarioRoutes);
 
@@ -75,6 +84,15 @@ app.use("/api/carrito/comprador", carritoRoutes);
 
 // Repartidor
 app.use("/api/repartidor", repartidorRoutes);
+app.use("/api/rutas", rutaRoutes);
+
+//administrador
+app.use("/api/admin/comprobantes", comprobanteRoutes);
+app.use("/api/admin/pagos-vendedores", pagosVendedorRoutes);
+app.use("/api/admin/pagos-repartidores", pagosRepartidorRoutes);
+app.use("/api/admin/usuarios", usuariosRoutes);
+app.use("/api/admin/dashboard", dashboardRoutes);
+
 
 // Notificacion
 app.use("/api/notificaciones", notificacionesRoutes);

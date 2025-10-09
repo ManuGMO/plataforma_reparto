@@ -6,6 +6,8 @@ export default function CarritoTab({ setNotification }) {
   const [carritoData, setCarritoData] = useState({
     items: [],
     subtotal: 0,
+    comision: 0,
+    precio_reparto: 0,
     total: 0
   });
   const [loading, setLoading] = useState(true);
@@ -19,8 +21,15 @@ export default function CarritoTab({ setNotification }) {
   // Función para calcular totales
   const calcularTotales = (items) => {
     const subtotal = items.reduce((acc, item) => acc + (item.precio * item.cantidad), 0);
-    const total = subtotal;
-    return { subtotal, total };
+
+    // Comisión 10% del subtotal
+    const comision = Math.round(subtotal * 0.10);
+    // Pago reparto 5% del subtotal
+    const precio_reparto = Math.round(subtotal * 0.05);
+    // Total neto
+    const total = Math.round(subtotal + comision + precio_reparto);
+
+    return { subtotal, comision, precio_reparto, total };
   };
 
   // Cargar carrito
@@ -31,11 +40,13 @@ export default function CarritoTab({ setNotification }) {
       console.log("Carrito", response.data);
       
       // Calcular totales correctos en el frontend
-      const { subtotal, total } = calcularTotales(response.data.items);
-      
+      const { subtotal, comision, precio_reparto, total } = calcularTotales(response.data.items);
+
       setCarritoData({
         ...response.data,
         subtotal: subtotal,
+        comision: comision,
+        precio_reparto: precio_reparto,
         total: total
       });
     } catch (error) {
@@ -80,27 +91,73 @@ export default function CarritoTab({ setNotification }) {
     }
   };
 
-  const handleConfirmOrder = async ({ direccion, metodoPago }) => {
-    try {
-      const response = await axios.post('http://localhost:3001/api/pedidos/comprador/desde-carrito', {
-        id_comprador: ID_COMPRADOR,
-        direccion: direccion,
-        metodo_pago: metodoPago
-      });
+  // FUNCIÓN MODIFICADA: Ahora recibe el archivo del comprobante también
+  const handleConfirmOrder = async ({ direccion, direccionDisplay, metodoPago, latitud, longitud, comprobante }) => {
+    console.log("Creando pedido con datos:", {
+      id_comprador: ID_COMPRADOR,
+      direccion,
+      metodoPago,
+      latitud,
+      longitud,
+      tieneComprobante: !!comprobante
+    });
 
-      setNotification("¡Pedido creado exitosamente!");
+    try {
+      // Crear FormData para enviar archivo + datos
+      const formData = new FormData();
+      formData.append('id_comprador', ID_COMPRADOR);
+      formData.append('direccion', direccion);
+      formData.append('metodo_pago', metodoPago);
+      formData.append('latitud', latitud);
+      formData.append('longitud', longitud);
+  // Añadir desglose de montos para que el backend lo guarde en el modelo Pedido
+  formData.append('precio_bruto', carritoData.subtotal);
+  formData.append('comision_servicio', carritoData.comision);
+  formData.append('pago_reparto', carritoData.precio_reparto);
+  formData.append('total', carritoData.total);
       
-      // Limpiar carrito después del pedido exitoso
+      // Agregar el comprobante si existe
+      if (comprobante) {
+        formData.append('comprobante', comprobante);
+      }
+
+      const response = await axios.post(
+        'http://localhost:3001/api/pedidos/comprador/desde-carrito', 
+        formData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
+        }
+      );
+
+      console.log("Pedido creado exitosamente:", response.data);
+      
+      setNotification("¡Pedido creado exitosamente con comprobante!");
+      
+      // Limpiar carrito
       setCarritoData({
         items: [],
         subtotal: 0,
+        comision: 0,
+        precio_reparto: 0,
         total: 0
       });
       
-      console.log("Pedido confirmado con dirección:", direccion, "y método:", metodoPago);
+      return response.data;
+      
     } catch (error) {
       console.error("Error al crear pedido:", error);
-      const mensaje = error.response?.data?.message || "Error al procesar pedido";
+      console.error("Response data:", error.response?.data);
+      
+      let mensaje = "Error al procesar pedido";
+      
+      if (error.response?.data?.message) {
+        mensaje = error.response.data.message;
+      } else if (error.response?.data?.error) {
+        mensaje = error.response.data.error;
+      }
+      
       setNotification(mensaje);
       throw error;
     }
@@ -191,6 +248,14 @@ export default function CarritoTab({ setNotification }) {
           <div className="flex justify-between">
             <span>Subtotal ({carritoData.items.length} productos):</span>
             <span>${carritoData.subtotal}</span>
+          </div>
+          <div className="flex justify-between">
+            <span>Comision por servicio:</span>
+            <span>${carritoData.comision}</span>
+          </div>
+          <div className="flex justify-between">
+            <span>Pago reparto:</span>
+            <span>${carritoData.precio_reparto}</span>
           </div>
           <div className="border-t pt-2 flex justify-between font-semibold text-lg">
             <span>Total:</span>

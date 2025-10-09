@@ -23,5 +23,18 @@ export default (sequelize) => {
     timestamps: false
   });
 
+  pedido_repartidor.associate = (models) => {
+    pedido_repartidor.belongsTo(models.Pedido, {
+      foreignKey: 'id_pedido',
+      as: 'Pedido'
+    });
+
+    pedido_repartidor.belongsTo(models.Usuario, {
+      foreignKey: 'id_usuario',
+      as: 'Repartidor'
+    });
+  };
+
+
   return pedido_repartidor;
 };

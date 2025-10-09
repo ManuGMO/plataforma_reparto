@@ -1,3 +1,5 @@
+import { useState } from 'react';
+import CalificacionModal from './CalificacionModal';
 
 export const getStatusColor = (estado) => {
   const colors = {
@@ -51,7 +53,20 @@ export const getProgressStep = (estado) => {
 
 
 export default function PedidoModal({ pedido, showModal, onClose }) {
+  const [showCalificacionModal, setShowCalificacionModal] = useState(false);
+
+  console.log("Informacion del pedido", pedido);
+
   if (!showModal || !pedido) return null;
+
+  const handleCalificar = () => {
+    setShowCalificacionModal(true);
+  };
+
+  const handleCalificacionEnviada = () => {
+    // Opcional: recargar pedidos o actualizar estado
+    console.log('Calificación enviada exitosamente');
+  };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
@@ -160,9 +175,29 @@ export default function PedidoModal({ pedido, showModal, onClose }) {
                 </div>
               ))}
               
-              {/* Total */}
-              <div className="border-t pt-3 mt-3">
+              {/* Resumen de costos */}
+              <div className="border-t pt-3 mt-3 space-y-2">
+                
+                {/* Subtotal */}
                 <div className="flex justify-between items-center">
+                  <span className="text-gray-600">Subtotal</span>
+                  <span className="text-gray-900">${pedido.subtotal ?? pedido.items.reduce((sum, item) => sum + item.subtotal, 0)}</span>
+                </div>
+
+                {/* Comisión */}
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-600">Comisión servicio</span>
+                  <span className="text-gray-900">${pedido.comision ?? (pedido.total - (pedido.subtotal ?? pedido.items.reduce((sum, item) => sum + item.subtotal, 0)))}</span>
+                </div>
+
+                {/* Pago reparto */}
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-600">Pago reparto</span>
+                  <span className="text-gray-900">${pedido.precio_reparto ?? 0}</span>
+                </div>
+
+                {/* Total final */}
+                <div className="flex justify-between items-center pt-2 border-t mt-2">
                   <span className="font-semibold text-lg text-gray-900">Total</span>
                   <span className="font-bold text-lg text-green-600">${pedido.total}</span>
                 </div>
@@ -172,16 +207,13 @@ export default function PedidoModal({ pedido, showModal, onClose }) {
           
           {/* Rate Order Button - Solo mostrar si está entregado */}
           {pedido.estado === 'entregado' && (
-            <button 
-              onClick={() => {
-                // Aquí puedes implementar la lógica de calificación
-                alert('Función de calificación por implementar');
-              }}
-              className="w-full bg-yellow-500 text-white py-4 rounded-lg font-semibold hover:bg-yellow-600 transition-colors"
-            >
-              ⭐ Calificar Experiencia
-            </button>
-          )}
+          <button 
+            onClick={handleCalificar}
+            className="w-full bg-yellow-500 text-white py-4 rounded-lg font-semibold hover:bg-yellow-600 transition-colors"
+          >
+            ⭐ Calificar Experiencia
+          </button>
+        )}
           
           {/* Close Button */}
           <button 
@@ -191,6 +223,13 @@ export default function PedidoModal({ pedido, showModal, onClose }) {
             Cerrar
           </button>
         </div>
+        <CalificacionModal
+        pedido={pedido}
+        showModal={showCalificacionModal}
+        onClose={() => setShowCalificacionModal(false)}
+        id_comprador={pedido.id_comprador}
+        onCalificacionEnviada={handleCalificacionEnviada}
+      />
       </div>
     </div>
   );

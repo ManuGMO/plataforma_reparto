@@ -6,8 +6,12 @@ import Pedido from "../../models/Pedido.js";
 
 export const crearPedidoDesdeCarrito = async (req, res) => {
   const t = await db.sequelize.transaction();
+  
   try {
-    const { id_comprador, direccion, latitud, longitud } = req.body;
+    const { id_comprador, direccion, latitud, longitud, metodo_pago } = req.body;
+    
+    console.log('📦 Datos recibidos:', { id_comprador, direccion, latitud, longitud, metodo_pago });
+    console.log('📁 Archivo comprobante:', req.file);
     
     if (!id_comprador) {
       return res.status(400).json({ message: "ID de comprador es requerido" });
@@ -35,12 +39,14 @@ export const crearPedidoDesdeCarrito = async (req, res) => {
     });
 
     if (!carrito || !carrito.Productos || carrito.Productos.length === 0) {
+      await t.rollback();
       return res.status(400).json({ message: "El carrito está vacío" });
     }
 
     // Verificar stock
     for (const producto of carrito.Productos) {
       if (producto.stock < producto.Carrito_Producto.cantidad) {
+        await t.rollback();
         return res.status(400).json({ 
           message: `Stock insuficiente para ${producto.nombre}` 
         });
@@ -48,13 +54,13 @@ export const crearPedidoDesdeCarrito = async (req, res) => {
     }
 
     // Calcular total
-    let total = 0;
+    let subtotal = 0;
     const vendedoresSet = new Set();
     
     const items = carrito.Productos.map(p => {
       const cantidad = p.Carrito_Producto.cantidad;
       const precio_unitario = Number(p.precio);
-      total += precio_unitario * cantidad;
+      subtotal += precio_unitario * cantidad;
 
       if (p.Vendedor && p.Vendedor.id_usuario) {
         vendedoresSet.add(p.Vendedor.id_usuario);
@@ -67,19 +73,66 @@ export const crearPedidoDesdeCarrito = async (req, res) => {
       };
     });
 
-    // Crear pedido con dirección y ubicación
+  // Leer desglose de montos enviado desde el frontend (viene como string en FormData)
+  let precio_bruto = req.body.precio_bruto ? Number(req.body.precio_bruto) : subtotal;
+  if (!Number.isFinite(precio_bruto)) precio_bruto = subtotal;
+
+  // Comisión servicio: preferir el valor enviado, sino 10% del subtotal
+  let comision_servicio = req.body.comision_servicio ? Number(req.body.comision_servicio) : Math.round(precio_bruto * 0.10);
+  if (!Number.isFinite(comision_servicio)) comision_servicio = Math.round(precio_bruto * 0.10);
+
+  // Pago reparto: preferir el valor enviado, sino 5% del subtotal
+  let pago_reparto = req.body.pago_reparto ? Number(req.body.pago_reparto) : Math.round(precio_bruto * 0.05);
+  if (!Number.isFinite(pago_reparto)) pago_reparto = Math.round(precio_bruto * 0.05);
+
+  // Total neto: preferir el valor enviado, sino sumar
+  let total = req.body.total ? Number(req.body.total) : Math.round(precio_bruto + comision_servicio + pago_reparto);
+  if (!Number.isFinite(total)) total = Math.round(precio_bruto + comision_servicio + pago_reparto);
+
+  // Validación de consistencia: la suma de las partes debe coincidir con el total
+  const sumaPartes = Math.round(precio_bruto + comision_servicio + pago_reparto);
+  if (sumaPartes !== Math.round(total)) {
+    await t.rollback();
+    return res.status(400).json({
+      message: 'Inconsistencia en montos enviados',
+      detalle: {
+        precio_bruto: Math.round(precio_bruto),
+        comision_servicio: Math.round(comision_servicio),
+        pago_reparto: Math.round(pago_reparto),
+        total_enviado: Math.round(total),
+        suma_partes: sumaPartes
+      }
+    });
+  }
+
+    // Preparar ruta del comprobante si se subió archivo
+    let rutaComprobante = null;
+    if (req.file) {
+      rutaComprobante = `uploads/comprobantes/${req.file.filename}`;
+      console.log('✅ Comprobante guardado en:', rutaComprobante);
+    }
+
+    // Crear pedido con TODOS los datos incluyendo desglose de montos y comprobante
     const pedido = await db.Pedido.create(
       {
         direccion: direccion || null,
         latitud: latitud || null,
         longitud: longitud || null,
+        precio_bruto: Math.round(precio_bruto),
+        comision_servicio: Math.round(comision_servicio),
+        pago_reparto: Math.round(pago_reparto),
         total: Math.round(total),
-        estado: "pendiente"
+        estado: "pendiente",
+        comprobante_pago: rutaComprobante,
+        pago_confirmado: false, // El admin debe confirmar
+        fecha_confirmacion_pago: null
       },
       { transaction: t }
     );
 
-    // Insertar detalle
+    console.log('✅ Pedido creado:', pedido.id_pedido);
+
+    // Insertar detalle de productos
     const detalleRows = items.map(it => ({
       id_pedido: pedido.id_pedido,
       id_producto: it.id_producto,
@@ -122,6 +175,13 @@ export const crearPedidoDesdeCarrito = async (req, res) => {
 
     await t.commit();
 
+
+    
+    // ------ FALTA CREAR NOTIFICACIONES PARA EL ADMIN --------
+
+
+
+    // Obtener pedido completo para respuesta
     const pedidoCompleto = await db.Pedido.findByPk(pedido.id_pedido, {
       include: [
         {
@@ -139,133 +199,40 @@ export const crearPedidoDesdeCarrito = async (req, res) => {
       ]
     });
 
-    return res.status(201).json(pedidoCompleto);
+    return res.status(201).json({
+      success: true,
+      message: rutaComprobante 
+        ? 'Pedido creado exitosamente con comprobante de pago'
+        : 'Pedido creado exitosamente',
+      pedido: pedidoCompleto,
+      id_pedido: pedido.id_pedido,
+      total: pedido.total,
+      tiene_comprobante: !!rutaComprobante
+    });
+
   } catch (error) {
     await t.rollback();
-    console.error("Error al crear pedido:", error);
-    return res.status(500).json({ 
-      message: "Error al crear pedido",
-      error: error.message 
-    });
-  }
-};
-
-
-
-export const crearPedido = async (req, res) => {
-  const t = await db.sequelize.transaction();
-  try {
-    const { id_comprador, id_vendedor, direccion, productos } = req.body;
-
-    if (!id_comprador || !Array.isArray(productos) || productos.length === 0) {
-      return res.status(400).json({ message: "Datos incompletos del pedido" });
-    }
-
-    // Traer productos de DB
-    const ids = productos.map(p => p.id_producto);
-    const productosDB = await db.Producto.findAll({
-      where: { id_producto: { [Op.in]: ids } },
-      transaction: t,
-      paranoid: false
-    });
-
-    if (productosDB.length !== productos.length) {
-      return res.status(400).json({ message: "Uno o más productos no existen" });
-    }
-
-    // Verificar stock
-    for (const prod of productos) {
-      const productoDB = productosDB.find(p => p.id_producto === prod.id_producto);
-      if (productoDB.stock < prod.cantidad) {
-        return res.status(400).json({ 
-          message: `Stock insuficiente para ${productoDB.nombre}` 
-        });
+    
+    // Eliminar archivo si se subió pero hubo error
+    if (req.file) {
+      try {
+        fs.unlinkSync(req.file.path);
+        console.log('🗑️ Archivo eliminado por error en transacción');
+      } catch (unlinkError) {
+        console.error('Error eliminando archivo:', unlinkError);
       }
     }
-
-    // Calcular total (precio * cantidad)
-    let total = 0;
-    const items = productos.map(p => {
-      const prod = productosDB.find(x => x.id_producto === p.id_producto);
-      const precio_unitario = Number(prod.precio);
-      total += precio_unitario * Number(p.cantidad);
-      return {
-        id_producto: p.id_producto,
-        cantidad: Number(p.cantidad),
-        precio_unitario
-      };
+    
+    console.error("❌ Error al crear pedido:", error);
+    return res.status(500).json({ 
+      message: "Error al crear pedido",
+      error: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
-
-    // Crear pedido
-    const pedido = await db.Pedido.create(
-      {
-        direccion: direccion || null,
-        total: Math.round(total),
-        estado: "pendiente"
-      },
-      { transaction: t }
-    );
-
-    // Insertar detalle en Producto_Pedido
-    const detalleRows = items.map(it => ({
-      id_pedido: pedido.id_pedido,
-      id_producto: it.id_producto,
-      cantidad: it.cantidad,
-      precio_unitario: it.precio_unitario
-    }));
-
-    await db.Producto_Pedido.bulkCreate(detalleRows, { transaction: t });
-
-    // Vincular comprador (tabla intermedia pedido_comprador)
-    await db.pedido_comprador.create(
-      { id_pedido: pedido.id_pedido, id_usuario: id_comprador },
-      { transaction: t }
-    );
-
-    // (Opcional) Vincular vendedor (si llega)
-    if (id_vendedor) {
-      await db.pedido_vendedor.create(
-        { id_pedido: pedido.id_pedido, id_usuario: id_vendedor },
-        { transaction: t }
-      );
-    }
-
-    // Actualizar stock
-    for (const item of items) {
-      await db.Producto.decrement('stock', {
-        by: item.cantidad,
-        where: { id_producto: item.id_producto },
-        transaction: t
-      });
-    }
-
-    await t.commit();
-
-    // Devolver pedido completo
-    const pedidoCompleto = await db.Pedido.findByPk(pedido.id_pedido, {
-      include: [
-        {
-          model: db.Producto,
-          include: [
-            {
-              model: db.Categoria,
-              attributes: ['nombre']
-            }
-          ],
-          through: { attributes: ["cantidad", "precio_unitario"] }
-        },
-        { model: db.Usuario, as: "Comprador", through: { attributes: [] } },
-        { model: db.Usuario, as: "Vendedor", through: { attributes: [] } }
-      ]
-    });
-
-    return res.status(201).json(pedidoCompleto);
-  } catch (error) {
-    await t.rollback();
-    console.error("Error al crear pedido:", error);
-    return res.status(500).json({ message: "Error al crear pedido" });
   }
 };
+
+
 
 /**
  * Pedidos por COMPRADOR
@@ -329,6 +296,15 @@ export const obtenerPedidosDelComprador = async (req, res) => {
           through: { attributes: [] },
           required: false
         }
+        ,
+        // (opcional) repartidor asignado (si existe)
+        {
+          model: db.Usuario,
+          as: "Repartidor",
+          through: { attributes: [] },
+          required: false,
+          attributes: ['id_usuario', 'nombre']
+        }
       ],
       order: [["fecha_creacion", "DESC"]]
     });
@@ -362,10 +338,17 @@ export const obtenerPedidosDelComprador = async (req, res) => {
 
       return {
         id: pedido.id_pedido,
+        id_comprador: id_usuario,
         estado: estadoMap[pedido.estado] || pedido.estado,
         fecha: new Date(pedido.fecha_creacion).toLocaleDateString('es-CL'),
+        // Monto desglosado (si el modelo lo tiene, usarlo; si no, calcular fallback)
+        subtotal: pedido.precio_bruto || items.reduce((s, it) => s + it.subtotal, 0),
+        comision: pedido.comision_servicio || (pedido.total ? (pedido.total - (pedido.precio_bruto || items.reduce((s, it) => s + it.subtotal, 0))) : 0),
+        precio_reparto: pedido.pago_reparto || 0,
         total: pedido.total,
+        tiene_repartidor: pedido.tiene_repartidor,
         items: items,
+        repartidor: pedido.Repartidor && pedido.Repartidor[0] ? { id: pedido.Repartidor[0].id_usuario, nombre: pedido.Repartidor[0].nombre } : null,
         direccion: pedido.direccion
       };
     });
@@ -413,5 +396,116 @@ export const actualizarEstadoPedido = async (req, res) => {
   } catch (error) {
     console.error("Error al actualizar estado del pedido:", error);
     return res.status(500).json({ message: "Error al actualizar estado del pedido" });
+  }
+};
+
+
+// Calificar pedido (vendedor y/o repartidor)
+export const calificarPedido = async (req, res) => {
+  const t = await db.sequelize.transaction();
+  
+  try {
+    const { id_pedido, id_comprador, calificaciones } = req.body;
+
+    if (!id_pedido || !id_comprador || !calificaciones) {
+      await t.rollback();
+      return res.status(400).json({ message: "Datos incompletos" });
+    }
+
+    // Verificar que el pedido existe y está entregado
+    const pedido = await db.Pedido.findByPk(id_pedido, {
+      include: [
+        {
+          model: db.Usuario,
+          as: 'Vendedor',
+          through: { attributes: [] }
+        },
+        {
+          model: db.Usuario,
+          as: 'Repartidor',
+          through: { attributes: [] }
+        }
+      ],
+      transaction: t
+    });
+
+    if (!pedido) {
+      await t.rollback();
+      return res.status(404).json({ message: "Pedido no encontrado" });
+    }
+
+    if (pedido.estado !== 'entregado') {
+      await t.rollback();
+      return res.status(400).json({ message: "Solo se pueden calificar pedidos entregados" });
+    }
+
+    const valoracionesCreadas = [];
+
+    // Crear calificación para el vendedor (si se proporcionó)
+    if (calificaciones.vendedor && calificaciones.vendedor.calificacion > 0 && pedido.Vendedor?.[0]) {
+      // Verificar que no haya calificado antes al vendedor
+      const calificacionExistente = await db.Valoracion.findOne({
+        where: {
+          id_comprador: id_comprador,
+          id_usuario_evaluado: pedido.Vendedor[0].id_usuario,
+          tipo: 'comprador_a_vendedor'
+        },
+        transaction: t
+      });
+
+      if (!calificacionExistente) {
+        const valoracionVendedor = await db.Valoracion.create({
+          id_comprador: id_comprador,
+          id_usuario_evaluado: pedido.Vendedor[0].id_usuario,
+          tipo: 'comprador_a_vendedor',
+          calificacion: calificaciones.vendedor.calificacion,
+          comentario: calificaciones.vendedor.comentario || null,
+          fecha: new Date()
+        }, { transaction: t });
+
+        valoracionesCreadas.push(valoracionVendedor);
+      }
+    }
+
+    // Crear calificación para el repartidor (si se proporcionó)
+    if (calificaciones.repartidor && calificaciones.repartidor.calificacion > 0 && pedido.Repartidor?.[0]) {
+      // Verificar que no haya calificado antes al repartidor
+      const calificacionExistente = await db.Valoracion.findOne({
+        where: {
+          id_comprador: id_comprador,
+          id_usuario_evaluado: pedido.Repartidor[0].id_usuario,
+          tipo: 'comprador_a_repartidor'
+        },
+        transaction: t
+      });
+
+      if (!calificacionExistente) {
+        const valoracionRepartidor = await db.Valoracion.create({
+          id_comprador: id_comprador,
+          id_usuario_evaluado: pedido.Repartidor[0].id_usuario,
+          tipo: 'comprador_a_repartidor',
+          calificacion: calificaciones.repartidor.calificacion,
+          comentario: calificaciones.repartidor.comentario || null,
+          fecha: new Date()
+        }, { transaction: t });
+
+        valoracionesCreadas.push(valoracionRepartidor);
+      }
+    }
+
+    await t.commit();
+
+    res.json({
+      message: "Calificaciones guardadas exitosamente",
+      valoraciones: valoracionesCreadas
+    });
+
+  } catch (error) {
+    await t.rollback();
+    console.error('Error al calificar pedido:', error);
+    res.status(500).json({ 
+      message: "Error al guardar calificaciones",
+      error: error.message 
+    });
   }
 };

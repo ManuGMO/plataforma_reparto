@@ -76,7 +76,8 @@ export default function OrderDetail({ order, onBack, onAccept }) {
               <p className="text-sm text-gray-600">{formatTimeAgo(order.fecha_creacion)}</p>
             </div>
             <div className="text-right">
-              <p className="text-2xl font-bold text-green-600">${order.total}</p>
+              <p className="text-2xl font-bold text-green-600">{'$' + (order.total || 0)}</p>
+              <p className="text-sm text-gray-600">{'Ganancia: $' + (order.pago_reparto || order.precio_reparto || 0)}</p>
               <p className="text-sm text-gray-600">{calculateDistance()} km</p>
             </div>
           </div>
@@ -116,12 +117,35 @@ export default function OrderDetail({ order, onBack, onAccept }) {
                     <p className="font-medium text-gray-900">{producto.nombre}</p>
                     <p className="text-sm text-gray-600">Cantidad: {producto.Producto_Pedido?.cantidad || 1}</p>
                   </div>
-                  <p className="font-semibold text-gray-900">${producto.precio}</p>
+                  <p className="font-semibold text-gray-900">{'$' + (producto.precio || 0)}</p>
                 </div>
               ))
             ) : (
               <p className="text-gray-500 text-sm">No hay información detallada de productos</p>
             )}
+          </div>
+        </div>
+        
+        {/* Breakdown */}
+        <div className="bg-white border rounded-lg p-4">
+          <h3 className="font-semibold text-gray-900 mb-3">Desglose</h3>
+          <div className="space-y-2 text-sm text-gray-800">
+            <div className="flex justify-between text-gray-700">
+              <span>Subtotal</span>
+              <span>{'$' + (order.precio_bruto || order.subtotal || 0)}</span>
+            </div>
+            <div className="flex justify-between text-gray-700 ">
+              <span>Comisión servicio</span>
+              <span>{'$' + (order.comision_servicio || 0)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Ganancia del repartidor</span>
+              <span>{'$' + (order.pago_reparto || order.precio_reparto || 0)}</span>
+            </div>
+            <div className="flex justify-between font-semibold">
+              <span>Total</span>
+              <span>{'$' + (order.total || 0)}</span>
+            </div>
           </div>
         </div>
         

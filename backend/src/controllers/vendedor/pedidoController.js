@@ -20,26 +20,24 @@ export const getPedidos = async (req, res) => {
               attributes: ["id_usuario", "nombre"]
             },
             {
-              model: db.Producto.scope('conEliminados'), // 🔥 AQUÍ EL CAMBIO
+              model: db.Producto.scope('conEliminados'),
               through: {
                 model: db.Producto_Pedido,
                 attributes: ['cantidad', 'precio_unitario']
               },
-              attributes: ["id_producto", "nombre", "activo"] // Incluir activo
+              attributes: ["id_producto", "nombre", "activo"]
             }
           ]
         }
       ]
     });
 
-    // También agrega una validación de seguridad
     const pedidosTransformados = pedidos.map((pedidoVendedor) => {
       const pedido = pedidoVendedor.Pedido;
       
-      // 🔥 Validación de seguridad
       if (!pedido) {
         console.warn('Pedido no encontrado para pedidoVendedor:', pedidoVendedor.id);
-        return null; // o maneja como prefieras
+        return null;
       }
      
       return {
@@ -48,15 +46,23 @@ export const getPedidos = async (req, res) => {
         estado: pedido.estado,
         fecha_creacion: pedido.fecha_creacion,
         total: pedido.total,
+        direccion: pedido.direccion,
+        latitud: pedido.latitud,
+        longitud: pedido.longitud,
         estado_pago: pedidoVendedor.estado_pago,
+        tiene_repartidor: pedido.tiene_repartidor,
+        // CAMPOS NUEVOS PARA COMPROBANTE
+        comprobante_pago: pedido.comprobante_pago,
+        pago_confirmado: pedido.pago_confirmado,
+        fecha_confirmacion_pago: pedido.fecha_confirmacion_pago,
         items: pedido.Productos.map((producto) => ({
           nombre: producto.nombre,
           cantidad: producto.Producto_Pedido.cantidad,
           precio_unitario: producto.Producto_Pedido.precio_unitario,
-          producto_eliminado: !producto.activo // Info adicional útil
+          producto_eliminado: !producto.activo
         })),
       };
-    }).filter(pedido => pedido !== null); // Filtrar nulls si los hay
+    }).filter(pedido => pedido !== null);
 
     console.log("Pedidos encontrados: ", pedidosTransformados.length);
     res.json(pedidosTransformados);
@@ -69,6 +75,109 @@ export const getPedidos = async (req, res) => {
   }
 };
 
+// NUEVO ENDPOINT: Obtener detalles completos de un pedido específico
+export const getPedidoDetalle = async (req, res) => {
+  try {
+    const { pedidoId } = req.params;
+    const { vendedorId } = req.query; // Opcional para verificar permisos
+
+    const pedido = await db.Pedido.findByPk(pedidoId, {
+      include: [
+        {
+          model: db.Usuario,
+          through: db.pedido_comprador,
+          as: "Comprador",
+          attributes: ["id_usuario", "nombre"]
+        },
+        {
+          model: db.Usuario,
+          through: db.pedido_vendedor,
+          as: "Vendedor",
+          attributes: ["id_usuario", "nombre"]
+        },
+        {
+          model: db.Usuario,
+          through: db.pedido_repartidor,
+          as: "Repartidor",
+          attributes: ["id_usuario", "nombre"]
+        },
+        {
+          model: db.Producto.scope('conEliminados'),
+          through: {
+            model: db.Producto_Pedido,
+            attributes: ['cantidad', 'precio_unitario']
+          },
+          attributes: ["id_producto", "nombre", "precio", "activo"]
+        }
+      ]
+    });
+
+    if (!pedido) {
+      return res.status(404).json({ error: "Pedido no encontrado" });
+    }
+
+    // Verificar que el vendedor tiene acceso a este pedido (opcional)
+    if (vendedorId) {
+      const esVendedor = pedido.Vendedor.some(v => v.id_usuario == vendedorId);
+      if (!esVendedor) {
+        return res.status(403).json({ error: "No tienes acceso a este pedido" });
+      }
+    }
+
+    const pedidoDetallado = {
+      id_pedido: pedido.id_pedido,
+      estado: pedido.estado,
+      fecha_creacion: pedido.fecha_creacion,
+      fecha_entrega: pedido.fecha_entrega,
+      estado_anterior: pedido.estado_anterior,
+      fecha_ultimo_cambio_estado: pedido.fecha_ultimo_cambio_estado,
+      hora_entrega: pedido.hora_entrega,
+      total: pedido.total,
+      direccion: pedido.direccion,
+      latitud: pedido.latitud,
+      longitud: pedido.longitud,
+      tiene_repartidor: pedido.tiene_repartidor,
+      
+      // Información de pago
+      comprobante_pago: pedido.comprobante_pago,
+      pago_confirmado: pedido.pago_confirmado,
+      fecha_confirmacion_pago: pedido.fecha_confirmacion_pago,
+      
+      // Comprador
+      comprador: pedido.Comprador?.[0] ? {
+        id: pedido.Comprador[0].id_usuario,
+        nombre: pedido.Comprador[0].nombre
+      } : null,
+      
+      // Repartidor
+      repartidor: pedido.Repartidor?.[0] ? {
+        id: pedido.Repartidor[0].id_usuario,
+        nombre: pedido.Repartidor[0].nombre
+      } : null,
+      
+      // Productos
+      productos: pedido.Productos.map(producto => ({
+        id: producto.id_producto,
+        nombre: producto.nombre,
+        precio: producto.precio,
+        cantidad: producto.Producto_Pedido.cantidad,
+        precio_unitario: producto.Producto_Pedido.precio_unitario,
+        subtotal: producto.Producto_Pedido.cantidad * producto.Producto_Pedido.precio_unitario,
+        activo: producto.activo,
+        eliminado: !producto.activo
+      }))
+    };
+
+    res.json(pedidoDetallado);
+
+  } catch (error) {
+    console.error("Error al obtener detalle del pedido:", error);
+    res.status(500).json({
+      error: "Error al obtener detalle del pedido",
+      details: error.message
+    });
+  }
+};
 
 export const estadoPedido = async (req, res) => {
   const transaction = await sequelize.transaction();
@@ -95,7 +204,6 @@ export const estadoPedido = async (req, res) => {
       });
     }
 
-    // Verificar que el vendedor que intenta actualizar es el dueño del pedido
     const vendedorAsignado = pedido.Vendedor.find(v => v.id_usuario == id_vendedor);
     if (!vendedorAsignado && id_vendedor) {
       await transaction.rollback();
@@ -104,7 +212,6 @@ export const estadoPedido = async (req, res) => {
       });
     }
 
-    // Definir transiciones válidas para el vendedor
     const transicionesValidasVendedor = {
       'pendiente': ['aceptado', 'rechazado'],
       'aceptado': ['listo_para_recoger', 'cancelado'],
@@ -116,7 +223,6 @@ export const estadoPedido = async (req, res) => {
       'rechazado': []
     };
 
-    // Validar transición
     if (!transicionesValidasVendedor[pedido.estado]?.includes(estado)) {
       await transaction.rollback();
       return res.status(400).json({
@@ -125,7 +231,6 @@ export const estadoPedido = async (req, res) => {
       });
     }
 
-    // Actualizar estado
     await pedido.update({ estado }, { transaction });
 
     await transaction.commit();
