@@ -153,17 +153,87 @@ export const marcarPedidosComoPagados = async (req, res) => {
 
   try {
     const { id_vendedor } = req.params;
+    const { weekStart } = req.body || {};
 
-    const [updatedCount] = await db.pedido_vendedor.update(
-      { estado_pago: 'pagado' },
-      {
-        where: {
-          id_usuario: id_vendedor,
-          estado_pago: 'pendiente'
-        },
-        transaction: t
+    // construir where para la actualización de pedidos
+    let where = { id_usuario: id_vendedor, estado_pago: 'pendiente' };
+
+    const includePedido = { model: db.Pedido, as: 'Pedido', where: { estado: { [Op.in]: ['entregado', 'en_reparto', 'listo_para_recoger', 'aceptado'] } } };
+
+    if (weekStart) {
+      const monday = new Date(weekStart);
+      monday.setHours(0,0,0,0);
+      const sunday = new Date(monday);
+      sunday.setDate(monday.getDate() + 6);
+      sunday.setHours(23,59,59,999);
+      includePedido.where.fecha_creacion = { [Op.between]: [monday, sunday] };
+    }
+
+    // Obtener pedidos a actualizar (para calcular montos)
+    const pedidos = await db.pedido_vendedor.findAll({ where: { id_usuario: id_vendedor }, include: [includePedido] });
+    const pedidosAActualizar = pedidos.filter(p => p.Pedido && p.estado_pago === 'pendiente');
+
+    const brutoFloat = pedidosAActualizar.reduce((s, p) => s + parseFloat(p.Pedido.precio_bruto || 0), 0);
+    const comisionesFloat = pedidosAActualizar.reduce((s, p) => s + parseFloat(p.Pedido.comision_servicio || 0), 0);
+    const impuestos = Math.round(comisionesFloat - (comisionesFloat / 1.19));
+    const bruto = Math.round(brutoFloat);
+    const comision = Math.round(comisionesFloat);
+    const neto = bruto - comision;
+
+    // Actualizar pedidos
+    let updatedCount = 0;
+    if (weekStart) {
+      // actualizar solo los pedidos de la semana (por sus ids)
+      const ids = pedidosAActualizar.map(p => p.id_pedido);
+      if (ids.length === 0) {
+        await t.rollback();
+        return res.status(400).json({ message: 'No hay pedidos pendientes para la semana seleccionada' });
       }
-    );
+      const result = await db.pedido_vendedor.update(
+        { estado_pago: 'pagado' },
+        {
+          where: { id_pedido: ids, id_usuario: id_vendedor, estado_pago: 'pendiente' },
+          transaction: t
+        }
+      );
+      updatedCount = Array.isArray(result) ? result[0] : result;
+      // devolver ids actualizados para que el frontend actualice solo esos pedidos
+      await t.commit();
+      return res.json({ message: 'Pagos marcados como pagados', pedidos_actualizados: updatedCount, ids_actualizados: ids });
+    } else {
+      const result = await db.pedido_vendedor.update(
+        { estado_pago: 'pagado' },
+        {
+          where: where,
+          transaction: t
+        }
+      );
+      updatedCount = Array.isArray(result) ? result[0] : result;
+    }
+
+    // Si se pasó weekStart (pago semanal), crear la liquidación correspondiente
+    if (weekStart) {
+      // comprobar si ya existe una liquidacion para este vendedor y periodo
+      const existente = await db.Liquidacion.findOne({ where: { id_usuario: id_vendedor, periodo: weekStart, estado: 'pagado' } });
+      if (existente) {
+        await t.rollback();
+        return res.status(409).json({ message: 'La semana ya está marcada como pagada' });
+      }
+
+      // crear registro financiero (Liquidacion)
+      const nuevaLiquidacion = await db.Liquidacion.create({
+        id_usuario: id_vendedor,
+        monto_bruto: bruto,
+        comision: comision,
+        impuestos: impuestos,
+        monto_neto: neto,
+        periodo: weekStart,
+        estado: 'pagado'
+      }, { transaction: t });
+
+      await t.commit();
+      return res.json({ message: 'Pagos marcados como pagados', liquidacion: nuevaLiquidacion, pedidos_actualizados: updatedCount });
+    }
 
     await t.commit();
 

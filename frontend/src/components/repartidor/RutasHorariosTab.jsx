@@ -1,12 +1,15 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import AgregarRutaModal from './AgregarRutaModal';
+import RutaPreviewModal from './RutaPreviewModal';
 
 export default function RutasHorariosTab({ repartidorId }) {
   const [rutas, setRutas] = useState([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [cargando, setCargando] = useState(true);
   const [rutaEditar, setRutaEditar] = useState(null);
+  const [showPreview, setShowPreview] = useState(false);
+  const [previewRuta, setPreviewRuta] = useState(null);
 
   // Cargar rutas al montar el componente
   useEffect(() => {
@@ -159,36 +162,54 @@ export default function RutasHorariosTab({ repartidorId }) {
                   {/* Rutas del día */}
                   <div className="divide-y divide-gray-200">
                     {rutasDia.map(ruta => (
-                      <div key={ruta.id_ruta} className="p-6 hover:bg-gray-50 transition-colors">
+                      <div key={ruta.id_ruta} onClick={() => { setPreviewRuta(ruta); setShowPreview(true); }} className="p-6 hover:bg-gray-50 transition-colors cursor-pointer">
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
-                            {/* Horario */}
-                            <div className="flex items-center mb-3">
-                              <span className="text-2xl font-bold text-blue-600">
-                                {ruta.horario}
-                              </span>
-                              <span className="ml-3 bg-blue-100 text-blue-800 text-xs font-medium px-3 py-1 rounded-full">
-                                ⏰ Horario
-                              </span>
+                            {/* Nombre de la ruta */}
+                            {ruta.nombre_ruta && (
+                              <h4 className="text-lg font-semibold text-gray-900 mb-3">
+                                {ruta.nombre_ruta}
+                              </h4>
+                            )}
+
+                            {/* Horario de disponibilidad */}
+                            <div className="flex items-center mb-4 bg-blue-50 rounded-lg p-3 border border-blue-200">
+                              <span className="text-blue-600 mr-3 text-xl">⏰</span>
+                              <div>
+                                <p className="text-xs text-blue-700 font-medium mb-1">
+                                  Horario de Disponibilidad
+                                </p>
+                                <p className="text-lg font-bold text-blue-900">
+                                  {ruta.hora_inicio.substring(0, 5)} - {ruta.hora_fin.substring(0, 5)}
+                                </p>
+                              </div>
                             </div>
 
                             {/* Ruta: Origen → Destino */}
-                            <div className="space-y-2">
+                            <div className="space-y-3">
                               <div className="flex items-start">
                                 <span className="text-green-500 text-xl mr-3 mt-0.5">📍</span>
                                 <div>
-                                  <p className="text-xs text-gray-500 font-medium">ORIGEN</p>
+                                  <p className="text-xs text-gray-500 font-medium uppercase">Origen</p>
                                   <p className="text-gray-900 font-medium">{ruta.origen}</p>
+                                  <p className="text-xs text-gray-500 font-mono mt-1">
+                                    {parseFloat(ruta.origen_lat).toFixed(5)}, {parseFloat(ruta.origen_lng).toFixed(5)}
+                                  </p>
                                 </div>
                               </div>
                               
-                              <div className="ml-6 border-l-2 border-dashed border-gray-300 h-6"></div>
+                              <div className="ml-6 border-l-2 border-dashed border-blue-300 h-8 flex items-center">
+                                <span className="ml-4 text-blue-500 text-sm">🚗 Ruta habitual</span>
+                              </div>
                               
                               <div className="flex items-start">
                                 <span className="text-red-500 text-xl mr-3 mt-0.5">📍</span>
                                 <div>
-                                  <p className="text-xs text-gray-500 font-medium">DESTINO</p>
+                                  <p className="text-xs text-gray-500 font-medium uppercase">Destino</p>
                                   <p className="text-gray-900 font-medium">{ruta.destino}</p>
+                                  <p className="text-xs text-gray-500 font-mono mt-1">
+                                    {parseFloat(ruta.destino_lat).toFixed(5)}, {parseFloat(ruta.destino_lng).toFixed(5)}
+                                  </p>
                                 </div>
                               </div>
                             </div>
@@ -197,7 +218,7 @@ export default function RutasHorariosTab({ repartidorId }) {
                           {/* Acciones */}
                           <div className="flex space-x-2 ml-4">
                             <button
-                              onClick={() => handleEditarRuta(ruta)}
+                              onClick={(e) => { e.stopPropagation(); handleEditarRuta(ruta); }}
                               className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                               title="Editar"
                             >
@@ -206,7 +227,7 @@ export default function RutasHorariosTab({ repartidorId }) {
                               </svg>
                             </button>
                             <button
-                              onClick={() => handleEliminarRuta(ruta.id_ruta)}
+                              onClick={(e) => { e.stopPropagation(); handleEliminarRuta(ruta.id_ruta); }}
                               className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                               title="Eliminar"
                             >
@@ -252,6 +273,13 @@ export default function RutasHorariosTab({ repartidorId }) {
           }}
           onGuardar={handleGuardarRuta}
           rutaEditar={rutaEditar}
+        />
+      )}
+      {showPreview && (
+        <RutaPreviewModal
+          isOpen={showPreview}
+          onClose={() => { setShowPreview(false); setPreviewRuta(null); }}
+          ruta={previewRuta}
         />
       )}
     </div>

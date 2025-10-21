@@ -276,3 +276,115 @@ export const desbloquearRepartidor = async (req, res) => {
     });
   }
 };
+
+// Obtener repartidores cercanos a un vendedor (por distancia en metros)
+export const getRepartidoresCercanos = async (req, res) => {
+  try {
+
+    console.log("Entrando a getRepartidoresCercanos");
+    const { idVendedor, umbral } = req.params;
+    const threshold = Number(umbral || process.env.ROUTE_MAX_DISTANCE_METERS || 1000);
+
+    console.log(`Obteniendo repartidores cercanos para vendedorId=${idVendedor} con umbral=${threshold} metros`);
+    // Obtener vendedor
+    const vendedor = await Usuario.findByPk(idVendedor, { attributes: ['id_usuario', 'nombre', 'latitud', 'longitud'] });
+    if (!vendedor) return res.status(404).json({ error: 'Vendedor no encontrado' });
+    if (vendedor.latitud == null || vendedor.longitud == null) return res.status(400).json({ error: 'Vendedor sin coordenadas' });
+ 
+    
+    // (se usan funciones de distancia más abajo)
+
+    // Obtener ids de usuarios que tengan el rol repartidor (id_rol = 3)
+    const repartidorRows = await db.Usuario_Rol.findAll({ where: { id_rol: 3 }, attributes: ['id_usuario'], raw: true });
+    const repartidorIds = repartidorRows.map(r => r.id_usuario);
+    if (!repartidorIds || repartidorIds.length === 0) {
+      console.log(`[vendedor] vendedorId=${idVendedor} repartidoresEncontrados=0 ids=[] (no hay usuarios con id_rol=3)`);
+      return res.json({ success: true, count: 0, data: [] });
+    }
+
+    console.log("repartidorIds obtenidos:", repartidorIds);
+    
+    // Buscar usuarios que sean repartidores por id e incluir sus rutas activas
+    const posibles = await Usuario.findAll({
+      include: [
+        {
+          model: db.Ruta_frecuente,
+          where: { activa: true },
+          required: false
+        }
+      ],
+      where: {
+        id_usuario: { [Op.in]: repartidorIds }
+      },
+      attributes: ['id_usuario', 'nombre', 'latitud', 'longitud']
+    });
+
+    console.log(`[vendedor][debug] posibles recuperados=${posibles.length} (filtrados por rol y coords)`);
+    // Mostrar ids y disponibilidad de rutas para depuración
+    posibles.forEach(pp => {
+      const rutasCount = (pp.Ruta_frecuentes && pp.Ruta_frecuentes.length) || 0;
+      console.log(`[vendedor][debug] posible id=${pp.id_usuario} lat=${pp.latitud} lng=${pp.longitud} rutasActivas=${rutasCount}`);
+      if (rutasCount > 0) {
+        // mostrar la primera ruta para inspección
+        const r = pp.Ruta_frecuentes[0];
+        console.log(`[vendedor][debug] ejemplo ruta id=${r.id_ruta} origen=(${r.origen_lat},${r.origen_lng}) destino=(${r.destino_lat},${r.destino_lng}) dia=${r.dia} activa=${r.activa}`);
+      }
+    });
+
+    // distancia punto-segmento (aprox en metros usando proyección equirectangular)
+    const toRad = (v) => (v * Math.PI) / 180;
+    const Rm = 6371000; // metros
+    const pointToSegmentDistance = (plat, plong, aLat, aLon, bLat, bLon) => {
+      const lat0 = (aLat + bLat + plat) / 3;
+      const kx = Math.cos(toRad(lat0)) * (Math.PI / 180) * Rm;
+      const ky = (Math.PI / 180) * Rm;
+      const px = plong * kx, py = plat * ky;
+      const ax = aLon * kx, ay = aLat * ky;
+      const bx = bLon * kx, by = bLat * ky;
+      const vx = bx - ax, vy = by - ay;
+      const wx = px - ax, wy = py - ay;
+      const c1 = vx * wx + vy * wy;
+      const c2 = vx * vx + vy * vy;
+      let t = 0;
+      if (c2 > 0) t = Math.max(0, Math.min(1, c1 / c2));
+      const projx = ax + t * vx;
+      const projy = ay + t * vy;
+      const dx = px - projx, dy = py - projy;
+      return Math.sqrt(dx * dx + dy * dy);
+    };
+
+    const vendedorLat = Number(vendedor.latitud);
+    const vendedorLng = Number(vendedor.longitud);
+
+    const cercanos = [];
+    for (const p of posibles) {
+      try {
+        const rutas = p.Ruta_frecuentes || [];
+        let minDist = Infinity;
+        for (const ruta of rutas) {
+          const aLat = Number(ruta.origen_lat);
+          const aLon = Number(ruta.origen_lng);
+          const bLat = Number(ruta.destino_lat);
+          const bLon = Number(ruta.destino_lng);
+          if ([aLat, aLon, bLat, bLon].some(x => x == null || isNaN(Number(x)))) continue;
+          const d = pointToSegmentDistance(vendedorLat, vendedorLng, aLat, aLon, bLat, bLon);
+          if (d < minDist) minDist = d;
+        }
+        if (minDist <= threshold) {
+          cercanos.push({ id_usuario: p.id_usuario, nombre: p.nombre, latitud: p.latitud, longitud: p.longitud, distancia_m: Math.round(minDist) });
+        }
+      } catch (e) {
+        console.error('Error procesando repartidor', p.id_usuario, e);
+      }
+    }
+
+    cercanos.sort((a,b) => a.distancia_m - b.distancia_m);
+    // Log para depuración: IDs de repartidores encontrados
+    const ids = cercanos.map(r => r.id_usuario);
+    console.log(`[vendedor] vendedorId=${idVendedor} repartidoresEncontrados=${cercanos.length} ids=[${ids.join(',')}]`);
+    res.json({ success: true, count: cercanos.length, data: cercanos });
+  } catch (error) {
+    console.error('Error al obtener repartidores cercanos:', error);
+    res.status(500).json({ error: 'Error interno', message: error.message });
+  }
+};

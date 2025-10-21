@@ -131,11 +131,11 @@ export const obtenerPedidosAsignados = async (req, res) => {
 export const getPedidosDisponibles = async (req, res) => {
   try {
     const { repartidorId } = req.params;
-
     // Buscar pedidos que estén listos para recoger
+    // Buscar pedidos en estados que indiquen que están listos para ser tomados
     const pedidosDisponibles = await Pedido.findAll({
       where: {
-        estado: 'aceptado'
+        estado: ['aceptado', 'listo_para_recoger']
       },
       include: [
         {
@@ -175,11 +175,94 @@ export const getPedidosDisponibles = async (req, res) => {
       limit: 20
     });
 
-    // Filtrar pedidos que no tengan repartidor asignado
-    // Como Repartidor es un array (belongsToMany), verificamos si está vacío
-    const pedidosSinRepartidor = pedidosDisponibles.filter(pedido => 
-      !pedido.Repartidor || pedido.Repartidor.length === 0
-    );
+    // Filtrar pedidos para procesar: queremos incluir
+    // - pedidos sin repartidor asignado (disponibles)
+    // - pedidos que ya están asignados al repartidor solicitante (para que el propio repartidor vea sus pedidos)
+    // Como Repartidor es un array (belongsToMany), verificamos su contenido
+    const pedidosSinRepartidor = pedidosDisponibles.filter(pedido => {
+      if (!pedido.Repartidor || pedido.Repartidor.length === 0) return true;
+      // si tiene repartidores, incluir sólo si uno de ellos es el repartidor que solicita
+      try {
+        const asignados = pedido.Repartidor || [];
+        const asignadoAlSolicitante = asignados.some(r => Number(r.id_usuario) === Number(repartidorId));
+        return asignadoAlSolicitante;
+      } catch (e) {
+        return false;
+      }
+    });
+
+    // Cargar rutas activas del repartidor (si existen) para filtrado
+    const rutas = await db.Ruta_frecuente.findAll({ where: { id_usuario: repartidorId, activa: true } });
+
+
+    // umbral en metros desde .env (por defecto 1000m)
+  // umbral en metros desde .env (por defecto 1000m)
+  const ROUTE_MAX_DISTANCE_METERS = Number(process.env.ROUTE_MAX_DISTANCE_METERS || 1000);
+
+  console.log(`[repartidor] repartidorId=${repartidorId} pedidosTotales=${pedidosDisponibles.length} pedidosSinRepartidor=${pedidosSinRepartidor.length} rutasEncontradas=${rutas.length} ROUTE_MAX_DISTANCE_METERS=${ROUTE_MAX_DISTANCE_METERS}`);
+
+  // Mostrar detalle de rutas para depuración (id y coords)
+  try {
+    const rutasDebug = (rutas || []).map(r => ({ id_ruta: r.id_ruta, origen_lat: r.origen_lat, origen_lng: r.origen_lng, destino_lat: r.destino_lat, destino_lng: r.destino_lng, hora_inicio: r.hora_inicio, hora_fin: r.hora_fin }));
+    console.log(`[repartidor][debug] rutasEncontradas detalle:`, JSON.stringify(rutasDebug));
+  } catch (e) {
+    console.log('[repartidor][debug] error al formatear rutas para debug', e);
+  }
+
+  // Medir tiempos para detectar cuellos de botella
+  console.time(`[repartidor] tiempo_total_getPedidosDisponibles_${repartidorId}`);
+  console.time(`[repartidor] tiempo_db_findAll_${repartidorId}`);
+
+    // helpers de distancia
+    const toRad = (v) => (v * Math.PI) / 180;
+    const Rm = 6371000; // metros
+    const haversine = (lat1, lon1, lat2, lon2) => {
+      const dLat = toRad(lat2 - lat1);
+      const dLon = toRad(lon2 - lon1);
+      const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return Rm * c;
+    };
+
+    // distancia punto-segmento (aprox en metros usando proyección equirectangular)
+    const pointToSegmentDistance = (plat, plong, aLat, aLon, bLat, bLon) => {
+      const lat0 = (aLat + bLat + plat) / 3;
+      const kx = Math.cos(toRad(lat0)) * (Math.PI / 180) * Rm;
+      const ky = (Math.PI / 180) * Rm;
+      const px = plong * kx, py = plat * ky;
+      const ax = aLon * kx, ay = aLat * ky;
+      const bx = bLon * kx, by = bLat * ky;
+      const vx = bx - ax, vy = by - ay;
+      const wx = px - ax, wy = py - ay;
+      const c1 = vx * wx + vy * wy;
+      const c2 = vx * vx + vy * vy;
+      let t = 0;
+      if (c2 > 0) t = Math.max(0, Math.min(1, c1 / c2));
+      const projx = ax + t * vx;
+      const projy = ay + t * vy;
+      const dx = px - projx, dy = py - projy;
+      return Math.sqrt(dx * dx + dy * dy);
+    };
+
+    // parse horario HH:MM -> minutos
+    const minutesOfDay = (hhmm) => {
+      if (!hhmm) return null;
+      const parts = hhmm.split(':');
+      const h = parseInt(parts[0] || '0', 10);
+      const m = parseInt(parts[1] || '0', 10);
+      return h * 60 + m;
+    };
+
+    const isOrderInRouteWindow = (orderDate, ruta) => {
+      try {
+        const horaPedidoMin = orderDate ? (new Date(orderDate)).getHours() * 60 + (new Date(orderDate)).getMinutes() : null;
+        const inicio = minutesOfDay(ruta.hora_inicio?.substring(0,5));
+        const fin = minutesOfDay(ruta.hora_fin?.substring(0,5));
+        if (inicio == null || fin == null) return true; // si no hay horario, aceptar
+        if (inicio <= fin) return horaPedidoMin >= inicio && horaPedidoMin <= fin;
+        return horaPedidoMin >= inicio || horaPedidoMin <= fin;
+      } catch (e) { return true; }
+    };
 
     // Formatear la respuesta para que sea más fácil de usar en el frontend
     const pedidosFormateados = pedidosSinRepartidor.map(pedido => ({
@@ -217,11 +300,83 @@ export const getPedidosDisponibles = async (req, res) => {
       })) : []
     }));
 
-    res.json({
-      success: true,
-      count: pedidosFormateados.length,
-      data: pedidosFormateados
-    });
+    console.timeEnd(`[repartidor] tiempo_db_findAll_${repartidorId}`);
+
+    // Si no hay rutas, devolvemos todo sin filtrar (evitamos esconder pedidos)
+    let finalList = pedidosFormateados;
+    if (Array.isArray(rutas) && rutas.length > 0) {
+      // Preprocesar rutas para evitar parseos repetidos dentro de bucles
+      const processedRutas = rutas.map(r => {
+        const aLat = Number(r.origen_lat);
+        const aLon = Number(r.origen_lng);
+        const bLat = Number(r.destino_lat);
+        const bLon = Number(r.destino_lng);
+        const inicio = minutesOfDay(r.hora_inicio?.substring(0,5));
+        const fin = minutesOfDay(r.hora_fin?.substring(0,5));
+        return { id_ruta: r.id_ruta, aLat, aLon, bLat, bLon, inicio, fin, raw: r };
+      }).filter(r => ![r.aLat, r.aLon, r.bLat, r.bLon].some(x => x == null || isNaN(Number(x))));
+
+      console.time(`[repartidor] tiempo_filtrado_${repartidorId}`);
+
+      finalList = pedidosFormateados.filter(p => {
+        try {
+          const v = p.vendedor;
+          if (!v || v.latitud == null || v.longitud == null) {
+            console.log(`[repartidor] excluir pedido ${p.id_pedido} sin coords vendedor`);
+            return false;
+          }
+          const vlat = Number(v.latitud); const vlng = Number(v.longitud);
+          // Calcular hora del pedido una sola vez
+          const horaPedidoMin = p.fecha_creacion ? (new Date(p.fecha_creacion)).getHours() * 60 + (new Date(p.fecha_creacion)).getMinutes() : null;
+          // calcular distancia mínima a cualquiera de las rutas
+          let minDist = Infinity;
+          for (const ruta of processedRutas) {
+            const d = pointToSegmentDistance(vlat, vlng, ruta.aLat, ruta.aLon, ruta.bLat, ruta.bLon);
+            if (d < minDist) minDist = d;
+            const dentroUmbral = d <= ROUTE_MAX_DISTANCE_METERS;
+            const inicio = ruta.inicio;
+            const fin = ruta.fin;
+            // evaluar horario usando los valores precomputados
+            const dentroHorario = (() => {
+              try {
+                if (inicio == null || fin == null) return true;
+                if (horaPedidoMin == null) return true;
+                if (inicio <= fin) return horaPedidoMin >= inicio && horaPedidoMin <= fin;
+                return horaPedidoMin >= inicio || horaPedidoMin <= fin;
+              } catch (e) { return true; }
+            })();
+            console.log(`[repartidor][debug] pedido=${p.id_pedido} ruta=${ruta.id_ruta} d=${Math.round(d)}m dentroUmbral=${dentroUmbral} horaPedidoMin=${horaPedidoMin} inicio=${inicio} fin=${fin} dentroHorario=${dentroHorario}`);
+            // TEMP: relajar comprobación de horario para pruebas: aceptar si está dentro del umbral de distancia
+            // Nota: revertir esto cuando se confirme comportamiento en producción
+            if (dentroUmbral) {
+              p.vendor_distance_to_route_meters = Math.round(d);
+              console.log(`[repartidor] aceptar pedido (ignorar horario) ${p.id_pedido} d=${Math.round(d)}m ruta=${ruta.id_ruta} horario=${ruta.raw?.hora_inicio}-${ruta.raw?.hora_fin}`);
+              return true;
+            }
+          }
+          // si no cumple con ninguna ruta, excluir
+          p.vendor_distance_to_route_meters = isFinite(minDist) ? Math.round(minDist) : null;
+          console.log(`[repartidor] excluir pedido ${p.id_pedido} minDist=${p.vendor_distance_to_route_meters}m`);
+          return false;
+        } catch (e) {
+          console.error('[repartidor] error filtrando pedido', p.id_pedido, e);
+          return false;
+        }
+      });
+      console.timeEnd(`[repartidor] tiempo_filtrado_${repartidorId}`);
+    }
+
+    console.timeEnd(`[repartidor] tiempo_total_getPedidosDisponibles_${repartidorId}`);
+
+    // Log final: ids aceptados y rechazados para facilitar verificación
+    try {
+      const aceptados = (finalList || []).map(p => p.id_pedido);
+      const rechazados = pedidosFormateados.filter(p => !aceptados.includes(p.id_pedido)).map(p => ({ id_pedido: p.id_pedido, vendor_distance_to_route_meters: p.vendor_distance_to_route_meters }));
+      console.log(`[repartidor] resultado filtro repartidorId=${repartidorId} aceptados=${aceptados.length} ids=${JSON.stringify(aceptados)} rechazados=${rechazados.length}`);
+      console.log('[repartidor][debug] rechazados detalle (id,dist):', JSON.stringify(rechazados));
+    } catch (e) { console.log('[repartidor][debug] error al loggear resultados finales', e); }
+
+    res.json({ success: true, count: finalList.length, data: finalList });
 
   } catch (error) {
     console.error('Error al obtener pedidos disponibles:', error);
@@ -562,8 +717,8 @@ export const confirmarEntrega = async (req, res) => {
 // Obtener entregas de un repartidor
 export const getEntregasRepartidor = async (req, res) => {
   try {
-    const { repartidorId } = req.params;
-    const { filter = 'today' } = req.query;
+  const { repartidorId } = req.params;
+  const { filter = 'today', from, to } = req.query;
 
     // Verificar que el repartidor existe
     const repartidor = await Usuario.findByPk(repartidorId);
@@ -573,11 +728,18 @@ export const getEntregasRepartidor = async (req, res) => {
       });
     }
 
-    // Calcular fechas según el filtro
+    // Calcular fechas según el filtro o por rango explicitado
     let fechaDesde = new Date();
     let fechaHasta = new Date();
-    
-    switch (filter) {
+
+    if (from && to) {
+      // Si el cliente envía un rango explícito, usarlo
+      fechaDesde = new Date(from);
+      fechaDesde.setHours(0,0,0,0);
+      fechaHasta = new Date(to);
+      fechaHasta.setHours(23,59,59,999);
+    } else {
+      switch (filter) {
       case 'today':
         fechaDesde.setHours(0, 0, 0, 0);
         fechaHasta.setHours(23, 59, 59, 999);
@@ -596,8 +758,9 @@ export const getEntregasRepartidor = async (req, res) => {
         fechaDesde.setHours(0, 0, 0, 0);
         fechaHasta.setHours(23, 59, 59, 999);
     }
+    }
 
-    // Obtener entregas del repartidor en el período especificado
+    // Obtener entregas del repartidor en el período especificado (filtrando por fecha_entrega)
     const entregas = await Pedido.findAll({
       include: [
         {
@@ -627,7 +790,8 @@ export const getEntregasRepartidor = async (req, res) => {
         }
       ],
       where: {
-        fecha_creacion: {
+        estado: 'entregado',
+        fecha_entrega: {
           [Op.between]: [fechaDesde, fechaHasta]
         }
       },

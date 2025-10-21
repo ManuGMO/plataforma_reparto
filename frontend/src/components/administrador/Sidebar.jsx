@@ -6,7 +6,7 @@ export default function Sidebar({ activeSection, setActiveSection }) {
     { id: 'dashboard', icon: '📊', label: 'Dashboard' },
     { id: 'users', icon: '👥', label: 'Gestión de Usuarios' },
     { id: 'sellers', icon: '🏪', label: 'Pagos Vendedores' },
-    { id: 'drivers', icon: '🚚', label: 'Pagos Repartidores' },
+    { id: 'drivers', icon: '🚲', label: 'Pagos Repartidores' },
     { id: 'receipts', icon: '🧾', label: 'Comprobantes' }
   ];
 

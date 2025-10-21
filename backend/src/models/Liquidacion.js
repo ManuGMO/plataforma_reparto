@@ -1,5 +1,8 @@
 import { DataTypes } from 'sequelize';
 
+// Este archivo define el modelo asociado a la tabla 'Boleta_Honorarios'.
+// Para respetar el intercambio de nombres solicitado, expone el modelo con el
+// nombre `Liquidacion` (en el código se referenciará como models.Liquidacion).
 export default (sequelize) => {
   const Liquidacion = sequelize.define('Liquidacion', {
     id_liquidacion: {
@@ -9,23 +12,36 @@ export default (sequelize) => {
     },
     id_usuario: {
       type: DataTypes.INTEGER,
+      allowNull: false,
       references: {
         model: 'Usuario',
         key: 'id_usuario'
       }
     },
-    tipo: {
-      type: DataTypes.STRING(50)
+    monto_bruto: {
+      type: DataTypes.INTEGER
+    },
+    comision: {
+      type: DataTypes.INTEGER,
+      allowNull: true
     },
     periodo: {
-      type: DataTypes.STRING(50)
+      type: DataTypes.STRING(50),
+      allowNull: true
     },
-    total: {
-      type: DataTypes.DECIMAL(10, 2)
+    impuestos: {
+      type: DataTypes.INTEGER
     },
     estado: {
       type: DataTypes.ENUM('pendiente', 'pagado', 'cancelado'),
       defaultValue: 'pendiente'
+    },
+    monto_neto: {
+      type: DataTypes.INTEGER
+    },
+    fecha_emision: {
+      type: DataTypes.DATE,
+      defaultValue: DataTypes.NOW
     }
   }, {
     tableName: 'Liquidacion',
@@ -33,8 +49,10 @@ export default (sequelize) => {
   });
 
   Liquidacion.associate = (models) => {
+    // Este modelo representa boletas de honorarios en la tabla 'Boleta_Honorarios'
+    // y ahora tiene una relación con Usuario mediante id_usuario.
     Liquidacion.belongsTo(models.Usuario, { foreignKey: 'id_usuario' });
-    Liquidacion.hasMany(models.Boleta_Honorarios, { foreignKey: 'id_liquidacion' });
+    // No asociamos con el modelo `Boleta_Honorarios` (antigua Liquidacion) según lo solicitado.
   };
 
   return Liquidacion;

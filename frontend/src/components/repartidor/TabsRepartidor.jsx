@@ -1,9 +1,8 @@
 export default function TabsRepartidor({ activeTab, setActiveTab }) {
   const tabs = [
     { id: 'pedidos', label: 'Pedidos', icon: '📋' },
-    { id: 'entregas', label: 'Entregas', icon: '🚚' },
+    { id: 'entregas', label: 'Entregas', icon: '🚲' },
     { id: 'rutas', label: 'Rutas', icon: '🛣️' },
-    { id: 'horario', label: 'Horario', icon: '⏰' },
     { id: 'perfil', label: 'Perfil', icon: '👤' }
   ];
 

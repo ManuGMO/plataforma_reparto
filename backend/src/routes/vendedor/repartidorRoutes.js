@@ -4,6 +4,7 @@ import {
   bloquearRepartidor,
   desbloquearRepartidor,
   getValoracionesRepartidor
+  , getRepartidoresCercanos
 } from "../../controllers/vendedor/repartidorController.js";
 
 const router = express.Router();
@@ -15,5 +16,9 @@ router.get('/valoraciones/:idRepartidor/vendedor/:idVendedor', getValoracionesRe
 router.post("/bloquear/:id", bloquearRepartidor);
 
 router.post('/desbloquear/:id', desbloquearRepartidor); 
+
+// GET /repartidores/cercanos/:idVendedor and /repartidores/cercanos/:idVendedor/:umbral
+router.get('/cercanos/:idVendedor', getRepartidoresCercanos);
+router.get('/cercanos/:idVendedor/:umbral', getRepartidoresCercanos);
 
 export default router;

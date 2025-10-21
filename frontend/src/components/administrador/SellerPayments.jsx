@@ -1,3 +1,5 @@
+// --- Gestión de pagos a vendedores ---
+
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import PaymentDetailModal from './PaymentDetailModal';
@@ -28,15 +30,23 @@ export default function SellersPayments({ setNotification }) {
     }
   };
 
-  const handleMarkAsPaid = async (vendedorId) => {
+  const handleMarkAsPaid = async (vendedorId, weekStart = null) => {
     try {
-      await axios.put(`http://localhost:3001/api/admin/pagos-vendedores/${vendedorId}/marcar-pagado`);
+      const url = `http://localhost:3001/api/admin/pagos-vendedores/${vendedorId}/marcar-pagado`;
+      let response;
+      if (weekStart) {
+        response = await axios.post(url, { weekStart });
+      } else {
+        response = await axios.put(url);
+      }
       setNotification('Pagos marcados como realizados');
       setSelectedPayment(null);
       fetchPayments();
+      return response?.data;
     } catch (error) {
       console.error('Error al marcar como pagado:', error);
       setNotification('Error al procesar el pago');
+      throw error;
     }
   };
 
@@ -68,7 +78,7 @@ export default function SellersPayments({ setNotification }) {
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="border border-gray-300 rounded-lg px-4 py-2"
+            className="border border-gray-300 rounded-lg px-4 py-2 bg-gray-50 text-gray-900"
           >
             <option value="all">Todos los estados</option>
             <option value="pendiente">Pendientes</option>

@@ -5,10 +5,10 @@ import PedidosTabRepartidor from "../components/repartidor/PedidosTabRepartidor"
 import EntregasTab from "../components/repartidor/EntregasTab";
 import RutasHorariosTab from "../components/repartidor/RutasHorariosTab";
 import PerfilTab from "../components/repartidor/PerfilTab";
-import OrderDetail from "../components/repartidor/OrderDetail";
 import ActiveDelivery from "../components/repartidor/ActiveDelivery";
 import Notification from "../components/Notification";
 import NewOrderNotification from "../components/repartidor/NewOrderNotification";
+import AppMobileContainer from "../components/common/AppMobileContainer";
 
 export default function Repartidor() {
   const [activeTab, setActiveTab] = useState("pedidos");
@@ -61,10 +61,22 @@ export default function Repartidor() {
     handleViewOrder(order);
   };
 
-  const renderScreen = () => {
+  const mainContent = () => {
     switch (currentScreen) {
       case "orderDetail":
-        return <OrderDetail order={selectedOrder} onBack={handleBackToMain} onAccept={handleAcceptOrder} />;
+        // Delegar la vista de detalle al propio PedidosTabRepartidor (ya maneja detalle internamente)
+        return (
+          <div className="p-4">
+            {activeTab === "pedidos" && (
+              <PedidosTabRepartidor
+                onViewOrder={handleViewOrder}
+                repartidorId={ID_REPARTIDOR}
+                isOnline={isOnline}
+                setNewOrderNotification={setNewOrderNotification}
+              />
+            )}
+          </div>
+        );
       case "activeDelivery":
         return (
           <ActiveDelivery
@@ -84,37 +96,35 @@ export default function Repartidor() {
         );
       default:
         return (
-          <div className="flex flex-col h-screen bg-gray-50">
-            <Header isOnline={isOnline} onToggleAvailability={toggleAvailability} todayStats={todayStats} />
-            <main className="flex-1 overflow-y-auto w-full">
-              <div className="max-w-md mx-auto bg-gray-50 min-h-full">
-                {activeTab === "pedidos" && (
-                  <PedidosTabRepartidor
-                    onViewOrder={handleViewOrder}
-                    repartidorId={ID_REPARTIDOR}
-                    isOnline={isOnline}
-                    setNewOrderNotification={setNewOrderNotification}
-                  />
-                )}
-                {activeTab === "entregas" && <EntregasTab repartidorId={ID_REPARTIDOR} />}
-                {activeTab === "rutas" && <RutasHorariosTab repartidorId={ID_REPARTIDOR} />}
-                {activeTab === "perfil" && <PerfilTab repartidorId={ID_REPARTIDOR} />}
-              </div>
-            </main>
-            <div className="w-full bg-white border-t border-gray-200">
-              <div className="max-w-md mx-auto">
-                <TabsRepartidor activeTab={activeTab} setActiveTab={setActiveTab} />
-              </div>
-            </div>
+          <div className="p-4">
+            {activeTab === "pedidos" && (
+              <PedidosTabRepartidor
+                onViewOrder={handleViewOrder}
+                repartidorId={ID_REPARTIDOR}
+                isOnline={isOnline}
+                setNewOrderNotification={setNewOrderNotification}
+              />
+            )}
+            {activeTab === "entregas" && <EntregasTab repartidorId={ID_REPARTIDOR} />}
+            {activeTab === "rutas" && <RutasHorariosTab repartidorId={ID_REPARTIDOR} />}
+            {activeTab === "perfil" && <PerfilTab repartidorId={ID_REPARTIDOR} />}
           </div>
         );
     }
   };
 
-  return (
-    <>
-      {renderScreen()}
+  const header = <Header isOnline={isOnline} onToggleAvailability={toggleAvailability} todayStats={todayStats} />
+  const footer = (
+    <div className="w-full bg-white border-t border-gray-200">
+      <div className="max-w-md mx-auto">
+        <TabsRepartidor activeTab={activeTab} setActiveTab={setActiveTab} />
+      </div>
+    </div>
+  )
 
-    </>
-  );
+  return (
+    <AppMobileContainer header={header} footer={footer}>
+      {mainContent()}
+    </AppMobileContainer>
+  )
 }

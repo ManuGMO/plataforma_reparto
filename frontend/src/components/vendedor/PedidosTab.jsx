@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 import PedidosModal from "./PedidosModal";
 
-export default function PedidosTab({ setNotification }) {
+export default function PedidosTab({ setNotification, vendorId = 1 }) {
   const [pedidoSeleccionado, setPedidoSeleccionado] = useState(null);
   const [pedidos, setPedidos] = useState([]);
   const [filtroEstado, setFiltroEstado] = useState('todos');
@@ -14,7 +14,7 @@ export default function PedidosTab({ setNotification }) {
 
   const cargarPedidos = async () => {
     try {
-      const res = await axios.get("http://localhost:3001/api/pedidos/vendedor/1");
+  const res = await axios.get(`http://localhost:3001/api/pedidos/vendedor/${vendorId}`);
       setPedidos(res.data);
       console.log(res.data);
     } catch (error) {
@@ -26,7 +26,7 @@ export default function PedidosTab({ setNotification }) {
   const cargarDetallePedido = async (id_pedido) => {
     try {
       setLoadingDetalle(true);
-      const res = await axios.get(`http://localhost:3001/api/pedidos/detalle/${id_pedido}?vendedorId=1`);
+  const res = await axios.get(`http://localhost:3001/api/pedidos/detalle/${id_pedido}?vendedorId=${vendorId}`);
       
       const estadoKey = `pedido_${id_pedido}_fecha_estado`;
     const fechaGuardada = localStorage.getItem(estadoKey);
@@ -280,6 +280,7 @@ export default function PedidosTab({ setNotification }) {
           onCerrar={cerrarModal}
           onCambiarEstado={cambiarEstado}
           getEstadoNombre={getEstadoNombre}
+          vendorId={vendorId}
         />
       )}
     </div>

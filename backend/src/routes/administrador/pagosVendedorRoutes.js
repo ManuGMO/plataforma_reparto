@@ -15,5 +15,7 @@ router.get("/:id_vendedor/detalle", obtenerDetallePagosVendedor);
 
 // Marcar pedidos pendientes como pagados
 router.put("/:id_vendedor/marcar-pagado", marcarPedidosComoPagados);
+// Marcar pedidos pendientes como pagados para una semana específica (recibe { weekStart } en body)
+router.post("/:id_vendedor/marcar-pagado", marcarPedidosComoPagados);
 
 export default router;

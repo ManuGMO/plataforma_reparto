@@ -1,15 +1,49 @@
 import { useState } from "react";
+import { useEffect } from "react";
+import axios from "axios";
 
 export default function PedidosModal({ 
   pedido, 
   loadingDetalle, 
   onCerrar, 
   onCambiarEstado, 
-  getEstadoNombre 
+  getEstadoNombre,
+  vendorId: propVendorId = 1
 }) {
   const [mostrarComprobante, setMostrarComprobante] = useState(false);
+  const [repartidoresCercanos, setRepartidoresCercanos] = useState(null);
+  const [cargandoRepartidores, setCargandoRepartidores] = useState(false);
+  const DEFAULT_UMBRAL = 1000; // metros
 
   if (!pedido) return null;
+
+  useEffect(() => {
+    if (!pedido) return;
+
+    // Si el objeto pedido no incluye datos del vendedor, usamos el vendorId pasado desde el padre
+    const vendorIdToUse = pedido?.vendedor?.id_usuario || pedido?.vendedor_id || propVendorId;
+    if (!vendorIdToUse) return;
+
+    const controller = new AbortController();
+
+    const fetchRepartidores = async () => {
+      setCargandoRepartidores(true);
+      try {
+        const res = await axios.get(`http://localhost:3001/api/repartidores/cercanos/${vendorIdToUse}/${DEFAULT_UMBRAL}`, { signal: controller.signal });
+        setRepartidoresCercanos(res.data.data || []);
+        console.debug('Repartidores cercanos recibidos:', (res.data && res.data.data) ? res.data.data.length : 0);
+      } catch (e) {
+        // axios when aborted throws a CanceledError with code 'ERR_CANCELED' (or message 'canceled').
+        const isCanceled = e?.code === 'ERR_CANCELED' || e?.message === 'canceled' || e?.name === 'CanceledError' || e?.name === 'AbortError';
+        if (!isCanceled) console.error('Error cargando repartidores cercanos', e);
+      } finally {
+        setCargandoRepartidores(false);
+      }
+    };
+
+    fetchRepartidores();
+    return () => controller.abort();
+  }, [pedido, propVendorId]);
 
 
   const calcularTiempoTranscurrido = (fecha1, fecha2) => {
@@ -124,21 +158,7 @@ export default function PedidosModal({
                     </p>
                   </div>
 
-                  {/* Repartidor */}
-                  {pedido.repartidor && (
-                    <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
-                      <h4 className="font-semibold text-gray-900 mb-3 flex items-center">
-                        <span className="mr-2">🚚</span>
-                        Repartidor Asignado
-                      </h4>
-                      <div className="space-y-1 text-sm text-gray-600">
-                        <p className="font-medium">{pedido.repartidor.nombre}</p>
-                        {pedido.repartidor.telefono && (
-                          <p className="text-gray-600"> {pedido.repartidor.telefono}</p>
-                        )}
-                      </div>
-                    </div>
-                  )}
+                  {/* Repartidor: se muestra en la columna derecha para evitar duplicados */}
 
                   {/* Productos */}
                   <div className="bg-gray-50 rounded-lg p-4">
@@ -173,6 +193,57 @@ export default function PedidosModal({
 
                 {/* Columna Derecha: Comprobante de Pago */}
                 <div className="space-y-6">
+                    {/* Panel derecho: mostrar repartidor asignado si existe, sino repartidores cercanos */}
+                    {(pedido.tiene_repartidor || (pedido.repartidor && pedido.repartidor.id)) ? (
+                      <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                        <h4 className="font-semibold text-gray-900 mb-3 flex items-center">
+                          <span className="mr-2">🚚</span>
+                          Repartidor asignado
+                        </h4>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="font-medium text-sm text-gray-900">{pedido.repartidor?.nombre || 'Repartidor'}</div>
+                            <div className="text-xs text-gray-500">{pedido.repartidor?.telefono || 'Sin teléfono'}</div>
+                            {pedido.repartidor?.email && (
+                              <div className="text-xs text-gray-500">{pedido.repartidor.email}</div>
+                            )}
+                          </div>
+                          {pedido.repartidor?.distancia_m && (
+                            <div className="text-sm font-semibold text-gray-900">{pedido.repartidor.distancia_m} m</div>
+                          )}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="bg-gray-50 rounded-lg p-4">
+                        <h4 className="font-semibold text-gray-900 mb-3 flex items-center">
+                          <span className="mr-2">🚚</span>
+                          Repartidores cercanos
+                        </h4>
+                        <div>
+                          {cargandoRepartidores ? (
+                            <div className="text-sm text-gray-600">Buscando repartidores...</div>
+                          ) : repartidoresCercanos ? (
+                            repartidoresCercanos.length === 0 ? (
+                              <div className="text-sm text-gray-600">No hay repartidores dentro de 1 km.</div>
+                            ) : (
+                              <ul className="space-y-2">
+                                {repartidoresCercanos.map(r => (
+                                  <li key={r.id_usuario} className="p-2 bg-white rounded shadow-sm flex justify-between items-center">
+                                    <div>
+                                      <div className="font-medium text-sm text-gray-900">{r.nombre}</div>
+                                      <div className="text-xs text-gray-500">{r.telefono || 'Sin teléfono'}</div>
+                                    </div>
+                                    <div className="text-sm font-semibold text-gray-900">{r.distancia_m} m</div>
+                                  </li>
+                                ))}
+                              </ul>
+                            )
+                          ) : (
+                            <div className="text-sm text-gray-500">Buscando repartidores...</div>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   
                   {/* Estado de Pago */}
                   <div className={`rounded-lg p-4 ${

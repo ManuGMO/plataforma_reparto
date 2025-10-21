@@ -19,8 +19,8 @@ import CalificacionModel from './Calificacion.js';
 import Ruta_frecuenteModel from './Ruta_frecuente.js';
 import BloqueoModel from './Bloqueo.js';
 import ValoracionModel from './Valoracion.js';
-import LiquidacionModel from './Liquidacion.js';
 import Boleta_HonorariosModel from './Boleta_Honorarios.js';
+import LiquidacionModel from './Liquidacion.js';
 import NotificacionModel from './Notificacion.js'; // AGREGAR ESTA LÍNEA
 
 const sequelize_instance = sequelize;
@@ -46,8 +46,11 @@ db.Calificacion = CalificacionModel(sequelize_instance);
 db.Ruta_frecuente = Ruta_frecuenteModel(sequelize_instance);
 db.Bloqueo = BloqueoModel(sequelize_instance);
 db.Valoracion = ValoracionModel(sequelize_instance);
-db.Liquidacion = LiquidacionModel(sequelize_instance);
+// Intercambio de nombres: el modelo que antes era 'Liquidacion' será referenciado en el código como 'Boleta_Honorarios'
+// y el que antes era 'Boleta_Honorarios' será referenciado como 'Liquidacion'. Esto mantiene las tablas y columnas
+// pero cambia los identificadores usados en los controladores.
 db.Boleta_Honorarios = Boleta_HonorariosModel(sequelize_instance);
+db.Liquidacion = LiquidacionModel(sequelize_instance);
 db.Notificacion = NotificacionModel(sequelize_instance); // AGREGAR ESTA LÍNEA
 
 // Ejecutar asociaciones

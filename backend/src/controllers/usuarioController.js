@@ -25,3 +25,15 @@ export const actualizarUbicacion = async (req, res) => {
     res.status(500).json({ error: "Error al actualizar ubicación" });
   }
 };
+
+export const obtenerUsuarioPorId = async (req, res) => {
+  try {
+    const { id_usuario } = req.params;
+    const usuario = await db.Usuario.findByPk(id_usuario, { attributes: ['id_usuario', 'nombre', 'latitud', 'longitud'] });
+    if (!usuario) return res.status(404).json({ error: 'Usuario no encontrado' });
+    return res.json({ success: true, usuario });
+  } catch (error) {
+    console.error('Error obtenerUsuarioPorId:', error);
+    return res.status(500).json({ error: 'Error al obtener usuario' });
+  }
+};

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import axios from 'axios';
 
 export default function EntregasTab({ repartidorId }) {
   const [deliveries, setDeliveries] = useState([]);
@@ -9,6 +10,8 @@ export default function EntregasTab({ repartidorId }) {
     totalDistance: 0,
     totalEarnings: 0
   });
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
 
   const filterOptions = [
     { value: 'today', label: 'Hoy' },
@@ -16,11 +19,20 @@ export default function EntregasTab({ repartidorId }) {
     { value: 'month', label: 'Este mes' }
   ];
 
+  const buildUrl = () => {
+    const base = `http://localhost:3001/api/repartidor/${repartidorId}/entregas`;
+    if (fromDate && toDate) {
+      return `${base}?from=${encodeURIComponent(fromDate)}&to=${encodeURIComponent(toDate)}`;
+    }
+    return `${base}?filter=${encodeURIComponent(filter)}`;
+  }
+
   const loadDeliveries = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`http://localhost:3001/api/repartidor/${repartidorId}/entregas?filter=${filter}`);
-      const data = await response.json();
+      const url = buildUrl();
+      const response = await axios.get(url);
+      const data = response.data;
       setDeliveries(data.deliveries || []);
       setStats(data.stats || stats);
     } catch (error) {
@@ -31,9 +43,26 @@ export default function EntregasTab({ repartidorId }) {
     }
   };
 
+  // Handler para aplicar el filtro/rango inmediatamente (evita problemas de setState asincrónico)
+  const handleApply = async () => {
+    setLoading(true);
+    try {
+      const url = buildUrl();
+      const response = await axios.get(url);
+      const data = response.data;
+      setDeliveries(data.deliveries || []);
+      setStats(data.stats || stats);
+    } catch (error) {
+      console.error('Error al aplicar filtro:', error);
+      setDeliveries([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     loadDeliveries();
-  }, [repartidorId, filter]);
+  }, [repartidorId, filter, fromDate, toDate]);
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
@@ -68,25 +97,32 @@ export default function EntregasTab({ repartidorId }) {
   };
 
   return (
-    <div className="p-4">
-      <div className="flex items-center justify-between mb-4">
+    <div className="min-h-full overflow-x-hidden">
+      <div className="flex flex-wrap items-center justify-between mb-4 gap-2">
         <h2 className="text-xl font-bold text-gray-900">Mis Entregas</h2>
-        <select 
-          value={filter}
-          onChange={(e) => setFilter(e.target.value)}
-          className="text-sm border border-gray-300 rounded-lg px-3 py-1 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-        >
-          {filterOptions.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <select
+            value={filter}
+            onChange={(e) => { setFilter(e.target.value); setFromDate(''); setToDate(''); }}
+            className="text-sm border border-gray-300 rounded-lg px-2 py-1 focus:ring-2 focus:ring-blue-500 focus:border-transparent w-36"
+          >
+            {filterOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+
+          <div className="flex items-center gap-1">
+            <input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} className="text-sm border border-gray-300 rounded-lg px-2 py-1 w-36" />
+            <span className="mx-1 text-gray-500">—</span>
+            <input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} className="text-sm border border-gray-300 rounded-lg px-2 py-1 w-36" />
+            <button onClick={handleApply} className="ml-2 px-3 py-1 bg-gray-100 rounded">Aplicar</button>
+          </div>
+        </div>
       </div>
-      
-      {/*
-      
-            
+
       <div className="space-y-4 mb-6">
         {loading ? (
           <div className="text-center py-8">
@@ -107,29 +143,21 @@ export default function EntregasTab({ repartidorId }) {
           ))
         )}
       </div>
-      
-    
+
       <div className="bg-white rounded-lg p-4 shadow-sm">
         <h3 className="font-semibold text-gray-900 mb-3">Resumen de Ganancias</h3>
         <div className="space-y-2">
           <div className="flex justify-between">
             <span className="text-gray-600">Total entregas:</span>
-            <span className="font-semibold">{stats.totalDeliveries}</span>
+            <span className="font-semibold text-gray-400">{stats.totalDeliveries}</span>
           </div>
-          <div className="flex justify-between">
-            <span className="text-gray-600">Distancia total:</span>
-            <span className="font-semibold">{stats.totalDistance} km</span>
-          </div>
+
           <div className="border-t pt-2 flex justify-between">
-            <span className="text-lg font-semibold">Total ganado:</span>
+            <span className="text-lg font-semibold text-gray-900">Total ganado:</span>
             <span className="text-lg font-bold text-green-600">${stats.totalEarnings}</span>
           </div>
         </div>
       </div>
-
-
-        */}
-
     </div>
   );
 }
@@ -154,9 +182,10 @@ function DeliveryCard({ delivery, formatDate, getStatusColor, getStatusText }) {
       </div>
       
       <div className="space-y-1 text-sm">
-        <p><span className="text-gray-600">De:</span> {vendorName}</p>
-        <p><span className="text-gray-600">Para:</span> {customerName}</p>
-        <p><span className="text-gray-600">Dirección:</span> {delivery.direccion}</p>
+        <p><span className="font-semibold text-gray-600">De:</span> 
+            <span className='text-gray-600'>  {vendorName}</span></p>
+        <p><span className="font-semibold text-gray-600">Para:</span> <span className='text-gray-600'>{customerName}</span></p>
+        <p><span className="font-semibold text-gray-600">Dirección:</span> <span className='text-gray-600'>{delivery.direccion}</span></p>
       </div>
     </div>
   );

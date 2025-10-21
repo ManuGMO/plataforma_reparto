@@ -1,5 +1,8 @@
 import { DataTypes } from 'sequelize';
 
+// Nota: este archivo define el model que en DB usa la tabla 'Liquidacion'.
+// Para intercambiar los nombres a nivel de código (según petición), exponemos
+// este modelo con el nombre `Boleta_Honorarios` (manteniendo tableName 'Liquidacion').
 export default (sequelize) => {
   const Boleta_Honorarios = sequelize.define('Boleta_Honorarios', {
     id_boleta: {
@@ -7,25 +10,25 @@ export default (sequelize) => {
       primaryKey: true,
       autoIncrement: true
     },
-    id_liquidacion: {
+    id_usuario: {
       type: DataTypes.INTEGER,
       references: {
-        model: 'Liquidacion',
-        key: 'id_liquidacion'
+        model: 'Usuario',
+        key: 'id_usuario'
       }
     },
-    monto_bruto: {
-      type: DataTypes.DECIMAL(10, 2)
+    tipo: {
+      type: DataTypes.STRING(50)
     },
-    impuestos: {
-      type: DataTypes.DECIMAL(10, 2)
+    periodo: {
+      type: DataTypes.STRING(50)
     },
-    monto_neto: {
-      type: DataTypes.DECIMAL(10, 2)
+    total: {
+      type: DataTypes.INTEGER
     },
-    fecha_emision: {
-      type: DataTypes.DATE,
-      defaultValue: DataTypes.NOW
+    estado: {
+      type: DataTypes.ENUM('pendiente', 'pagado', 'cancelado'),
+      defaultValue: 'pendiente'
     }
   }, {
     tableName: 'Boleta_Honorarios',
@@ -33,7 +36,7 @@ export default (sequelize) => {
   });
 
   Boleta_Honorarios.associate = (models) => {
-    Boleta_Honorarios.belongsTo(models.Liquidacion, { foreignKey: 'id_liquidacion' });
+    Boleta_Honorarios.belongsTo(models.Usuario, { foreignKey: 'id_usuario' });
   };
 
   return Boleta_Honorarios;
