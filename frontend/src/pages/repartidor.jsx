@@ -96,7 +96,7 @@ export default function Repartidor() {
         );
       default:
         return (
-          <div className="p-4">
+          <div >
             {activeTab === "pedidos" && (
               <PedidosTabRepartidor
                 onViewOrder={handleViewOrder}

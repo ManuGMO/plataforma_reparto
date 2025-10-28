@@ -179,16 +179,26 @@ export default function OrderDetailAndDelivery({ order, currentView, onBack, onA
       if (vCoords) await placeMarker('vendor', vCoords.lat, vCoords.lng);
       if (dest) await placeMarker('order', dest.lat, dest.lng);
 
-      // si el pedido ya tiene repartidor y esta en recogida/entrega, mostrar driver y ruta correspondiente
-      if (order.tiene_repartidor && navigator.geolocation) {
+      // siempre intentar obtener la ubicación actual del repartidor para mostrarla en el mapa
+      // (aunque el pedido no esté aceptado) y dibujar la ruta hacia el vendedor
+      if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(async (pos) => {
           const dlat = pos.coords.latitude; const dlng = pos.coords.longitude;
           await placeMarker('driver', dlat, dlng);
           // calcular distancias
           if (vCoords) setDriverDistanceToVendor(Math.round(haversineMeters(dlat, dlng, vCoords.lat, vCoords.lng)));
           if (dest) setDriverDistanceToDestination(Math.round(haversineMeters(dlat, dlng, dest.lat, dest.lng)));
-          if (order.estado === 'listo_para_recoger' && vCoords) await drawRoute([dlng, dlat], [vCoords.lng, vCoords.lat]);
-          if (order.estado === 'en_reparto' && dest) await drawRoute([dlng, dlat], [dest.lng, dest.lat]);
+
+          // si el pedido ya tiene repartidor, comportamiento previo
+          if (order.tiene_repartidor) {
+            if (order.estado === 'listo_para_recoger' && vCoords) await drawRoute([dlng, dlat], [vCoords.lng, vCoords.lat]);
+            if (order.estado === 'en_reparto' && dest) await drawRoute([dlng, dlat], [dest.lng, dest.lat]);
+          } else {
+            // pedido aún no aceptado: dibujar ruta del repartidor hacia el vendedor (si hay coords del vendedor)
+            if (vCoords) {
+              await drawRoute([dlng, dlat], [vCoords.lng, vCoords.lat]);
+            }
+          }
         }, (err) => { /* ignore */ }, { enableHighAccuracy: true, timeout: 8000 });
       }
     };
@@ -289,7 +299,22 @@ export default function OrderDetailAndDelivery({ order, currentView, onBack, onA
   return (
     <div className="min-h-screen bg-white">
       {notification && (<div className="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3"><div className="flex justify-between items-center"><span>{notification}</span><button onClick={() => setNotification('')} className="text-blue-700 font-bold">×</button></div></div>)}
-      <header className="bg-green-600 text-white"><div className="w-full px-4 py-4"><div className="flex items-center justify-between"><div className="flex items-center"><button onClick={onBack} className="mr-3 text-white">← Volver</button><div><h1 className="text-lg font-bold">{!order.tiene_repartidor ? 'Pedido Disponible' : 'Entrega en Progreso'}</h1><p className="text-green-100 text-sm">Pedido #{order.id_pedido}</p></div></div><div className="text-right"><p className="text-2xl font-bold">${order.total}</p></div></div></div></header>
+      <header className="bg-white text-black border-2 border-green-600 rounded-2xl mx-4 mt-4 shadow-sm">
+        <div className="w-full px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <button onClick={onBack} className="mr-3 text-black bg-white border-black px-4 py-1 ">⭠</button>
+              <div>
+                <h1 className="text-lg font-bold text-black">{!order.tiene_repartidor ? 'Pedido Disponible' : 'Entrega en Progreso'}</h1>
+                <p className="text-sm text-black">Pedido #{order.id_pedido}</p>
+              </div>
+            </div>
+            <div className="text-right">
+              <p className="text-2xl font-bold text-black">${order.total}</p>
+            </div>
+          </div>
+        </div>
+      </header>
       <div className="p-4 space-y-6">
         {order.tiene_repartidor && (<div className="bg-white border rounded-lg p-4"><div className="flex items-center justify-between mb-4">{steps.map((step, index) => (<div key={step.id} className="flex items-center"><div className="step-item flex flex-col items-center"><div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${step.id <= currentStep ? step.id === 1 ? 'bg-green-600 text-white' : step.id === currentStep ? 'bg-blue-600 text-white' : 'bg-green-600 text-white' : 'bg-gray-300 text-gray-600'}`}>{step.id <= currentStep && step.id !== currentStep ? '✓' : step.icon}</div><span className="text-xs text-gray-600 mt-1">{step.label}</span></div>{index < steps.length - 1 && (<div className={`flex-1 h-1 mx-2 ${step.id < currentStep ? 'bg-green-600' : 'bg-gray-300'}`} style={{width: '50px'}}></div>)}</div>))}</div></div>)}
         <div className="bg-white border rounded-lg p-4"><h3 className="font-semibold text-gray-900 mb-3">Detalles del Pedido</h3><div className="space-y-3">
@@ -307,11 +332,8 @@ export default function OrderDetailAndDelivery({ order, currentView, onBack, onA
             <h3 className="font-semibold text-gray-900 mb-3">Mapa</h3>
             <div ref={mapContainerRef} className="w-full h-64 rounded-md overflow-hidden" />
             <div className="mt-3 text-sm text-gray-600">
-              {order.vendor_distance_to_route_meters != null && (
-                <div>Distancia vendedor→ruta: <span className="font-medium">{order.vendor_distance_to_route_meters} m</span></div>
-              )}
               {driverDistanceToVendor != null && (
-                <div>Distancia repartidor→vendedor: <span className="font-medium">{driverDistanceToVendor} m</span></div>
+                <div>Distancia vendedor: <span className="font-medium">{driverDistanceToVendor} m</span></div>
               )}
               {driverDistanceToDestination != null && (
                 <div>Distancia repartidor→destino: <span className="font-medium">{driverDistanceToDestination} m</span></div>

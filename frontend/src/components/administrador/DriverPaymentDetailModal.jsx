@@ -3,27 +3,40 @@ import axios from 'axios';
 
 export default function DriverPaymentDetailModal({ payment, onClose, onMarkAsPaid }) {
   // payment es ahora un objeto driver: { id, driver, email, weeks: [...] }
-  const [detalle, setDetalle] = useState([]);
+  // detalle será un objeto { entregados: [], pendientes: [] }
+  const [detalle, setDetalle] = useState({ entregados: [], pendientes: [] });
   const [selectedWeek, setSelectedWeek] = useState(payment.defaultWeek || null);
+  const [loadingDetalle, setLoadingDetalle] = useState(false);
 
   const fetchDetalle = async (week) => {
     try {
+      setLoadingDetalle(true);
       const weekStart = week?.weekStart;
       const url = weekStart
         ? `http://localhost:3001/api/admin/pagos-repartidores/${payment.id}/detalle?weekStart=${weekStart}`
         : `http://localhost:3001/api/admin/pagos-repartidores/${payment.id}/detalle`;
       const res = await axios.get(url);
-      setDetalle(res.data);
+      const data = res.data;
+      // Compatibilidad: el backend puede devolver un array (legacy) o { entregados, pendientes }
+      if (Array.isArray(data)) {
+        setDetalle({ entregados: data, pendientes: [] });
+      } else if (data && (data.entregados || data.pendientes)) {
+        setDetalle({ entregados: data.entregados || [], pendientes: data.pendientes || [] });
+      } else {
+        setDetalle({ entregados: [], pendientes: [] });
+      }
     } catch (err) {
       console.error('Error cargando detalle de la semana', err);
-      setDetalle([]);
+      setDetalle({ entregados: [], pendientes: [] });
+    } finally {
+      setLoadingDetalle(false);
     }
   };
 
   useEffect(() => {
-    // initial load for defaultWeek
+    // initial load for defaultWeek and when selection changes
     fetchDetalle(selectedWeek);
-  }, [payment]);
+  }, [payment, selectedWeek]);
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
@@ -87,25 +100,59 @@ export default function DriverPaymentDetailModal({ payment, onClose, onMarkAsPai
 
           <div className="border-t pt-4">
             <h4 className="font-medium text-gray-900 mb-3">Pedidos de la semana</h4>
-            <div className="space-y-2">
-              {detalle.length === 0 ? (
-                <p className="text-sm text-gray-600">No hay pedidos para esta semana</p>
+            <div className="space-y-4">
+              {loadingDetalle ? (
+                <div className="text-sm text-gray-600">Cargando detalle...</div>
               ) : (
-                <ul className="divide-y divide-gray-200">
-                  {detalle.map(d => (
-                    <li key={d.id_pedido} className="py-2 flex justify-between text-sm text-gray-700">
-                      <div>
-                        <div className="font-medium">Pedido #{d.id_pedido}</div>
-                        <div className="text-xs text-gray-500">{new Date(d.fecha_pedido).toLocaleString()}</div>
-                        <div className="text-xs">{d.direccion}</div>
-                      </div>
-                      <div className="text-right">
-                        <div className="font-medium">${Math.round(Number(d.pago_reparto || 0))}</div>
-                        <div className="text-xs text-gray-500">{d.estado_pedido}</div>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
+                <>
+                  {/* Entregados */}
+                  <div>
+                    <h5 className="text-sm font-semibold text-gray-700 mb-2">Entregados</h5>
+                    {(!detalle || (detalle.entregados || []).length === 0) ? (
+                      <p className="text-sm text-gray-600">No hay pedidos entregados para esta semana</p>
+                    ) : (
+                      <ul className="divide-y divide-gray-200">
+                        {(detalle.entregados || []).map(d => (
+                          <li key={d.id_pedido} className="py-2 flex justify-between text-sm text-gray-700">
+                            <div>
+                              <div className="font-medium">Pedido #{d.id_pedido}</div>
+                              <div className="text-xs text-gray-500">{new Date(d.fecha_pedido).toLocaleString()}</div>
+                              <div className="text-xs">{d.direccion}</div>
+                            </div>
+                            <div className="text-right">
+                              <div className="font-medium">${Math.round(Number(d.pago_reparto || 0))}</div>
+                              <div className="text-xs mt-1"><span className="inline-block px-2 py-0.5 text-xs font-medium rounded-full bg-green-100 text-green-800">Entregado</span></div>
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+
+                  {/* Pendientes de entrega */}
+                  <div>
+                    <h5 className="text-sm font-semibold text-gray-700 mb-2">Pendientes de entrega</h5>
+                    {(!detalle || (detalle.pendientes || []).length === 0) ? (
+                      <p className="text-sm text-gray-600">No hay pedidos pendientes de entrega para esta semana</p>
+                    ) : (
+                      <ul className="divide-y divide-gray-200">
+                        {(detalle.pendientes || []).map(d => (
+                          <li key={d.id_pedido} className="py-2 flex justify-between text-sm text-gray-700">
+                            <div>
+                              <div className="font-medium">Pedido #{d.id_pedido}</div>
+                              <div className="text-xs text-gray-500">{new Date(d.fecha_pedido).toLocaleString()}</div>
+                              <div className="text-xs">{d.direccion}</div>
+                            </div>
+                            <div className="text-right">
+                              <div className="font-medium">${Math.round(Number(d.pago_reparto || 0))}</div>
+                              <div className="text-xs mt-1"><span className="inline-block px-2 py-0.5 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800">Reparto pendiente</span></div>
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </>
               )}
             </div>
           </div>

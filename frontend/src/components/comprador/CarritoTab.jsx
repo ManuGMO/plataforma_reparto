@@ -22,10 +22,10 @@ export default function CarritoTab({ setNotification }) {
   const calcularTotales = (items) => {
     const subtotal = items.reduce((acc, item) => acc + (item.precio * item.cantidad), 0);
 
-    // Comisión 10% del subtotal
-    const comision = Math.round(subtotal * 0.10);
-    // Pago reparto 5% del subtotal
-    const precio_reparto = Math.round(subtotal * 0.05);
+    // Comisión 5% del subtotal
+    const comision = Math.round(subtotal * 0.05);
+    // Pago reparto 10% del subtotal
+    const precio_reparto = Math.round(subtotal * 0.10);
     // Total neto
     const total = Math.round(subtotal + comision + precio_reparto);
 

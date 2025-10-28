@@ -42,21 +42,22 @@ export const obtenerPagosRepartidores = async (req, res) => {
     };
 
     for (const rep of repartidores) {
+      // Considerar solo pedidos con estado 'entregado' para el cálculo de pagos
       const pedidosRepartidor = await db.pedido_repartidor.findAll({
-        where: { id_usuario: rep.id_usuario },
-        include: [
-          {
-            model: db.Pedido,
-            as: 'Pedido',
-            attributes: ['id_pedido', 'pago_reparto', 'estado', 'fecha_creacion'],
-            where: {
-              estado: { [Op.in]: ['entregado', 'en_reparto', 'listo_para_recoger', 'aceptado'] }
-            },
-            required: false
-          }
-        ],
-        attributes: ['id_pedido']
-      });
+          where: { id_usuario: rep.id_usuario },
+          include: [
+            {
+              model: db.Pedido,
+              as: 'Pedido',
+              attributes: ['id_pedido', 'pago_reparto', 'estado', 'fecha_creacion'],
+              where: {
+                estado: 'entregado'
+              },
+              required: false
+            }
+          ],
+          attributes: ['id_pedido']
+        });
 
       const pedidosValidos = pedidosRepartidor.filter(p => p.Pedido !== null);
       if (estado === 'pending' && pedidosValidos.length === 0) continue;
@@ -130,7 +131,8 @@ export const obtenerDetallePagosRepartidor = async (req, res) => {
   try {
     const { id_repartidor } = req.params;
     const { weekStart } = req.query || {};
-    const pedidoIncludeWhere = { estado: { [Op.in]: ['entregado', 'en_reparto', 'listo_para_recoger', 'aceptado'] } };
+  // Solo pedidos entregados
+  const pedidoIncludeWhere = { estado: 'entregado' };
 
     if (weekStart) {
       const monday = new Date(weekStart);
@@ -141,29 +143,62 @@ export const obtenerDetallePagosRepartidor = async (req, res) => {
       pedidoIncludeWhere.fecha_creacion = { [Op.between]: [monday, sunday] };
     }
 
-    const pedidos = await db.pedido_repartidor.findAll({
-      where: { id_usuario: id_repartidor },
+    // Optimizar: realizar dos consultas directas sobre Pedido (una para entregados y otra para aceptados)
+    const monday = weekStart ? new Date(weekStart) : null;
+    if (monday) {
+      monday.setHours(0,0,0,0);
+    }
+    const sunday = monday ? new Date(monday) : null;
+    if (sunday) {
+      sunday.setDate(monday.getDate() + 6);
+      sunday.setHours(23,59,59,999);
+    }
+
+    const baseWhere = {};
+    if (monday && sunday) baseWhere.fecha_creacion = { [Op.between]: [monday, sunday] };
+
+    console.time(`[pagosRepartidor] detalle repartidor=${id_repartidor}`);
+
+    // Usar la asociación 'Repartidor' y filtrar por through.id_usuario para unir eficientemente
+    const entregadosPromise = db.Pedido.findAll({
+      where: { ...baseWhere, estado: 'entregado' },
       include: [
-        {
-          model: db.Pedido,
-          as: 'Pedido',
-          attributes: ['id_pedido', 'pago_reparto', 'estado', 'fecha_creacion', 'direccion'],
-          where: pedidoIncludeWhere,
-          required: true
-        }
+        { model: db.Usuario, as: 'Repartidor', through: { where: { id_usuario: id_repartidor }, attributes: [] }, attributes: [] }
       ],
-      order: [[{ model: db.Pedido, as: 'Pedido' }, 'fecha_creacion', 'DESC']]
+      attributes: ['id_pedido', 'fecha_creacion', 'pago_reparto', 'estado', 'direccion'],
+      order: [['fecha_creacion', 'DESC']]
     });
 
-    const detalle = pedidos.map(p => ({
+    const pendientesPromise = db.Pedido.findAll({
+      where: { ...baseWhere, estado: 'aceptado' },
+      include: [
+        { model: db.Usuario, as: 'Repartidor', through: { where: { id_usuario: id_repartidor }, attributes: [] }, attributes: [] }
+      ],
+      attributes: ['id_pedido', 'fecha_creacion', 'pago_reparto', 'estado', 'direccion'],
+      order: [['fecha_creacion', 'DESC']]
+    });
+
+    const [entregadosRows, pendientesRows] = await Promise.all([entregadosPromise, pendientesPromise]);
+
+    const entregados = entregadosRows.map(p => ({
       id_pedido: p.id_pedido,
-      fecha_pedido: p.Pedido.fecha_creacion,
-      pago_reparto: Math.round(Number(p.Pedido.pago_reparto || 0)),
-      estado_pedido: p.Pedido.estado,
-      direccion: p.Pedido.direccion
+      fecha_pedido: p.fecha_creacion,
+      pago_reparto: Math.round(Number(p.pago_reparto || 0)),
+      estado_pedido: p.estado,
+      direccion: p.direccion
     }));
 
-    res.json(detalle);
+    const pendientes = pendientesRows.map(p => ({
+      id_pedido: p.id_pedido,
+      fecha_pedido: p.fecha_creacion,
+      pago_reparto: Math.round(Number(p.pago_reparto || 0)),
+      estado_pedido: p.estado,
+      direccion: p.direccion
+    }));
+
+    console.timeEnd(`[pagosRepartidor] detalle repartidor=${id_repartidor}`);
+
+    res.json({ entregados, pendientes });
   } catch (error) {
     console.error('Error obtener detalle repartidor:', error);
     res.status(500).json({ message: 'Error al obtener detalle de repartidor', error: error.message });
@@ -181,7 +216,8 @@ export const marcarPagosComoPagados = async (req, res) => {
     let wherePedido = { id_usuario: id_repartidor };
 
     // obtener pedidos con estados válidos
-    const includePedido = { model: db.Pedido, as: 'Pedido', where: { estado: { [Op.in]: ['entregado', 'en_reparto', 'listo_para_recoger', 'aceptado'] } } };
+  // Al marcar como pagado tomar solo pedidos con estado 'entregado'
+  const includePedido = { model: db.Pedido, as: 'Pedido', where: { estado: 'entregado' } };
 
     if (weekStart) {
       // parse weekStart y definir rango Lunes-Domingo

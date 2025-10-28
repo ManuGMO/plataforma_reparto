@@ -5,6 +5,7 @@ import Dashboard from "../components/administrador/Dashboard";
 import UsersManagement from "../components/administrador/UserManagement";
 import SellersPayments from "../components/administrador/SellerPayments";
 import DriversPayments from "../components/administrador/DriversPayments";
+import WeeklyEarnings from "../components/administrador/WeeklyEarnings";
 import Receipts from "../components/administrador/Receipts";
 import Reports from "../components/administrador/Reports";
 import Notification from "../components/Notification";
@@ -43,6 +44,9 @@ export default function Administrador() {
             setPayments={setDriverPayments} 
             setNotification={setNotification} 
           />
+        )}
+        {activeSection === 'earnings' && (
+          <WeeklyEarnings setNotification={setNotification} />
         )}
         {activeSection === 'receipts' && (
           <Receipts 

@@ -10,8 +10,11 @@ export default function PedidosTabRepartidor({ repartidorId, isOnline, setNewOrd
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [currentView, setCurrentView] = useState('list'); // 'list' | 'detail' | 'active_delivery'
   const [notification, setNotification] = useState('');
+  const [maxDistance, setMaxDistance] = useState(() => {
+    try { return Number(localStorage.getItem('repartidor_max_distance')) || 1000; } catch { return 1000; }
+  });
 
-  const loadOrders = async () => {
+  const loadOrders = async (overrideDistance) => {
     if (!isOnline) {
       setOrders([]);
       setFilteredOrders([]);
@@ -24,7 +27,10 @@ export default function PedidosTabRepartidor({ repartidorId, isOnline, setNewOrd
     setError(null);
     try {
       // pedir al backend ya filtrado por rutas (endpoint acepta repartidorId)
-      const res = await fetch(`http://localhost:3001/api/repartidor/pedidos/disponibles/${repartidorId}`);
+      const distance = typeof overrideDistance !== 'undefined' ? overrideDistance : maxDistance;
+      const base = `http://localhost:3001/api/repartidor/pedidos/disponibles/${repartidorId}`;
+      const url = distance ? `${base}?maxDistance=${encodeURIComponent(distance)}` : base;
+      const res = await fetch(url);
       const payload = await res.json();
       const list = (payload && payload.success && Array.isArray(payload.data)) ? payload.data : (Array.isArray(payload) ? payload : []);
       setOrders(list);
@@ -45,7 +51,7 @@ export default function PedidosTabRepartidor({ repartidorId, isOnline, setNewOrd
     }
   };
 
-  useEffect(() => { loadOrders(); }, [repartidorId, isOnline]);
+    useEffect(() => { loadOrders(); }, [repartidorId, isOnline, maxDistance]);
 
   const updateOrderInState = (orderId, updates) => {
     setOrders(prev => prev.map(o => (o.id_pedido === orderId ? { ...o, ...updates } : o)));
@@ -166,9 +172,34 @@ export default function PedidosTabRepartidor({ repartidorId, isOnline, setNewOrd
       <NotificationBanner />
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-bold text-gray-900">Pedidos Disponibles</h2>
-        <button onClick={loadOrders} disabled={loading} className={`flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${loading ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed' : 'bg-white text-blue-600 border-blue-300 hover:bg-blue-50 hover:border-blue-500 hover:text-blue-700'}`}>
-          🔄 {loading ? 'Cargando...' : 'Actualizar'}
-        </button>
+      </div>
+
+      <div className="space-y-4 mb-3 flex justify-between">
+        <div className="flex items-center gap-3">
+          <div className="text-gray-500 text-left flex flex-col">
+            <div className='font-bold'>Rango (m)</div>
+            <div className="flex items-center gap-2 bg-white border border-gray-300 rounded-lg px-3 py-1">
+              <input type="range" min="200" max="5000" step="50" value={maxDistance} onChange={(e)=>{
+                const v = Number(e.target.value);
+                setMaxDistance(v);
+                try { localStorage.setItem('repartidor_max_distance', String(v)); } catch {}
+                // recargar con el valor inmediatamente
+                loadOrders(v);
+              }} />
+              <input className="w-16 p-1 border rounded text-xs bg-white" type="number" value={maxDistance} onChange={(e)=>{
+                const v = Number(e.target.value) || 0;
+                setMaxDistance(v);
+                try { localStorage.setItem('repartidor_max_distance', String(v)); } catch {}
+              }} />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className='mb-3 flex justify-center'> 
+          <button onClick={()=>loadOrders()} disabled={loading} className={`flex items-center gap-2  py-2 rounded-lg border text-sm font-medium transition-colors ${loading ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed' : 'bg-white text-blue-600 border-blue-300 hover:bg-blue-50 hover:border-blue-500 hover:text-blue-700'}`}>
+            🔄 {loading ? 'Cargando...' : 'Actualizar'}
+          </button>
       </div>
 
       {/* Los pedidos se filtran en backend según rutas y horario del repartidor (no se muestran filtros aquí) */}

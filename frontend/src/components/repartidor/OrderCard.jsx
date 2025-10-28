@@ -62,6 +62,11 @@ export default function OrderCard({ order, onViewOrder, timeAgo }) {
         <div className="flex items-center space-x-2">
           <div className="w-2 h-2 bg-green-600 rounded-full"></div>
           <span className="text-sm text-gray-700 font-medium">Entregar: {customerName}</span>
+          {(
+            order.buyer_distance_to_route_meters != null || order.buyer_distance_to_route_meters !== undefined
+          ) && (
+            <span className="ml-2 text-xs text-gray-500">· A {order.buyer_distance_to_route_meters} m de tu ruta</span>
+          )}
         </div>
       </div>
       

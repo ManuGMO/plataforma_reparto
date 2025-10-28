@@ -3,7 +3,7 @@ export default function TabsRepartidor({ activeTab, setActiveTab }) {
     { id: 'pedidos', label: 'Pedidos', icon: '📋' },
     { id: 'entregas', label: 'Entregas', icon: '🚲' },
     { id: 'rutas', label: 'Rutas', icon: '🛣️' },
-    { id: 'perfil', label: 'Perfil', icon: '👤' }
+    { id: 'perfil', label: 'Boletas', icon: '🧾' }
   ];
 
   return (

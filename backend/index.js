@@ -63,6 +63,7 @@ import pagosVendedorRoutes from "./src/routes/administrador/pagosVendedorRoutes.
 import pagosRepartidorRoutes from "./src/routes/administrador/pagosRepartidorRoutes.js";
 import usuariosRoutes from "./src/routes/administrador/usuariosRoutes.js";
 import dashboardRoutes from "./src/routes/administrador/dashboardRoutes.js";
+import gananciasRoutes from "./src/routes/administrador/gananciasRoutes.js";
 
 
 
@@ -92,6 +93,7 @@ app.use("/api/admin/pagos-vendedores", pagosVendedorRoutes);
 app.use("/api/admin/pagos-repartidores", pagosRepartidorRoutes);
 app.use("/api/admin/usuarios", usuariosRoutes);
 app.use("/api/admin/dashboard", dashboardRoutes);
+app.use("/api/admin/ganancias-semanales", gananciasRoutes);
 
 
 // Notificacion

@@ -141,9 +141,9 @@ export const getPedidosDisponibles = async (req, res) => {
         {
           model: Usuario,
           as: 'Repartidor',
-          required: false, // LEFT JOIN para incluir pedidos sin repartidor
+          required: false, 
           through: {
-            attributes: [] // No incluir atributos de la tabla intermedia
+            attributes: [] 
           }
         },
         {
@@ -151,7 +151,7 @@ export const getPedidosDisponibles = async (req, res) => {
           as: 'Comprador',
           attributes: ['id_usuario', 'nombre', 'correo', 'latitud', 'longitud'],
           through: {
-            attributes: [] // No incluir atributos de la tabla intermedia
+            attributes: [] 
           }
         },
         {
@@ -159,7 +159,7 @@ export const getPedidosDisponibles = async (req, res) => {
           as: 'Vendedor',
           attributes: ['id_usuario', 'nombre', 'correo', 'latitud', 'longitud'],
           through: {
-            attributes: [] // No incluir atributos de la tabla intermedia
+            attributes: [] 
           }
         },
         {
@@ -195,9 +195,10 @@ export const getPedidosDisponibles = async (req, res) => {
     const rutas = await db.Ruta_frecuente.findAll({ where: { id_usuario: repartidorId, activa: true } });
 
 
-    // umbral en metros desde .env (por defecto 1000m)
-  // umbral en metros desde .env (por defecto 1000m)
-  const ROUTE_MAX_DISTANCE_METERS = Number(process.env.ROUTE_MAX_DISTANCE_METERS || 1000);
+    // umbral en metros: puede venir por query param `maxDistance` (preferencia del repartidor)
+    // si no se entrega, se usa la variable de entorno o 1000m por defecto
+    const ROUTE_MAX_DISTANCE_METERS = Number(req.query.maxDistance || process.env.ROUTE_MAX_DISTANCE_METERS || 1000);
+    console.log(`[repartidor] usando ROUTE_MAX_DISTANCE_METERS=${ROUTE_MAX_DISTANCE_METERS} (query:${req.query.maxDistance})`);
 
   console.log(`[repartidor] repartidorId=${repartidorId} pedidosTotales=${pedidosDisponibles.length} pedidosSinRepartidor=${pedidosSinRepartidor.length} rutasEncontradas=${rutas.length} ROUTE_MAX_DISTANCE_METERS=${ROUTE_MAX_DISTANCE_METERS}`);
 
@@ -321,22 +322,34 @@ export const getPedidosDisponibles = async (req, res) => {
       finalList = pedidosFormateados.filter(p => {
         try {
           const v = p.vendedor;
-          if (!v || v.latitud == null || v.longitud == null) {
-            console.log(`[repartidor] excluir pedido ${p.id_pedido} sin coords vendedor`);
+          const c = p.comprador;
+          // requerimos coordenadas del vendedor y del comprador/pedido para esta comprobación
+          const hasVendorCoords = v && v.latitud != null && v.longitud != null;
+          const hasBuyerCoords = (p.latitud != null && p.longitud != null) || (c && c.latitud != null && c.longitud != null);
+          if (!hasVendorCoords || !hasBuyerCoords) {
+            console.log(`[repartidor] excluir pedido ${p.id_pedido} por falta de coords (vendor:${!!hasVendorCoords} buyer:${!!hasBuyerCoords})`);
             return false;
           }
           const vlat = Number(v.latitud); const vlng = Number(v.longitud);
+          const blat = p.latitud != null ? Number(p.latitud) : Number(c.latitud);
+          const blng = p.longitud != null ? Number(p.longitud) : Number(c.longitud);
+
           // Calcular hora del pedido una sola vez
           const horaPedidoMin = p.fecha_creacion ? (new Date(p.fecha_creacion)).getHours() * 60 + (new Date(p.fecha_creacion)).getMinutes() : null;
-          // calcular distancia mínima a cualquiera de las rutas
-          let minDist = Infinity;
+          // calcular distancia mínima a cualquiera de las rutas para vendedor y comprador
+          let minDistVendor = Infinity;
+          let minDistBuyer = Infinity;
           for (const ruta of processedRutas) {
-            const d = pointToSegmentDistance(vlat, vlng, ruta.aLat, ruta.aLon, ruta.bLat, ruta.bLon);
-            if (d < minDist) minDist = d;
-            const dentroUmbral = d <= ROUTE_MAX_DISTANCE_METERS;
+            const dVendor = pointToSegmentDistance(vlat, vlng, ruta.aLat, ruta.aLon, ruta.bLat, ruta.bLon);
+            const dBuyer = pointToSegmentDistance(blat, blng, ruta.aLat, ruta.aLon, ruta.bLat, ruta.bLon);
+            if (dVendor < minDistVendor) minDistVendor = dVendor;
+            if (dBuyer < minDistBuyer) minDistBuyer = dBuyer;
+
+            const dentroUmbralVendor = dVendor <= ROUTE_MAX_DISTANCE_METERS;
+            const dentroUmbralBuyer = dBuyer <= ROUTE_MAX_DISTANCE_METERS;
+
             const inicio = ruta.inicio;
             const fin = ruta.fin;
-            // evaluar horario usando los valores precomputados
             const dentroHorario = (() => {
               try {
                 if (inicio == null || fin == null) return true;
@@ -345,18 +358,21 @@ export const getPedidosDisponibles = async (req, res) => {
                 return horaPedidoMin >= inicio || horaPedidoMin <= fin;
               } catch (e) { return true; }
             })();
-            console.log(`[repartidor][debug] pedido=${p.id_pedido} ruta=${ruta.id_ruta} d=${Math.round(d)}m dentroUmbral=${dentroUmbral} horaPedidoMin=${horaPedidoMin} inicio=${inicio} fin=${fin} dentroHorario=${dentroHorario}`);
-            // TEMP: relajar comprobación de horario para pruebas: aceptar si está dentro del umbral de distancia
-            // Nota: revertir esto cuando se confirme comportamiento en producción
-            if (dentroUmbral) {
-              p.vendor_distance_to_route_meters = Math.round(d);
-              console.log(`[repartidor] aceptar pedido (ignorar horario) ${p.id_pedido} d=${Math.round(d)}m ruta=${ruta.id_ruta} horario=${ruta.raw?.hora_inicio}-${ruta.raw?.hora_fin}`);
+
+            console.log(`[repartidor][debug] pedido=${p.id_pedido} ruta=${ruta.id_ruta} dv=${Math.round(dVendor)}m db=${Math.round(dBuyer)}m dentroV=${dentroUmbralVendor} dentroB=${dentroUmbralBuyer} horaPedidoMin=${horaPedidoMin} inicio=${inicio} fin=${fin} dentroHorario=${dentroHorario}`);
+
+            // Aceptar sólo si ambas (vendor y buyer) están dentro del umbral y opcionalmente dentro del horario
+            if (dentroUmbralVendor && dentroUmbralBuyer) {
+              p.vendor_distance_to_route_meters = Math.round(dVendor);
+              p.buyer_distance_to_route_meters = Math.round(dBuyer);
+              console.log(`[repartidor] aceptar pedido ${p.id_pedido} dv=${Math.round(dVendor)}m db=${Math.round(dBuyer)}m ruta=${ruta.id_ruta}`);
               return true;
             }
           }
-          // si no cumple con ninguna ruta, excluir
-          p.vendor_distance_to_route_meters = isFinite(minDist) ? Math.round(minDist) : null;
-          console.log(`[repartidor] excluir pedido ${p.id_pedido} minDist=${p.vendor_distance_to_route_meters}m`);
+          // si no cumple con ninguna ruta, excluir y dejar las distancias mínimas para debug
+          p.vendor_distance_to_route_meters = isFinite(minDistVendor) ? Math.round(minDistVendor) : null;
+          p.buyer_distance_to_route_meters = isFinite(minDistBuyer) ? Math.round(minDistBuyer) : null;
+          console.log(`[repartidor] excluir pedido ${p.id_pedido} minDistVendor=${p.vendor_distance_to_route_meters}m minDistBuyer=${p.buyer_distance_to_route_meters}m`);
           return false;
         } catch (e) {
           console.error('[repartidor] error filtrando pedido', p.id_pedido, e);
