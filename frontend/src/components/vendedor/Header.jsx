@@ -7,7 +7,7 @@ export default function Header() {
             <span className="text-white font-bold text-sm">V</span>
           </div>
           <div>
-            <h1 className="font-bold text-gray-900">Usuario</h1>
+            <h1 className="font-bold text-gray-900">Vendedor</h1>
             <p className="text-xs text-gray-500">Panel Vendedor</p>
           </div>
         </div>

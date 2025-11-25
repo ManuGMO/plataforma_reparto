@@ -286,6 +286,24 @@ export const getRepartidoresCercanos = async (req, res) => {
     const threshold = Number(umbral || process.env.ROUTE_MAX_DISTANCE_METERS || 1000);
 
     console.log(`Obteniendo repartidores cercanos para vendedorId=${idVendedor} con umbral=${threshold} metros`);
+    // Si se pasa pedidoId como query param, devolver el repartidor asignado (si existe)
+    const pedidoIdQuery = req.query.pedidoId || null;
+    if (pedidoIdQuery) {
+      try {
+        const asignacion = await db.pedido_repartidor.findOne({ where: { id_pedido: pedidoIdQuery } });
+        if (asignacion) {
+          const repartidorAsig = await Usuario.findByPk(asignacion.id_usuario, { attributes: ['id_usuario', 'nombre', 'latitud', 'longitud'] });
+          if (repartidorAsig) {
+            // Respondemos indicando que ya hay repartidor asignado
+            return res.json({ success: true, count: 1, assigned: true, data: [{ id_usuario: repartidorAsig.id_usuario, nombre: repartidorAsig.nombre, latitud: repartidorAsig.latitud, longitud: repartidorAsig.longitud, distancia_m: null }] });
+          }
+        }
+        // Si no hay asignación, caemos al flujo normal (buscar repartidores cercanos)
+      } catch (e) {
+        console.error('Error comprobando repartidor asignado para pedido', pedidoIdQuery, e);
+        // no retornamos error: seguimos con el flujo normal para no romper el frontend
+      }
+    }
     // Obtener vendedor
     const vendedor = await Usuario.findByPk(idVendedor, { attributes: ['id_usuario', 'nombre', 'latitud', 'longitud'] });
     if (!vendedor) return res.status(404).json({ error: 'Vendedor no encontrado' });

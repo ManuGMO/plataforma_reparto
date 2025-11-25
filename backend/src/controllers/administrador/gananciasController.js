@@ -7,7 +7,7 @@ export const obtenerGananciasSemanales = async (req, res) => {
     // Traer todos los pedidos entregados. Usar fecha_entrega para agrupar por semana
     const pedidos = await db.Pedido.findAll({
       where: { estado: 'entregado', fecha_entrega: { [Op.ne]: null } },
-      attributes: ['id_pedido', 'precio_bruto', 'comision_servicio', 'pago_reparto', 'total', 'fecha_creacion', 'fecha_entrega'],
+      attributes: ['id_pedido', 'precio_bruto', 'comision_servicio', 'comision_vendedor', 'pago_reparto', 'total', 'fecha_creacion', 'fecha_entrega'],
       order: [['fecha_entrega', 'ASC']]
     });
 
@@ -49,12 +49,13 @@ export const obtenerGananciasSemanales = async (req, res) => {
     for (const [weekStart, { monday, sunday, pedidos }] of weeksMap.entries()) {
       const deliveries = pedidos.length;
       const totalBruto = Math.round(pedidos.reduce((s, x) => s + Number(x.precio_bruto || 0), 0));
-      const totalComision = Math.round(pedidos.reduce((s, x) => s + Number(x.comision_servicio || 0), 0));
-      const totalPagoReparto = Math.round(pedidos.reduce((s, x) => s + Number(x.pago_reparto || 0), 0));
+  const totalComisionComprador = Math.round(pedidos.reduce((s, x) => s + Number(x.comision_servicio || 0), 0));
+  const totalComisionVendedor = Math.round(pedidos.reduce((s, x) => s + Number(x.comision_vendedor || 0), 0));
+  const totalPagoReparto = Math.round(pedidos.reduce((s, x) => s + Number(x.pago_reparto || 0), 0));
       const totalTotal = Math.round(pedidos.reduce((s, x) => s + Number(x.total || 0), 0));
 
-      // Ganancia neta de la plataforma = comisiones cobradas - pagos a repartidores
-      const platformEarnings = totalComision - totalPagoReparto;
+      // Ganancia neta de la plataforma = comisiones cobradas 
+      const platformEarnings = totalComisionComprador + totalComisionVendedor ;
 
       resumen.push({
         weekStart: formatISO(monday),
@@ -62,7 +63,8 @@ export const obtenerGananciasSemanales = async (req, res) => {
         period: formatPeriod(monday, sunday),
         deliveries,
         totalBruto,
-        totalComision,
+        totalComisionComprador,
+        totalComisionVendedor,
         totalPagoReparto,
         totalTotal,
         platformEarnings
@@ -98,7 +100,7 @@ export const obtenerDetalleSemana = async (req, res) => {
         estado: 'entregado',
         fecha_entrega: { [Op.between]: [monday, sunday] }
       },
-      attributes: ['id_pedido', 'fecha_creacion', 'precio_bruto', 'comision_servicio', 'pago_reparto', 'total', 'direccion'],
+      attributes: ['id_pedido', 'fecha_creacion', 'precio_bruto', 'comision_servicio', 'comision_vendedor', 'pago_reparto', 'total', 'direccion'],
       include: [
         {
           model: db.Usuario,
@@ -112,6 +114,14 @@ export const obtenerDetalleSemana = async (req, res) => {
           as: 'Comprador',
           attributes: ['id_usuario', 'nombre']
         }
+        ,
+        {
+          model: db.Usuario,
+          through: db.pedido_repartidor,
+          as: 'Repartidor',
+          attributes: ['id_usuario', 'nombre'],
+          required: false
+        }
       ],
       order: [['fecha_creacion', 'DESC']]
     });
@@ -121,11 +131,13 @@ export const obtenerDetalleSemana = async (req, res) => {
         fecha_pedido: p.fecha_entrega || p.fecha_creacion,
       precio_bruto: Math.round(Number(p.precio_bruto || 0)),
       comision_servicio: Math.round(Number(p.comision_servicio || 0)),
+      comision_vendedor: Math.round(Number(p.comision_vendedor || 0)),
       pago_reparto: Math.round(Number(p.pago_reparto || 0)),
       total: Math.round(Number(p.total || 0)),
       direccion: p.direccion,
       vendedor: p.Vendedor?.[0] ? { id: p.Vendedor[0].id_usuario, nombre: p.Vendedor[0].nombre } : null,
-      comprador: p.Comprador?.[0] ? { id: p.Comprador[0].id_usuario, nombre: p.Comprador[0].nombre } : null
+      comprador: p.Comprador?.[0] ? { id: p.Comprador[0].id_usuario, nombre: p.Comprador[0].nombre } : null,
+      repartidor: p.Repartidor?.[0] ? { id: p.Repartidor[0].id_usuario, nombre: p.Repartidor[0].nombre } : null
     }));
 
     res.json(detalle);

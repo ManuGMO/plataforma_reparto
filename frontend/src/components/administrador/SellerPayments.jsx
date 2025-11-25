@@ -116,7 +116,7 @@ export default function SellersPayments({ setNotification }) {
                     <td className="px-6 py-4 text-sm text-gray-500">{payment.email_vendedor}</td>
                     <td className="px-6 py-4 text-sm text-gray-900">{payment.total_pedidos}</td>
                     <td className="px-6 py-4 text-sm text-gray-900">{formatCurrency(payment.total_precio_bruto)}</td>
-                    <td className="px-6 py-4 text-sm text-red-600">-{formatCurrency(payment.total_comisiones)}</td>
+                    <td className="px-6 py-4 text-sm text-red-600">{formatCurrency(payment.total_comisiones)}</td>
                     <td className="px-6 py-4 text-sm text-orange-600">{formatCurrency(payment.iva_comision)}</td>
                     <td className="px-6 py-4 text-sm font-medium text-green-600">{formatCurrency(payment.monto_a_pagar)}</td>
                     <td className="px-6 py-4">

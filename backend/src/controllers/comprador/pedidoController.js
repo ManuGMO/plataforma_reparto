@@ -85,6 +85,12 @@ export const crearPedidoDesdeCarrito = async (req, res) => {
   let pago_reparto = req.body.pago_reparto ? Number(req.body.pago_reparto) : Math.round(precio_bruto * 0.05);
   if (!Number.isFinite(pago_reparto)) pago_reparto = Math.round(precio_bruto * 0.05);
 
+  // Comisión al vendedor: valor que se deduce al vendedor (no visible al comprador)
+  // Puede venir en el body (útil para tests), sino se calcula usando porcentaje en env COMISION_VENDEDOR_PERCENT (por defecto 5%)
+  const sellerPercent = Number(process.env.COMISION_VENDEDOR_PERCENT || 5);
+  let comision_vendedor = req.body.comision_vendedor ? Number(req.body.comision_vendedor) : Math.round(precio_bruto * (sellerPercent / 100));
+  if (!Number.isFinite(comision_vendedor)) comision_vendedor = Math.round(precio_bruto * (sellerPercent / 100));
+
   // Total neto: preferir el valor enviado, sino sumar
   let total = req.body.total ? Number(req.body.total) : Math.round(precio_bruto + comision_servicio + pago_reparto);
   if (!Number.isFinite(total)) total = Math.round(precio_bruto + comision_servicio + pago_reparto);
@@ -120,6 +126,7 @@ export const crearPedidoDesdeCarrito = async (req, res) => {
         longitud: longitud || null,
         precio_bruto: Math.round(precio_bruto),
         comision_servicio: Math.round(comision_servicio),
+        comision_vendedor: Math.round(comision_vendedor),
         pago_reparto: Math.round(pago_reparto),
         total: Math.round(total),
         estado: "pendiente",

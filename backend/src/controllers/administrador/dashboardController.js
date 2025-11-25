@@ -73,9 +73,21 @@ export const obtenerActividadReciente = async (req, res) => {
   try {
     const actividades = [];
 
-    // Últimos 5 pedidos creados
+    // Fecha de hoy (00:00) y mañana (límite)
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+    const manana = new Date(hoy);
+    manana.setDate(manana.getDate() + 1);
+
+    // Pedidos creados hoy (limitados a 5)
     const pedidosRecientes = await db.Pedido.findAll({
       attributes: ['id_pedido', 'estado', 'fecha_creacion', 'total'],
+      where: {
+        fecha_creacion: {
+          [Op.gte]: hoy,
+          [Op.lt]: manana
+        }
+      },
       order: [['fecha_creacion', 'DESC']],
       limit: 5
     });
@@ -103,9 +115,15 @@ export const obtenerActividadReciente = async (req, res) => {
       });
     });
 
-    // Últimos 5 usuarios registrados
+    // Usuarios registrados hoy (limitados a 3)
     const usuariosRecientes = await db.Usuario.findAll({
       attributes: ['id_usuario', 'nombre', 'fecha_registro'],
+      where: {
+        fecha_registro: {
+          [Op.gte]: hoy,
+          [Op.lt]: manana
+        }
+      },
       order: [['fecha_registro', 'DESC']],
       limit: 3
     });
@@ -156,5 +174,52 @@ export const obtenerActividadReciente = async (req, res) => {
       message: "Error al obtener actividad reciente",
       error: error.message 
     });
+  }
+};
+
+export const obtenerResumenDiario = async (req, res) => {
+  try {
+    // Fecha solicitada o hoy (formato YYYY-MM-DD opcional)
+    const { date } = req.query;
+    const fecha = date ? new Date(date) : new Date();
+    fecha.setHours(0, 0, 0, 0);
+    const fechaFin = new Date(fecha);
+    fechaFin.setDate(fechaFin.getDate() + 1);
+
+    // Tomamos pedidos entregados cuya fecha_entrega esté dentro del día
+    const pedidos = await db.Pedido.findAll({
+      where: {
+        estado: 'entregado',
+        fecha_entrega: {
+          [Op.gte]: fecha,
+          [Op.lt]: fechaFin
+        }
+      },
+      attributes: ['id_pedido', 'precio_bruto', 'comision_servicio', 'comision_vendedor', 'pago_reparto', 'total']
+    });
+
+    const totalPedidos = pedidos.length;
+    const bruto = pedidos.reduce((s, p) => s + Number(p.precio_bruto || 0), 0);
+    const totalComisionServicio = pedidos.reduce((s, p) => s + Number(p.comision_servicio || 0), 0);
+    const totalComisionVendedor = pedidos.reduce((s, p) => s + Number(p.comision_vendedor || 0), 0);
+    const totalPagoRepartidores = pedidos.reduce((s, p) => s + Number(p.pago_reparto || 0), 0);
+    const ingresosTotales = pedidos.reduce((s, p) => s + Number(p.total || 0), 0);
+
+    const gananciaNeta = ingresosTotales - totalPagoRepartidores - totalComisionVendedor - totalComisionServicio;
+
+    res.json({
+      date: fecha.toISOString().slice(0,10),
+      totalPedidos,
+      bruto: Number(bruto.toFixed(2)),
+      ingresosTotales: Number(ingresosTotales.toFixed(2)),
+      totalComisionServicio: Number(totalComisionServicio.toFixed(2)),
+      totalComisionVendedor: Number(totalComisionVendedor.toFixed(2)),
+      totalPagoRepartidores: Number(totalPagoRepartidores.toFixed(2)),
+      gananciaNeta: Number(gananciaNeta.toFixed(2)),
+      updatedAt: new Date(fecha).toISOString() // fecha de referencia (00:00 del día)
+    });
+  } catch (error) {
+    console.error('Error al obtener resumen diario:', error);
+    res.status(500).json({ message: 'Error al obtener resumen diario', error: error.message });
   }
 };

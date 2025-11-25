@@ -18,12 +18,28 @@ export default function Dashboard() {
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
-      const [statsResponse, actividadResponse] = await Promise.all([
+      // Consultamos resumen diario y actividad reciente
+      const [diarioResponse, estadisticasResponse, actividadResponse] = await Promise.all([
+        axios.get('http://localhost:3001/api/admin/dashboard/diario'),
         axios.get('http://localhost:3001/api/admin/dashboard/estadisticas'),
         axios.get('http://localhost:3001/api/admin/dashboard/actividad-reciente')
       ]);
-      
-      setStats(statsResponse.data);
+
+      const diario = diarioResponse.data;
+      const estad = estadisticasResponse.data;
+
+      // Mapear a la forma usada por el componente
+      setStats({
+        usuariosActivos: estad.usuariosActivos || 0,
+        totalUsuarios: estad.totalUsuarios || 0,
+        ingresosTotales: diario.ingresosTotales || 0,
+        pedidosHoy: diario.totalPedidos || 0,
+        comisionesTotales: diario.totalComisionServicio + diario.totalComisionVendedor || 0,
+        totalPedidos: diario.totalPedidos || 0,
+        pedidosEntregados: diario.totalPedidos || 0,
+        pedidosPendientes: estad.pedidosPendientes || 0
+      });
+
       setActividadReciente(actividadResponse.data);
     } catch (error) {
       console.error('Error al cargar datos del dashboard:', error);

@@ -56,7 +56,9 @@ export default function PaymentDetailModal({ payment, onClose, onMarkAsPaid }) {
       const weeksArr = Array.from(weeksMap.entries()).map(([weekStart, { monday, sunday, pedidos }]) => {
         const bruto = pedidos.reduce((s, it) => s + Number(it.precio_bruto || 0), 0);
         const comision = pedidos.reduce((s, it) => s + Number(it.comision_servicio || 0), 0);
+        const comisionVendedor = pedidos.reduce((s, it) => s + Number(it.comision_vendedor || 0), 0);
         const ivaComision = comision - (comision / 1.19);
+        // Mantener compatibilidad: neto calculado originalmente resta la comisión plataforma
         const neto = bruto - comision;
 
         return {
@@ -66,6 +68,7 @@ export default function PaymentDetailModal({ payment, onClose, onMarkAsPaid }) {
           pedidos,
           bruto: Math.round(bruto),
           comision: Math.round(comision),
+          comisionVendedor: Math.round(comisionVendedor),
           ivaComision: Math.round(ivaComision),
           neto: Math.round(neto)
         };
@@ -106,38 +109,42 @@ export default function PaymentDetailModal({ payment, onClose, onMarkAsPaid }) {
             <div className="text-sm text-gray-500">Total semanas: {weeks.length}</div>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          <div>
             {weekObj ? (
-              <>
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <label className="block text-sm font-medium text-gray-700">Total Pedidos</label>
-                  <p className="text-2xl font-bold text-gray-900">{weekObj.pedidos.length}</p>
-                  <p className="text-xs text-gray-500 mt-1">{weekObj.periodLabel}</p>
+              <div className="bg-white shadow-sm border rounded-lg p-4 max-w-md">
+                <div className="mb-2">
+                  <div className="text-sm text-gray-500">{weekObj.periodLabel}</div>
+                  <div className="text-xs text-gray-400">Pedidos: {weekObj.pedidos.length}</div>
                 </div>
-                <div className="bg-blue-50 p-4 rounded-lg">
-                  <label className="block text-sm font-medium text-blue-700">Precio Bruto</label>
-                  <p className="text-xl font-bold text-blue-900">{formatCurrency(weekObj.bruto)}</p>
-                </div>
-                <div className="bg-red-50 p-4 rounded-lg">
-                  <label className="block text-sm font-medium text-red-700">Comisiones</label>
-                  <p className="text-xl font-bold text-red-600">-{formatCurrency(weekObj.comision)}</p>
-                </div>
-                <div className="bg-orange-50 p-4 rounded-lg">
-                  <label className="block text-sm font-medium text-orange-700">IVA Comisión</label>
-                  <p className="text-xl font-bold text-orange-600">{formatCurrency(weekObj.ivaComision)}</p>
-                  <p className="text-xs text-gray-500 mt-1">19% de comisión</p>
-                </div>
-                <div className="bg-green-50 p-4 rounded-lg">
-                  <label className="block text-sm font-medium text-green-700">A Pagar</label>
-                  <p className="text-xl font-bold text-green-600">{formatCurrency(weekObj.neto)}</p>
-                </div>
-              </>
+                <ul className="divide-y divide-gray-100">
+                  <li className="py-3 flex justify-between items-center">
+                    <span className="text-sm text-gray-700">Precio bruto</span>
+                    <strong className="text-sm text-gray-900">{formatCurrency(weekObj.bruto)}</strong>
+                  </li>
+                  <li className="py-3 flex justify-between items-center">
+                    <span className="text-sm text-gray-700">Comisión plataforma</span>
+                    <span className="text-sm text-red-600">{formatCurrency(weekObj.comision)}</span>
+                  </li>
+                  {weekObj.comisionVendedor > 0 && (
+                    <li className="py-3 flex justify-between items-center">
+                      <span className="text-sm text-gray-700">Comisión vendedor</span>
+                      <span className="text-sm text-red-600">-{formatCurrency(weekObj.comisionVendedor)}</span>
+                    </li>
+                  )}
+                  <li className="py-3 flex justify-between items-center">
+                    <span className="text-sm text-gray-700">IVA sobre comisiones</span>
+                    <span className="text-sm text-orange-600">{formatCurrency(weekObj.ivaComision)}</span>
+                  </li>
+                  <li className="pt-4 pb-2 flex justify-between items-center">
+                    <span className="text-base font-medium text-gray-800">Total a pagar</span>
+                    <span className="text-xl font-bold text-green-700">{formatCurrency(weekObj.neto)}</span>
+                  </li>
+                </ul>
+              </div>
             ) : (
-              Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className="bg-gray-50 p-4 rounded-lg">
-                  <p className="text-sm text-gray-400">-</p>
-                </div>
-              ))
+              <div className="bg-gray-50 p-4 rounded-lg max-w-md">
+                <p className="text-sm text-gray-400">No hay datos</p>
+              </div>
             )}
           </div>
 

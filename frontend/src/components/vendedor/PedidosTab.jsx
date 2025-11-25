@@ -14,9 +14,13 @@ export default function PedidosTab({ setNotification, vendorId = 1 }) {
 
   const cargarPedidos = async () => {
     try {
-  const res = await axios.get(`http://localhost:3001/api/pedidos/vendedor/${vendorId}`);
-      setPedidos(res.data);
-      console.log(res.data);
+      const res = await axios.get(`http://localhost:3001/api/pedidos/vendedor/${vendorId}`);
+      // Filtrar pedidos entregados para que se vayan eliminando de la vista
+      const visibles = (res.data || []).filter(p => p.estado !== 'entregado');
+      // Ordenar del más nuevo al más viejo por fecha_creacion
+      visibles.sort((a, b) => new Date(b.fecha_creacion) - new Date(a.fecha_creacion));
+      setPedidos(visibles);
+      console.log('Pedidos cargados (filtrados y ordenados):', visibles);
     } catch (error) {
       console.error("Error cargando pedidos:", error);
     }
@@ -55,7 +59,17 @@ export default function PedidosTab({ setNotification, vendorId = 1 }) {
         id_vendedor: 1 
       });
       setNotification(mensaje);
-      cargarPedidos();
+      // Si el pedido quedó como entregado, eliminarlo inmediatamente de la lista local
+      if (nuevoEstado === 'entregado') {
+        setPedidos(prev => prev.filter(p => p.id_pedido !== id_pedido));
+        // cerrar modal si está abierto para ese pedido
+        if (pedidoSeleccionado?.id_pedido === id_pedido) {
+          setPedidoSeleccionado(null);
+        }
+      } else {
+        // para otros cambios, recargar la lista
+        cargarPedidos();
+      }
       // Actualizar detalle si está abierto
       if (pedidoSeleccionado?.id_pedido === id_pedido) {
         await cargarDetallePedido(id_pedido);

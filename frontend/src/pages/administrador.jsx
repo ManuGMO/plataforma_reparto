@@ -22,9 +22,7 @@ export default function Administrador() {
 
   return (
     <div className="flex h-screen w-screen bg-gray-50 overflow-hidden">
-      <aside className="w-64 h-screen flex-shrink-0 bg-white shadow-lg border-r overflow-y-auto">
-        <Sidebar activeSection={activeSection} setActiveSection={setActiveSection} />
-      </aside>
+      <Sidebar activeSection={activeSection} setActiveSection={setActiveSection} />
       
       <main className="flex-1 h-screen overflow-y-auto">
         {activeSection === 'dashboard' && <Dashboard />}

@@ -16,6 +16,11 @@ export default (sequelize) => {
     comision_servicio: {
       type: DataTypes.INTEGER
     },
+    // Comisión que se deduce al vendedor (visible en panel admin)
+    comision_vendedor: {
+      type: DataTypes.INTEGER,
+      defaultValue: 0
+    },
     pago_reparto: {
       type: DataTypes.INTEGER
     },
