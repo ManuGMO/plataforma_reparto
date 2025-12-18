@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 
-export default function FinanzasTab({ idUsuario = 1 }) {
+export default function FinanzasTab({ idUsuario}) {
   const [historial, setHistorial] = useState([]);
   const [estadisticas, setEstadisticas] = useState({});
   const [loading, setLoading] = useState(true);

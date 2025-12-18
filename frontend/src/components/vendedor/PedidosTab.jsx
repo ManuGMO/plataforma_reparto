@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 import PedidosModal from "./PedidosModal";
 
-export default function PedidosTab({ setNotification, vendorId = 1 }) {
+export default function PedidosTab({ setNotification, vendorId }) {
   const [pedidoSeleccionado, setPedidoSeleccionado] = useState(null);
   const [pedidos, setPedidos] = useState([]);
   const [filtroEstado, setFiltroEstado] = useState('todos');

@@ -3,7 +3,7 @@ import axios from "axios";
 import BlockModal from "./BlockModal";
 import ValoracionesModal from "./ValoracionesModal";
 
-export default function RepartidoresTab({ idUsuario = 1 }) {
+export default function RepartidoresTab({ idUsuario }) {
   const [repartidores, setRepartidores] = useState([]);
   const [selectedRepartidor, setSelectedRepartidor] = useState(null);
   const [isBlockModalOpen, setIsBlockModalOpen] = useState(false);

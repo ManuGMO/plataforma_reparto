@@ -51,7 +51,6 @@ export const getPedidos = async (req, res) => {
         longitud: pedido.longitud,
         estado_pago: pedidoVendedor.estado_pago,
         tiene_repartidor: pedido.tiene_repartidor,
-        // CAMPOS NUEVOS PARA COMPROBANTE
         comprobante_pago: pedido.comprobante_pago,
         pago_confirmado: pedido.pago_confirmado,
         fecha_confirmacion_pago: pedido.fecha_confirmacion_pago,

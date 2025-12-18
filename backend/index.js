@@ -64,28 +64,38 @@ import pagosRepartidorRoutes from "./src/routes/administrador/pagosRepartidorRou
 import usuariosRoutes from "./src/routes/administrador/usuariosRoutes.js";
 import dashboardRoutes from "./src/routes/administrador/dashboardRoutes.js";
 import gananciasRoutes from "./src/routes/administrador/gananciasRoutes.js";
+import authRoutes from "./src/routes/authRoutes.js";
+import { authenticate } from './src/middlewares/authMiddleware.js';
+import { requireRole } from './src/middlewares/roleMiddleware.js';
+import { forceOwner } from './src/middlewares/forceOwner.js';
 
 
 
 app.use("/api/usuarios", usuarioRoutes);
 
+// Autenticación
+app.use('/api/auth', authRoutes);
+
+
+app.use('/api/admin', authenticate, requireRole('admin'));
+
 // vendedor
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-app.use("/api/productos", productosRoutes);
-app.use("/api/pedidos", pedidosRoutes);
-app.use("/api/repartidores", ValorarRepartidores);
-app.use("/api/finanzas", verFinanzas);
+app.use("/api/productos", authenticate, forceOwner(), requireRole('vendedor'), productosRoutes);
+app.use("/api/pedidos", authenticate, forceOwner(), requireRole('vendedor'), pedidosRoutes);
+app.use("/api/repartidores", authenticate, forceOwner(), requireRole('vendedor'), ValorarRepartidores);
+app.use("/api/finanzas", authenticate, forceOwner(), requireRole('vendedor'), verFinanzas);
 
 // Comprador
-app.use("/api/pedidos/comprador", pedidoRoutes);
-app.use("/api/productos/comprador", productoRoutes);
-app.use("/api/carrito/comprador", carritoRoutes);
+app.use("/api/pedidos/comprador", authenticate, forceOwner(), requireRole('comprador'), pedidoRoutes);
+app.use("/api/productos/comprador", authenticate, forceOwner(), requireRole('comprador'), productoRoutes);
+app.use("/api/carrito/comprador", authenticate, forceOwner(), requireRole('comprador'), carritoRoutes);
 
 
 // Repartidor
-app.use("/api/repartidor", repartidorRoutes);
-app.use("/api/rutas", rutaRoutes);
+app.use("/api/repartidor", authenticate, forceOwner(), requireRole('repartidor'), repartidorRoutes);
+app.use("/api/rutas", authenticate, forceOwner(), requireRole('repartidor'), rutaRoutes);
 
 //administrador
 app.use("/api/admin/comprobantes", comprobanteRoutes);

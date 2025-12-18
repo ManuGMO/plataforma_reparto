@@ -1,4 +1,7 @@
 import React, { useEffect, useState } from 'react';
+import axios from 'axios';
+import { useAuth } from '../../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import OrderCard from './OrderCard';
 import OrderDetailAndDelivery from './OrderDetailAndDelivery';
 
@@ -8,11 +11,14 @@ export default function PedidosTabRepartidor({ repartidorId, isOnline, setNewOrd
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedOrder, setSelectedOrder] = useState(null);
-  const [currentView, setCurrentView] = useState('list'); // 'list' | 'detail' | 'active_delivery'
+  const [currentView, setCurrentView] = useState('list');
   const [notification, setNotification] = useState('');
   const [maxDistance, setMaxDistance] = useState(() => {
     try { return Number(localStorage.getItem('repartidor_max_distance')) || 1000; } catch { return 1000; }
   });
+
+  const { token } = useAuth();
+  const navigate = useNavigate();
 
   const loadOrders = async (overrideDistance) => {
     if (!isOnline) {
@@ -28,11 +34,10 @@ export default function PedidosTabRepartidor({ repartidorId, isOnline, setNewOrd
     try {
       // pedir al backend ya filtrado por rutas (endpoint acepta repartidorId)
       const distance = typeof overrideDistance !== 'undefined' ? overrideDistance : maxDistance;
-      const base = `http://localhost:3001/api/repartidor/pedidos/disponibles/${repartidorId}`;
-      const url = distance ? `${base}?maxDistance=${encodeURIComponent(distance)}` : base;
-      const res = await fetch(url);
-      const payload = await res.json();
-      const list = (payload && payload.success && Array.isArray(payload.data)) ? payload.data : (Array.isArray(payload) ? payload : []);
+      const url = `/api/repartidor/pedidos/disponibles/${repartidorId}`;
+      const res = await axios.get(url, { params: distance ? { maxDistance: distance } : {} });
+      const payload = res.data;
+      const list = (payload && payload.success && Array.isArray(payload.data)) ? payload.data : (Array.isArray(payload) ? payload : (payload.data || []));
       setOrders(list);
       setFilteredOrders(list);
 
@@ -43,6 +48,11 @@ export default function PedidosTabRepartidor({ repartidorId, isOnline, setNewOrd
       }
     } catch (err) {
       console.error('Error loadOrders', err);
+      if (err.response && err.response.status === 401) {
+        setNotification('Sesión expirada. Redirigiendo a login...');
+        navigate('/login');
+        return;
+      }
       setError(err.message || 'Error cargando pedidos');
       setOrders([]);
       setFilteredOrders([]);
@@ -83,8 +93,8 @@ export default function PedidosTabRepartidor({ repartidorId, isOnline, setNewOrd
   const handleAcceptOrder = async (orderId) => {
     setLoading(true);
     try {
-      const res = await fetch(`http://localhost:3001/api/repartidor/${orderId}/aceptar`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id_repartidor: repartidorId }) });
-      const data = await res.json();
+        const res = await axios.post(`/api/repartidor/${orderId}/aceptar`, { id_repartidor: repartidorId });
+        const data = res.data;
       if (data.success) {
         updateOrderInState(orderId, { tiene_repartidor: true, id_repartidor: repartidorId, estado: 'listo_para_recoger' });
         setNotification('Pedido aceptado');
@@ -102,8 +112,8 @@ export default function PedidosTabRepartidor({ repartidorId, isOnline, setNewOrd
   const handleConfirmPickup = async (orderId) => {
     setLoading(true);
     try {
-      const res = await fetch(`http://localhost:3001/api/repartidor/${orderId}/recoger`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id_repartidor: repartidorId }) });
-      const data = await res.json();
+      const res = await axios.patch(`/api/repartidor/${orderId}/recoger`, { id_repartidor: repartidorId });
+      const data = res.data;
       if (data.success) {
         updateOrderInState(orderId, { estado: 'en_reparto' });
         setNotification('Recogida confirmada');
@@ -116,8 +126,8 @@ export default function PedidosTabRepartidor({ repartidorId, isOnline, setNewOrd
   const handleConfirmDelivery = async (orderId) => {
     setLoading(true);
     try {
-      const res = await fetch(`http://localhost:3001/api/repartidor/${orderId}/entregar`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id_repartidor: repartidorId }) });
-      const data = await res.json();
+      const res = await axios.patch(`/api/repartidor/${orderId}/entregar`, { id_repartidor: repartidorId });
+      const data = res.data;
       if (data.success) {
         updateOrderInState(orderId, { estado: 'entregado' });
         setNotification('Entrega confirmada');

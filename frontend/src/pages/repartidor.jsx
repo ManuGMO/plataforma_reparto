@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useAuth } from "../contexts/AuthContext";
 import Header from "../components/repartidor/Header";
 import TabsRepartidor from "../components/repartidor/TabsRepartidor";
 import PedidosTabRepartidor from "../components/repartidor/PedidosTabRepartidor";
@@ -20,12 +21,14 @@ export default function Repartidor() {
   const [isOnline, setIsOnline] = useState(true);
   const [todayStats, setTodayStats] = useState({ earnings: 0, deliveries: 0, rating: 4.8 });
 
-  const ID_REPARTIDOR = 3;
+  const { user } = useAuth();
+  const ID_REPARTIDOR = user?.id;
 
   useEffect(() => {
     const loadTodayStats = async () => {
       try {
-        const response = await fetch(`http://localhost:3001/api/repartidor/${ID_REPARTIDOR}/estadisticas/hoy`);
+        if (!ID_REPARTIDOR) return;
+        const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/repartidor/${ID_REPARTIDOR}/estadisticas/hoy`);
         const stats = await response.json();
         setTodayStats(stats);
       } catch (error) {

@@ -30,11 +30,8 @@ export const getProductos = async (req, res) => {
 
     // Transformar los datos para que coincidan con el frontend
     const productosTransformados = productos.map(producto => {
-
       const categoriaNombre = producto.Categorium.nombre.toLowerCase();
-
       console.log("Categoria: ", categoriaNombre);
-      
       return {
         id: producto.id_producto,
         nombre: producto.nombre,
@@ -43,7 +40,6 @@ export const getProductos = async (req, res) => {
         : null,
         categoria: categoriaNombre,
         vendedor: producto.Vendedor.nombre,
-        ubicacion: "alguna distancia", // Esto podría calcularse con geolocalización real
         latitud: producto.Vendedor.latitud,
         longitud: producto.Vendedor.longitud,
         stock: producto.stock,

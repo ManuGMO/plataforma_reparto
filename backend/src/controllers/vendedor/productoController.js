@@ -5,10 +5,11 @@ const { Producto, Categoria } = db;
 export const getProductos = async (req, res) => {
   try {
     const { id } = req.params;
+    const id_usuario = req.user?.id || id;
     
     // Obtener productos con sus categorías
     const productos = await Producto.findAll({
-      where: { id_usuario: id },
+      where: { id_usuario },
       include: [{
         model: Categoria,
         attributes: ['id_categoria', 'nombre']
@@ -44,7 +45,7 @@ export const createProduct = async (req, res) => {
     const { id } = req.params;
     const { nombre, descripcion, precio, stock, id_categoria } = req.body;
     const imagen = req.file ? req.file.filename : null;
-    const id_usuario = id;
+    const id_usuario = req.user?.id || id;
     
     // Verificar si ya existe un producto con el mismo nombre para este usuario
     const productoExistente = await Producto.findOne({
@@ -170,12 +171,14 @@ export const eliminarProducto = async (req, res) => {
     const { id } = req.params;
     console.log(id);
     
+    const userId = req.user?.id;
     const [updatedRows] = await Producto.update(
       { activo: false },
       { 
         where: { 
           id_producto: id,
-          activo: true 
+          activo: true,
+          ...(userId ? { id_usuario: userId } : {})
         }
       }
     );
@@ -201,6 +204,11 @@ export const actualizarProducto = async (req, res) => {
     const producto = await Producto.findByPk(id);
     if (!producto) {
       return res.status(404).json({ error: "Producto no encontrado" });
+    }
+    // Verificar que el usuario autenticado sea dueño del producto
+    const userId = req.user?.id;
+    if (userId && producto.id_usuario !== userId) {
+      return res.status(403).json({ message: 'No autorizado para actualizar este producto' });
     }
     
     // Si se está actualizando el nombre, verificar duplicados
@@ -252,11 +260,12 @@ export const actualizarProducto = async (req, res) => {
 export const validarNombreProducto = async (req, res) => {
   try {
     const { id } = req.params; // id del usuario
+    const id_usuario = req.user?.id || id;
     const { nombre, exclude_id } = req.body;
 
     const whereCondition = {
       nombre: nombre.trim(),
-      id_usuario: id
+      id_usuario: id_usuario
     };
 
     // Si se proporciona exclude_id, excluir ese producto de la búsqueda

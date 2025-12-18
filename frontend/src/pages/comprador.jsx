@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useAuth } from "../contexts/AuthContext";
 import Header from "../components/comprador/Header";
 import TabsComprador from "../components/comprador/TabsComprador";
 import ProductosTabComprador from "../components/comprador/ProductosTabComprador";
@@ -12,14 +13,16 @@ export default function Comprador() {
   const [activeTab, setActiveTab] = useState("productos");
   const [notification, setNotification] = useState("");
   
-  // ID del comprador (actualmente hardcodeado)
-  const ID_COMPRADOR = 2;
+  const { user, isAuthenticated } = useAuth();
+  // ID del comprador obtenido del usuario autenticado
+  const ID_COMPRADOR = user?.id;
 
   // Verificar notificaciones periódicamente
   useEffect(() => {
     const checkNotifications = async () => {
       try {
-        const response = await fetch(`http://localhost:3001/api/notificaciones/usuario/${ID_COMPRADOR}/no-leidas`);
+        if (!ID_COMPRADOR) return; // aún no hay usuario
+        const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/notificaciones/usuario/${ID_COMPRADOR}/no-leidas`);
         const notificaciones = await response.json();
         
         if (notificaciones.length > 0) {

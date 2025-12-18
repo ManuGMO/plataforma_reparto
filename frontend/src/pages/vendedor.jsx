@@ -1,5 +1,6 @@
 // src/pages/Vendedor.jsx
 import { useState } from "react";
+import { useAuth } from "../contexts/AuthContext";
 import Header from "../components/vendedor/Header";
 import Tabs from "../components/vendedor/Tabs";
 import ProductosTab from "../components/vendedor/ProductosTab";
@@ -18,7 +19,8 @@ export default function Vendedor() {
   const [notification, setNotification] = useState("");
   const [refreshProducts, setRefreshProducts] = useState(0);
 
-  const ID_VENDEDOR = 1;
+  const { user } = useAuth();
+  const ID_VENDEDOR = user?.id;
 
   const handleProductAdded = () => {
     setRefreshProducts(prev => prev + 1);
@@ -38,8 +40,8 @@ export default function Vendedor() {
       {activeTab === "productos" && <ProductosTab openModal={() => setProductModalOpen(true)} refreshTrigger={refreshProducts}/>}
   {/* por ahora usamos vendorId=1 como id del vendedor en este entorno local */}
   {activeTab === "pedidos" && <PedidosTab setNotification={setNotification} vendorId={ID_VENDEDOR} />}
-      {activeTab === "repartidores" && <RepartidoresTab openBlockModal={() => setBlockModalOpen(true)} />}
-      {activeTab === "finanzas" && <FinanzasTab />}
+      {activeTab === "repartidores" && <RepartidoresTab idUsuario={ID_VENDEDOR} openBlockModal={() => setBlockModalOpen(true) } />}
+      {activeTab === "finanzas" && <FinanzasTab idUsuario={ID_VENDEDOR} />}
 
       <ProductModal
         isOpen={productModalOpen}
