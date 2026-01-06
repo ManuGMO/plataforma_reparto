@@ -2,19 +2,19 @@ import { useEffect, useState } from "react";
 import PedidoModal from "./PedidoModal";
 import { getStatusColor, getStatusText, getStatusIcon } from "./PedidoModal";
 
-export default function PedidosTabComprador() {
+export default function PedidosTabComprador( CompradorID) {
   const [pedidos, setPedidos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedPedido, setSelectedPedido] = useState(null);
   const [showModal, setShowModal] = useState(false);
 
-  // ID del comprador (actualmente hardcodeado)
-  const ID_COMPRADOR = 2;
+  // ID del comprador (pasado como prop)
+  const ID_COMPRADOR = CompradorID;
 
   // Cargar pedidos
   useEffect(() => {
-    const cargarPedidos = async (ID_COMPRADOR = 2) => {
+    const cargarPedidos = async (ID_COMPRADOR = CompradorID) => {
       try {
         setLoading(true);
         const response = await fetch(`http://localhost:3001/api/pedidos/comprador/${ID_COMPRADOR}`);

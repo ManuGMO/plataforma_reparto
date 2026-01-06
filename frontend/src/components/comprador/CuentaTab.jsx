@@ -3,7 +3,7 @@ import { useState } from "react";
 import axios from "axios";
 import MapaUbicacion from "../MapaUbicacion";
 
-export default function CuentaTab() {
+export default function CuentaTab(CompradorID) {
   const [ubicacion, setUbicacion] = useState(null);
   const [guardando, setGuardando] = useState(false);
   const [mensaje, setMensaje] = useState(null);
@@ -15,7 +15,7 @@ export default function CuentaTab() {
     setMensaje(null);
     
     try {
-      await axios.put(`http://localhost:3001/api/usuarios/1/ubicacion`, {
+      await axios.put(`http://localhost:3001/api/usuarios/${CompradorID}/ubicacion`, {
         latitud: ubicacion.lat,
         longitud: ubicacion.lng
       });

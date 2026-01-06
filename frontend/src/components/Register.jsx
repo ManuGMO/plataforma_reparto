@@ -69,7 +69,7 @@ export default function Register({ onGoLogin, showNotification, onRegister }) {
           <span className="text-3xl select-none">👤</span>
         </div>
         <h1 className="text-3xl font-bold mb-2 tracking-tight">Crear Cuenta</h1>
-        <p className="text-blue-100 text-lg font-light text-center">Únete a CompraApp hoy mismo</p>
+        <p className="text-blue-100 text-lg font-light text-center">Únete a MercadoLocal hoy mismo</p>
       </div>
 
       <main className="-mt-16 px-4 w-full max-w-md mx-auto z-10 pb-8 text-gray-700">

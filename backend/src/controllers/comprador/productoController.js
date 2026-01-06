@@ -30,18 +30,20 @@ export const getProductos = async (req, res) => {
 
     // Transformar los datos para que coincidan con el frontend
     const productosTransformados = productos.map(producto => {
-      const categoriaNombre = producto.Categorium.nombre.toLowerCase();
-      console.log("Categoria: ", categoriaNombre);
+      const categoriaNombre = producto.Categoria && producto.Categoria.nombre ? producto.Categoria.nombre.toLowerCase() : 'sin categoria';
+      const vendedorNombre = producto.Vendedor && producto.Vendedor.nombre ? producto.Vendedor.nombre : 'Vendedor';
+      const lat = producto.Vendedor && producto.Vendedor.latitud ? producto.Vendedor.latitud : null;
+      const lng = producto.Vendedor && producto.Vendedor.longitud ? producto.Vendedor.longitud : null;
+
       return {
         id: producto.id_producto,
         nombre: producto.nombre,
-        precio: producto.precio, 
-        imagen: producto.imagen ? `${req.protocol}://${req.get("host")}/uploads/products/${producto.imagen}`
-        : null,
+        precio: producto.precio,
+        imagen: producto.imagen ? `${req.protocol}://${req.get("host")}/uploads/products/${producto.imagen}` : null,
         categoria: categoriaNombre,
-        vendedor: producto.Vendedor.nombre,
-        latitud: producto.Vendedor.latitud,
-        longitud: producto.Vendedor.longitud,
+        vendedor: vendedorNombre,
+        latitud: lat,
+        longitud: lng,
         stock: producto.stock,
         descripcion: producto.descripcion,
         id_categoria: producto.id_categoria,

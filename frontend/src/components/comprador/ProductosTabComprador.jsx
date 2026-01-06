@@ -198,7 +198,7 @@ function ProductModal({ producto, isOpen, onClose, onAddToCart }) {
   );
 }
 
-export default function ProductosTabComprador({ setNotification }) {
+export default function ProductosTabComprador({ setNotification, CompradorID }) {
   const [productos, setProductos] = useState([]);
   const [productosConDireccion, setProductosConDireccion] = useState([]);
   const [categorias, setCategorias] = useState([]);
@@ -211,7 +211,7 @@ export default function ProductosTabComprador({ setNotification }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   // ID del comprador (actualmente hardcodeado)
-  const ID_COMPRADOR = 2;
+  const ID_COMPRADOR = CompradorID;
 
   // Token de Mapbox - REEMPLAZA CON TU TOKEN REAL
   const MAPBOX_TOKEN = 'pk.eyJ1IjoibWFudWdtbyIsImEiOiJjbWZocHBobnkwZTFzMmpteTBqejdjM2NyIn0.szPCGrt15ZmioZVcXyGycA';

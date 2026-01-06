@@ -22,21 +22,20 @@ export const obtenerGananciasSemanales = async (req, res) => {
     };
 
     const formatPeriod = (monday, sunday) => {
-      return `(${String(monday.getDate()).padStart(2,'0')} - ${String(monday.getMonth()+1).padStart(2,'0')}) - (${String(sunday.getDate()).padStart(2,'0')} - ${String(sunday.getMonth()+1).padStart(2,'0')})`;
+      return `(${String(monday.getDate()).padStart(2, '0')} - ${String(monday.getMonth() + 1).padStart(2, '0')}) - (${String(sunday.getDate()).padStart(2, '0')} - ${String(sunday.getMonth() + 1).padStart(2, '0')})`;
     };
 
     pedidos.forEach(p => {
       // Preferir fecha_entrega para atribuir el pedido a la semana correcta;
-      // si no existe, caer a fecha_creacion (defensivo)
       const fecha = p.fecha_entrega ? new Date(p.fecha_entrega) : new Date(p.fecha_creacion);
       const day = fecha.getDay();
       const diffToMonday = (day + 6) % 7;
       const monday = new Date(fecha);
       monday.setDate(fecha.getDate() - diffToMonday);
-      monday.setHours(0,0,0,0);
+      monday.setHours(0, 0, 0, 0);
       const sunday = new Date(monday);
       sunday.setDate(monday.getDate() + 6);
-      sunday.setHours(23,59,59,999);
+      sunday.setHours(23, 59, 59, 999);
 
       const key = formatISO(monday);
       if (!weeksMap.has(key)) {
@@ -49,13 +48,12 @@ export const obtenerGananciasSemanales = async (req, res) => {
     for (const [weekStart, { monday, sunday, pedidos }] of weeksMap.entries()) {
       const deliveries = pedidos.length;
       const totalBruto = Math.round(pedidos.reduce((s, x) => s + Number(x.precio_bruto || 0), 0));
-  const totalComisionComprador = Math.round(pedidos.reduce((s, x) => s + Number(x.comision_servicio || 0), 0));
-  const totalComisionVendedor = Math.round(pedidos.reduce((s, x) => s + Number(x.comision_vendedor || 0), 0));
-  const totalPagoReparto = Math.round(pedidos.reduce((s, x) => s + Number(x.pago_reparto || 0), 0));
+      const totalComisionComprador = Math.round(pedidos.reduce((s, x) => s + Number(x.comision_servicio || 0), 0));
+      const totalComisionVendedor = Math.round(pedidos.reduce((s, x) => s + Number(x.comision_vendedor || 0), 0));
+      const totalPagoReparto = Math.round(pedidos.reduce((s, x) => s + Number(x.pago_reparto || 0), 0));
       const totalTotal = Math.round(pedidos.reduce((s, x) => s + Number(x.total || 0), 0));
-
       // Ganancia neta de la plataforma = comisiones cobradas 
-      const platformEarnings = totalComisionComprador + totalComisionVendedor ;
+      const platformEarnings = totalComisionComprador + totalComisionVendedor;
 
       resumen.push({
         weekStart: formatISO(monday),
@@ -72,7 +70,7 @@ export const obtenerGananciasSemanales = async (req, res) => {
     }
 
     // Orden descendente por semana (más reciente primero)
-    resumen.sort((a,b) => b.weekStart.localeCompare(a.weekStart));
+    resumen.sort((a, b) => b.weekStart.localeCompare(a.weekStart));
 
     res.json(resumen);
   } catch (error) {
@@ -88,10 +86,10 @@ export const obtenerDetalleSemana = async (req, res) => {
     if (!weekStart) return res.status(400).json({ message: 'weekStart requerido' });
 
     const monday = new Date(weekStart);
-    monday.setHours(0,0,0,0);
+    monday.setHours(0, 0, 0, 0);
     const sunday = new Date(monday);
     sunday.setDate(monday.getDate() + 6);
-    sunday.setHours(23,59,59,999);
+    sunday.setHours(23, 59, 59, 999);
 
     const pedidos = await db.Pedido.findAll({
       where: {
@@ -128,7 +126,7 @@ export const obtenerDetalleSemana = async (req, res) => {
 
     const detalle = pedidos.map(p => ({
       id_pedido: p.id_pedido,
-        fecha_pedido: p.fecha_entrega || p.fecha_creacion,
+      fecha_pedido: p.fecha_entrega || p.fecha_creacion,
       precio_bruto: Math.round(Number(p.precio_bruto || 0)),
       comision_servicio: Math.round(Number(p.comision_servicio || 0)),
       comision_vendedor: Math.round(Number(p.comision_vendedor || 0)),

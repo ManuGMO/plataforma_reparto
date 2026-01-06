@@ -79,6 +79,11 @@ app.use('/api/auth', authRoutes);
 
 app.use('/api/admin', authenticate, requireRole('admin'));
 
+// Comprador (registrar rutas específicas antes de rutas genéricas)
+app.use("/api/pedidos/comprador", authenticate, forceOwner(), requireRole('comprador'), pedidoRoutes);
+app.use("/api/productos/comprador", authenticate, forceOwner(), requireRole('comprador'), productoRoutes);
+app.use("/api/carrito/comprador", authenticate, forceOwner(), requireRole('comprador'), carritoRoutes);
+
 // vendedor
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
@@ -87,23 +92,17 @@ app.use("/api/pedidos", authenticate, forceOwner(), requireRole('vendedor'), ped
 app.use("/api/repartidores", authenticate, forceOwner(), requireRole('vendedor'), ValorarRepartidores);
 app.use("/api/finanzas", authenticate, forceOwner(), requireRole('vendedor'), verFinanzas);
 
-// Comprador
-app.use("/api/pedidos/comprador", authenticate, forceOwner(), requireRole('comprador'), pedidoRoutes);
-app.use("/api/productos/comprador", authenticate, forceOwner(), requireRole('comprador'), productoRoutes);
-app.use("/api/carrito/comprador", authenticate, forceOwner(), requireRole('comprador'), carritoRoutes);
-
-
 // Repartidor
 app.use("/api/repartidor", authenticate, forceOwner(), requireRole('repartidor'), repartidorRoutes);
 app.use("/api/rutas", authenticate, forceOwner(), requireRole('repartidor'), rutaRoutes);
 
 //administrador
-app.use("/api/admin/comprobantes", comprobanteRoutes);
-app.use("/api/admin/pagos-vendedores", pagosVendedorRoutes);
-app.use("/api/admin/pagos-repartidores", pagosRepartidorRoutes);
-app.use("/api/admin/usuarios", usuariosRoutes);
-app.use("/api/admin/dashboard", dashboardRoutes);
-app.use("/api/admin/ganancias-semanales", gananciasRoutes);
+app.use("/api/admin/comprobantes", authenticate, requireRole('admin'), comprobanteRoutes);
+app.use("/api/admin/pagos-vendedores", authenticate, requireRole('admin'), pagosVendedorRoutes);
+app.use("/api/admin/pagos-repartidores", authenticate, requireRole('admin'), pagosRepartidorRoutes);
+app.use("/api/admin/usuarios", authenticate, requireRole('admin'), usuariosRoutes);
+app.use("/api/admin/dashboard", authenticate, requireRole('admin'), dashboardRoutes);
+app.use("/api/admin/ganancias-semanales", authenticate, requireRole('admin'), gananciasRoutes);
 
 
 // Notificacion

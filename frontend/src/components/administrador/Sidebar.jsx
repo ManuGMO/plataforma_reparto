@@ -1,7 +1,12 @@
 import { useState, useEffect } from "react";
+import { useAuth } from '../../contexts/AuthContext.jsx';
 import Header from "./Header";
 
 export default function Sidebar({ activeSection, setActiveSection }) {
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const { logout, user } = useAuth();
+  const firstName = user?.nombre ? user.nombre.split(' ')[0] : null;
+
   const menuItems = [
     { id: 'dashboard', icon: '📊', label: 'Dashboard' },
     { id: 'users', icon: '👥', label: 'Gestión de Usuarios' },
@@ -68,19 +73,43 @@ export default function Sidebar({ activeSection, setActiveSection }) {
           ))}
         </ul>
       </nav>
-      
+      <>
       <div className={`p-4 border-t bg-white ${collapsed ? 'flex items-center justify-center' : ''}`}>
-        <div className={`flex items-center space-x-3 ${collapsed ? 'flex-col' : ''}`}>
+        <div className={`flex space-x-3 ${collapsed ? 'flex-col' : ''}`}>
           <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
             <span className="text-sm">👤</span>
           </div>
+          
           {!collapsed && (
             <div>
-              <p className="text-sm font-medium text-gray-900">Admin</p>
+              <h2 className="text-lg font-bold text-gray-700">{firstName || 'Repartidor'} </h2>
+              
             </div>
           )}
+          <button
+                onClick={() => setConfirmOpen(true)}
+                className="border border-red-600 text-sm text-red-600 bg-white  px-3 py-1 hover:bg-red-700 hover:text-white hover:border-red-700 transition-colors"
+              >
+                ➜]
+              </button>
         </div>
       </div>
+
+      {confirmOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded p-4 max-w-sm w-full">
+            <p className="text-gray-800 mb-4">¿Deseas cerrar sesión?</p>
+            <div className="flex justify-end space-x-2">
+              <button className="px-3 py-1" onClick={() => setConfirmOpen(false)}>Cancelar</button>
+              <button className="px-3 py-1 bg-red-600 text-white rounded" onClick={() => { setConfirmOpen(false); logout(); }}>Cerrar sesión</button>
+            </div>
+          </div>
+        </div>
+      )}
+            
+      </>
     </aside>
+
+    
   );
 }

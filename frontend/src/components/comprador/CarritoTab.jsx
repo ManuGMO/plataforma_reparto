@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import axios from "axios";
 import CheckoutModal from "./PaymentModal";
 
-export default function CarritoTab({ setNotification }) {
+export default function CarritoTab({ setNotification, CompradorID }) {
   const [carritoData, setCarritoData] = useState({
     items: [],
     subtotal: 0,
@@ -16,7 +16,7 @@ export default function CarritoTab({ setNotification }) {
   const [modalKey, setModalKey] = useState(0);
 
   // ID del comprador (actualmente hardcodeado)
-  const ID_COMPRADOR = 2;
+  const ID_COMPRADOR = CompradorID;
 
   // Función para calcular totales
   const calcularTotales = (items) => {

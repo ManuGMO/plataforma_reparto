@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { useAuth } from '../contexts/AuthContext.jsx';
+import { useNavigate } from 'react-router-dom';
 
 export default function Login({ onGoRegister, showNotification, onLogin }) {
   const [email, setEmail] = useState("");
@@ -21,7 +23,21 @@ export default function Login({ onGoRegister, showNotification, onLogin }) {
     showNotification("Iniciando sesión...");
     const doLogin = async () => {
       try {
-        if (onLogin) await onLogin({ correo: email, contraseña: password });
+        let res = null;
+        if (onLogin) res = await onLogin({ correo: email, contraseña: password });
+
+        // Si el login devolvió múltiples roles, abrir modal para elegir
+        const roles = res?.user?.roles || [];
+        if (roles.length > 1) {
+          setRoleOptions(roles);
+          setRoleModalOpen(true);
+        } else {
+          // navegar según rol único
+          const mapping = { comprador: '/comprador', vendedor: '/vendedor', repartidor: '/repartidor', admin: '/administrador' };
+          const userRole = roles[0] || null;
+          const dest = mapping[userRole] || '/';
+          navigate(dest, { replace: true });
+        }
       } catch (err) {
         const msg = err?.response?.data?.message || err?.message || 'Error al iniciar sesión';
         setError(msg);
@@ -31,6 +47,22 @@ export default function Login({ onGoRegister, showNotification, onLogin }) {
       }
     };
     doLogin();
+  };
+
+  const auth = useAuth();
+  const navigate = useNavigate();
+  const [roleModalOpen, setRoleModalOpen] = useState(false);
+  const [roleOptions, setRoleOptions] = useState([]);
+
+  const chooseRole = async (role) => {
+    try {
+      await auth.selectRole(role);
+      const mapping = { comprador: '/comprador', vendedor: '/vendedor', repartidor: '/repartidor', admin: '/administrador' };
+      const dest = mapping[role] || '/';
+      navigate(dest, { replace: true });
+    } catch (err) {
+      showNotification(err?.response?.data?.message || 'Error seleccionando rol', 'error');
+    }
   };
 
   return (
@@ -92,6 +124,35 @@ export default function Login({ onGoRegister, showNotification, onLogin }) {
               {loading ? 'Ingresando...' : 'Ingresar'}
             </button>
           </form>
+
+          {/* Modal para seleccionar el Rol */}
+          {roleModalOpen && (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+              <div className="bg-white rounded-3xl shadow-2xl p-6 max-w-md w-full">
+                <h3 className="text-2xl font-bold mb-4 text-gray-900">¿Con qué rol quieres entrar?</h3>
+                <p className="text-sm text-gray-500 mb-4">Selecciona una opción para acceder a la interfaz correspondiente.</p>
+                <div className="space-y-3">
+                  {roleOptions.map((r) => (
+                    <button
+                      key={r}
+                      onClick={() => { setRoleModalOpen(false); chooseRole(r); }}
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-colors"
+                    >
+                      {r.charAt(0).toUpperCase() + r.slice(1)}
+                    </button>
+                  ))}
+                </div>
+                <div className="mt-5 flex justify-end">
+                  <button
+                    className="px-4 py-2 rounded-lg bg-gray-100 hover:bg-gray-200"
+                    onClick={() => setRoleModalOpen(false)}
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {error && <p className="mt-4 text-center text-red-500 bg-red-50 p-3 rounded-lg border border-red-100 text-sm">{error}</p>}
 

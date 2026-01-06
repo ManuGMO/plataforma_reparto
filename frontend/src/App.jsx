@@ -20,7 +20,7 @@ function Home() {
       navigate('/login', { replace: true });
       return;
     }
-    const mapping = { comprador: '/comprador', vendedor: '/vendedor', repartidor: '/repartidor', administrador: '/administrador' };
+    const mapping = { comprador: '/comprador', vendedor: '/vendedor', repartidor: '/repartidor', admin: '/administrador' };
     const userRole = auth.user?.roles?.[0] || null;
     const dest = mapping[userRole] || '/';
     navigate(dest, { replace: true });
@@ -39,9 +39,9 @@ function LoginPage() {
 
   const onLogin = async (creds) => {
     try {
-      await auth.login(creds);
+      const res = await auth.login(creds);
       showNotification('Login exitoso');
-      navigate(from, { replace: true });
+      return res;
     } catch (err) {
       showNotification(err?.response?.data?.message || 'Error de autenticación', 'error');
     }
@@ -86,7 +86,7 @@ function App() {
           <Route path="/vendedor" element={<ProtectedRoute allowedRoles={["vendedor"]}><Vendedor /></ProtectedRoute>} />
           <Route path="/comprador" element={<ProtectedRoute allowedRoles={["comprador"]}><Comprador /></ProtectedRoute>} />
           <Route path="/repartidor" element={<ProtectedRoute allowedRoles={["repartidor"]}><Repartidor /></ProtectedRoute>} />
-          <Route path="/administrador" element={<ProtectedRoute allowedRoles={["administrador"]}><Administrador /></ProtectedRoute>} />
+          <Route path="/administrador" element={<ProtectedRoute allowedRoles={["admin"]}><Administrador /></ProtectedRoute>} />
         </Routes>
       </AuthProvider>
     </Router>

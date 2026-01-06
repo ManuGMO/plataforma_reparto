@@ -91,9 +91,52 @@ export const login = async (req, res) => {
 
     const roles = user.Rols ? user.Rols.map(r => r.nombreRol) : [];
 
-    return res.json({ token, user: { id: user.id_usuario, nombre: user.nombre, correo: user.correo, roles } });
+    return res.json({ token, user: { id: user.id_usuario, nombre: user.nombre, correo: user.correo, roles, latitud: user.latitud, longitud: user.longitud } });
   } catch (err) {
     console.error(err);
     return res.status(500).json({ message: 'Error al iniciar sesión' });
+  }
+};
+
+export const logout = async (req, res) => {
+  try {
+    // Token can be sent in Authorization header
+    const authHeader = req.headers.authorization || '';
+    const parts = authHeader.split(' ');
+    let token = null;
+    if (parts.length === 2 && /^Bearer$/i.test(parts[0])) token = parts[1];
+    // Or accept token in body
+    if (!token && req.body && req.body.token) token = req.body.token;
+
+    if (!token) return res.status(400).json({ message: 'Token requerido para logout' });
+
+    const tokenBlacklist = (await import('../utils/tokenBlacklist.js')).default;
+    tokenBlacklist.add(token);
+
+    return res.json({ message: 'Sesión cerrada' });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: 'Error al cerrar sesión' });
+  }
+};
+
+export const selectRole = async (req, res) => {
+  try {
+    const chosen = req.body?.role;
+    if (!chosen) return res.status(400).json({ message: 'role requerido' });
+
+    // `authenticate` middleware debe haber puesto `req.user` con `roles`
+    const roles = req.user?.roles || [];
+    const normalized = String(chosen).toLowerCase().trim();
+    const normalizedRoles = roles.map(r => String(r).toLowerCase().trim());
+    if (!normalizedRoles.includes(normalized)) {
+      return res.status(403).json({ message: 'Rol no asignado al usuario' });
+    }
+
+    // Devuelve el rol activo. En futuro podríamos persistirlo.
+    return res.json({ message: 'Rol seleccionado', role: chosen });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: 'Error al seleccionar rol' });
   }
 };
