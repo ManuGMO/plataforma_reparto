@@ -10,17 +10,17 @@ export default function EditProductModal({ isOpen, onClose, onProductUpdated, pr
   const [notification, setNotification] = useState("");
   const [descripcion, setDescripcion] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  
+
   // Estados para validación de nombre
   const [nameValidation, setNameValidation] = useState({ isValid: true, message: "" });
   const [isValidatingName, setIsValidatingName] = useState(false);
   const [nameSuggestions, setNameSuggestions] = useState([]);
-  
+
   // Estados para imagen
   const [imagenFile, setImagenFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState("");
   const [removeImage, setRemoveImage] = useState(false);
-  
+
   // Estados para crear nueva categoría
   const [showNewCategoryInput, setShowNewCategoryInput] = useState(false);
   const [nuevaCategoria, setNuevaCategoria] = useState("");
@@ -34,18 +34,18 @@ export default function EditProductModal({ isOpen, onClose, onProductUpdated, pr
       setStock(producto.stock || "");
       setIdCategoria(producto.id_categoria || "");
       setDescripcion(producto.descripcion || "");
-      
+
       // Configurar imagen actual
       if (producto.imagen) {
-        setPreviewUrl(`http://localhost:3001/uploads/products/${producto.imagen}`);
+        setPreviewUrl(`${producto.imagen}`);
       } else {
         setPreviewUrl("");
       }
       setImagenFile(null);
       setNameValidation({ isValid: true, message: "" });
-    setNameSuggestions([]);
-    setIsValidatingName(false);
-      
+      setNameSuggestions([]);
+      setIsValidatingName(false);
+
       // Cargar categorías
       const fetchCategorias = async () => {
         try {
@@ -64,7 +64,7 @@ export default function EditProductModal({ isOpen, onClose, onProductUpdated, pr
     if (file) {
       setImagenFile(file);
       setRemoveImage(false);
-      
+
       // Crear URL de preview
       const reader = new FileReader();
       reader.onload = (e) => {
@@ -110,16 +110,16 @@ export default function EditProductModal({ isOpen, onClose, onProductUpdated, pr
         nombre: newName.trim(),
         exclude_id: producto.id_producto
       });
-      
+
       setNameValidation({ isValid: true, message: "✓ Nombre disponible" });
       setNameSuggestions([]);
     } catch (error) {
       if (error.response && error.response.status === 400) {
-        setNameValidation({ 
-          isValid: false, 
-          message: error.response.data.message 
+        setNameValidation({
+          isValid: false,
+          message: error.response.data.message
         });
-        
+
         // Generar sugerencias
         const suggestions = [
           `${newName.trim()} v2`,
@@ -141,7 +141,7 @@ export default function EditProductModal({ isOpen, onClose, onProductUpdated, pr
   // Debounce para validación de nombre
   useEffect(() => {
     if (!nombre) return;
-    
+
     const timeoutId = setTimeout(() => {
       validateName(nombre);
     }, 500);
@@ -188,15 +188,15 @@ export default function EditProductModal({ isOpen, onClose, onProductUpdated, pr
     try {
       // Crear FormData para manejar archivo
       const formData = new FormData();
-    
+
       // Solo agregar campos que han cambiado
       let hasChanges = false;
-    
+
       if (nombre.trim() !== producto.nombre) {
         formData.append('nombre', nombre.trim());
         hasChanges = true;
       }
-      
+
       // Comparar descripción (manejar null/undefined vs string vacío)
       const descripcionActual = producto.descripcion || "";
       const descripcionNueva = descripcion.trim();
@@ -204,7 +204,7 @@ export default function EditProductModal({ isOpen, onClose, onProductUpdated, pr
         formData.append('descripcion', descripcionNueva);
         hasChanges = true;
       }
-      
+
       if (parseInt(precio) !== producto.precio) {
         formData.append('precio', parseInt(precio));
         hasChanges = true;
@@ -217,7 +217,7 @@ export default function EditProductModal({ isOpen, onClose, onProductUpdated, pr
         formData.append('id_categoria', parseInt(idCategoria));
         hasChanges = true;
       }
-    
+
       // Manejar imagen
       if (imagenFile) {
         formData.append('imagen', imagenFile);
@@ -227,13 +227,13 @@ export default function EditProductModal({ isOpen, onClose, onProductUpdated, pr
         formData.append('removeImage', 'true');
         hasChanges = true;
       }
-      
+
       // Si no hay cambios, cerrar modal
       if (!hasChanges) {
         handleClose();
         return;
       }
-      
+
       const res = await axios.put(
         `http://localhost:3001/api/productos/actualizar/${producto.id_producto}`,
         formData,
@@ -246,7 +246,7 @@ export default function EditProductModal({ isOpen, onClose, onProductUpdated, pr
       setNotification("");
       onProductUpdated(res.data.producto);
       onClose();
-    
+
     } catch (error) {
       console.error("Error actualizando producto:", error);
       setNotification(error.response?.data?.message || "Error al actualizar producto");
@@ -302,14 +302,14 @@ export default function EditProductModal({ isOpen, onClose, onProductUpdated, pr
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Imagen del producto
             </label>
-            
+
             {/* Preview de imagen actual/nueva */}
             <div className="mb-3">
               {previewUrl ? (
                 <div className="relative inline-block">
-                  <img 
-                    src={previewUrl} 
-                    alt="Preview" 
+                  <img
+                    src={previewUrl}
+                    alt="Preview"
                     className="w-32 h-32 object-cover border rounded-lg"
                   />
                   <button
@@ -336,7 +336,7 @@ export default function EditProductModal({ isOpen, onClose, onProductUpdated, pr
               onChange={handleImageChange}
               className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
             />
-            
+
             {/* Botones de control de imagen */}
             <div className="flex gap-2 mt-2">
               {producto.imagen && (removeImage || imagenFile) && (
@@ -349,7 +349,7 @@ export default function EditProductModal({ isOpen, onClose, onProductUpdated, pr
                 </button>
               )}
             </div>
-            
+
             <p className="text-xs text-gray-500 mt-1">
               Formatos permitidos: JPG, PNG, GIF. Tamaño máximo: 5MB
             </p>
@@ -366,11 +366,10 @@ export default function EditProductModal({ isOpen, onClose, onProductUpdated, pr
                 placeholder={producto.nombre}
                 value={nombre}
                 onChange={(e) => setNombre(e.target.value)}
-                className={`w-full border px-3 py-2 rounded-lg focus:ring-2 focus:border-blue-500 pr-10 ${
-                  nameValidation.isValid 
-                    ? 'border-gray-300 focus:ring-blue-500' 
+                className={`w-full border px-3 py-2 rounded-lg focus:ring-2 focus:border-blue-500 pr-10 ${nameValidation.isValid
+                    ? 'border-gray-300 focus:ring-blue-500'
                     : 'border-red-300 focus:ring-red-500'
-                }`}
+                  }`}
                 maxLength={100}
               />
               {isValidatingName && (
@@ -382,17 +381,16 @@ export default function EditProductModal({ isOpen, onClose, onProductUpdated, pr
                 </div>
               )}
             </div>
-            
+
             {/* Mensaje de validación */}
             {nameValidation.message && (
-              <p className={`text-xs mt-1 ${
-                nameValidation.isValid ? 'text-green-600' : 'text-red-600'
-              }`}>
+              <p className={`text-xs mt-1 ${nameValidation.isValid ? 'text-green-600' : 'text-red-600'
+                }`}>
                 {nameValidation.message}
               </p>
             )}
-      
-            
+
+
             <p className="text-xs text-gray-500 mt-1">
               Deja vacío para mantener: "{producto.nombre}"
             </p>
@@ -403,7 +401,7 @@ export default function EditProductModal({ isOpen, onClose, onProductUpdated, pr
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Categoría
             </label>
-            
+
             {!showNewCategoryInput ? (
               <select
                 value={idCategoria}

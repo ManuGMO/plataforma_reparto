@@ -26,6 +26,11 @@ export default (sequelize) => {
       type: DataTypes.ENUM('cambio_estado', 'pedido_nuevo', 'promocion'),
       allowNull: false
     },
+    rol_destino: {
+      type: DataTypes.ENUM('comprador', 'vendedor', 'repartidor', 'admin'),
+      allowNull: true,
+      comment: 'Rol al que va dirigida la notificación (para usuarios multi-rol)'
+    },
     titulo: {
       type: DataTypes.STRING(200),
       allowNull: false

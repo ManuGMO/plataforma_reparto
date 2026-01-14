@@ -6,13 +6,13 @@ import Pedido from "../../models/Pedido.js";
 
 export const crearPedidoDesdeCarrito = async (req, res) => {
   const t = await db.sequelize.transaction();
-  
+
   try {
     const { id_comprador, direccion, latitud, longitud, metodo_pago } = req.body;
-    
+
     console.log('📦 Datos recibidos:', { id_comprador, direccion, latitud, longitud, metodo_pago });
     console.log('📁 Archivo comprobante:', req.file);
-    
+
     if (!id_comprador) {
       return res.status(400).json({ message: "ID de comprador es requerido" });
     }
@@ -47,8 +47,8 @@ export const crearPedidoDesdeCarrito = async (req, res) => {
     for (const producto of carrito.Productos) {
       if (producto.stock < producto.Carrito_Producto.cantidad) {
         await t.rollback();
-        return res.status(400).json({ 
-          message: `Stock insuficiente para ${producto.nombre}` 
+        return res.status(400).json({
+          message: `Stock insuficiente para ${producto.nombre}`
         });
       }
     }
@@ -56,7 +56,7 @@ export const crearPedidoDesdeCarrito = async (req, res) => {
     // Calcular total
     let subtotal = 0;
     const vendedoresSet = new Set();
-    
+
     const items = carrito.Productos.map(p => {
       const cantidad = p.Carrito_Producto.cantidad;
       const precio_unitario = Number(p.precio);
@@ -73,43 +73,43 @@ export const crearPedidoDesdeCarrito = async (req, res) => {
       };
     });
 
-  // Leer desglose de montos enviado desde el frontend (viene como string en FormData)
-  let precio_bruto = req.body.precio_bruto ? Number(req.body.precio_bruto) : subtotal;
-  if (!Number.isFinite(precio_bruto)) precio_bruto = subtotal;
+    // Leer desglose de montos enviado desde el frontend (viene como string en FormData)
+    let precio_bruto = req.body.precio_bruto ? Number(req.body.precio_bruto) : subtotal;
+    if (!Number.isFinite(precio_bruto)) precio_bruto = subtotal;
 
-  // Comisión servicio: preferir el valor enviado, sino 10% del subtotal
-  let comision_servicio = req.body.comision_servicio ? Number(req.body.comision_servicio) : Math.round(precio_bruto * 0.10);
-  if (!Number.isFinite(comision_servicio)) comision_servicio = Math.round(precio_bruto * 0.10);
+    // Comisión servicio: preferir el valor enviado, sino 10% del subtotal
+    let comision_servicio = req.body.comision_servicio ? Number(req.body.comision_servicio) : Math.round(precio_bruto * 0.10);
+    if (!Number.isFinite(comision_servicio)) comision_servicio = Math.round(precio_bruto * 0.10);
 
-  // Pago reparto: preferir el valor enviado, sino 5% del subtotal
-  let pago_reparto = req.body.pago_reparto ? Number(req.body.pago_reparto) : Math.round(precio_bruto * 0.05);
-  if (!Number.isFinite(pago_reparto)) pago_reparto = Math.round(precio_bruto * 0.05);
+    // Pago reparto: preferir el valor enviado, sino 5% del subtotal
+    let pago_reparto = req.body.pago_reparto ? Number(req.body.pago_reparto) : Math.round(precio_bruto * 0.05);
+    if (!Number.isFinite(pago_reparto)) pago_reparto = Math.round(precio_bruto * 0.05);
 
-  // Comisión al vendedor: valor que se deduce al vendedor (no visible al comprador)
-  // Puede venir en el body (útil para tests), sino se calcula usando porcentaje en env COMISION_VENDEDOR_PERCENT (por defecto 5%)
-  const sellerPercent = Number(process.env.COMISION_VENDEDOR_PERCENT || 5);
-  let comision_vendedor = req.body.comision_vendedor ? Number(req.body.comision_vendedor) : Math.round(precio_bruto * (sellerPercent / 100));
-  if (!Number.isFinite(comision_vendedor)) comision_vendedor = Math.round(precio_bruto * (sellerPercent / 100));
+    // Comisión al vendedor: valor que se deduce al vendedor (no visible al comprador)
+    // Puede venir en el body (útil para tests), sino se calcula usando porcentaje en env COMISION_VENDEDOR_PERCENT (por defecto 5%)
+    const sellerPercent = Number(process.env.COMISION_VENDEDOR_PERCENT || 5);
+    let comision_vendedor = req.body.comision_vendedor ? Number(req.body.comision_vendedor) : Math.round(precio_bruto * (sellerPercent / 100));
+    if (!Number.isFinite(comision_vendedor)) comision_vendedor = Math.round(precio_bruto * (sellerPercent / 100));
 
-  // Total neto: preferir el valor enviado, sino sumar
-  let total = req.body.total ? Number(req.body.total) : Math.round(precio_bruto + comision_servicio + pago_reparto);
-  if (!Number.isFinite(total)) total = Math.round(precio_bruto + comision_servicio + pago_reparto);
+    // Total neto: preferir el valor enviado, sino sumar
+    let total = req.body.total ? Number(req.body.total) : Math.round(precio_bruto + comision_servicio + pago_reparto);
+    if (!Number.isFinite(total)) total = Math.round(precio_bruto + comision_servicio + pago_reparto);
 
-  // Validación de consistencia: la suma de las partes debe coincidir con el total
-  const sumaPartes = Math.round(precio_bruto + comision_servicio + pago_reparto);
-  if (sumaPartes !== Math.round(total)) {
-    await t.rollback();
-    return res.status(400).json({
-      message: 'Inconsistencia en montos enviados',
-      detalle: {
-        precio_bruto: Math.round(precio_bruto),
-        comision_servicio: Math.round(comision_servicio),
-        pago_reparto: Math.round(pago_reparto),
-        total_enviado: Math.round(total),
-        suma_partes: sumaPartes
-      }
-    });
-  }
+    // Validación de consistencia: la suma de las partes debe coincidir con el total
+    const sumaPartes = Math.round(precio_bruto + comision_servicio + pago_reparto);
+    if (sumaPartes !== Math.round(total)) {
+      await t.rollback();
+      return res.status(400).json({
+        message: 'Inconsistencia en montos enviados',
+        detalle: {
+          precio_bruto: Math.round(precio_bruto),
+          comision_servicio: Math.round(comision_servicio),
+          pago_reparto: Math.round(pago_reparto),
+          total_enviado: Math.round(total),
+          suma_partes: sumaPartes
+        }
+      });
+    }
 
     // Preparar ruta del comprobante si se subió archivo
     let rutaComprobante = null;
@@ -183,7 +183,7 @@ export const crearPedidoDesdeCarrito = async (req, res) => {
     await t.commit();
 
 
-    
+
     // ------ FALTA CREAR NOTIFICACIONES PARA EL ADMIN --------
 
 
@@ -208,7 +208,7 @@ export const crearPedidoDesdeCarrito = async (req, res) => {
 
     return res.status(201).json({
       success: true,
-      message: rutaComprobante 
+      message: rutaComprobante
         ? 'Pedido creado exitosamente con comprobante de pago'
         : 'Pedido creado exitosamente',
       pedido: pedidoCompleto,
@@ -219,7 +219,7 @@ export const crearPedidoDesdeCarrito = async (req, res) => {
 
   } catch (error) {
     await t.rollback();
-    
+
     // Eliminar archivo si se subió pero hubo error
     if (req.file) {
       try {
@@ -229,9 +229,9 @@ export const crearPedidoDesdeCarrito = async (req, res) => {
         console.error('Error eliminando archivo:', unlinkError);
       }
     }
-    
+
     console.error("❌ Error al crear pedido:", error);
-    return res.status(500).json({ 
+    return res.status(500).json({
       message: "Error al crear pedido",
       error: error.message,
       stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
@@ -277,9 +277,9 @@ export const obtenerPedidosDelComprador = async (req, res) => {
         {
           model: db.Producto,
           include: [
-            { 
-              model: db.Categoria, 
-              attributes: ["id_categoria", "nombre"] 
+            {
+              model: db.Categoria,
+              attributes: ["id_categoria", "nombre"]
             },
             {
               model: db.Usuario,
@@ -290,16 +290,16 @@ export const obtenerPedidosDelComprador = async (req, res) => {
           through: { attributes: ["cantidad", "precio_unitario"] }
         },
         // Incluir información del comprador (opcional, para verificación)
-        { 
-          model: db.Usuario, 
-          as: "Comprador", 
+        {
+          model: db.Usuario,
+          as: "Comprador",
           through: { attributes: [] },
           attributes: ['id_usuario', 'nombre']
         },
         // (opcional) vendedor asignado (si existe)
-        { 
-          model: db.Usuario, 
-          as: "Vendedor", 
+        {
+          model: db.Usuario,
+          as: "Vendedor",
           through: { attributes: [] },
           required: false
         }
@@ -321,14 +321,14 @@ export const obtenerPedidosDelComprador = async (req, res) => {
       const items = pedido.Productos.map(producto => {
         const cantidad = producto.Producto_Pedido.cantidad;
         const precio_unitario = producto.Producto_Pedido.precio_unitario
-        
+
         return {
           nombre: producto.nombre,
           cantidad: cantidad,
           precio: precio_unitario,
           subtotal: precio_unitario * cantidad,
-          vendedor: producto.Vendedor ? 
-            `${producto.Vendedor.nombre}` : 
+          vendedor: producto.Vendedor ?
+            `${producto.Vendedor.nombre}` :
             'Vendedor'
         };
       });
@@ -363,9 +363,9 @@ export const obtenerPedidosDelComprador = async (req, res) => {
     return res.json(pedidosTransformados);
   } catch (error) {
     console.error("Error al obtener pedidos del comprador:", error);
-    return res.status(500).json({ 
+    return res.status(500).json({
       message: "Error al obtener pedidos",
-      error: error.message 
+      error: error.message
     });
   }
 };
@@ -410,7 +410,7 @@ export const actualizarEstadoPedido = async (req, res) => {
 // Calificar pedido (vendedor y/o repartidor)
 export const calificarPedido = async (req, res) => {
   const t = await db.sequelize.transaction();
-  
+
   try {
     const { id_pedido, id_comprador, calificaciones } = req.body;
 
@@ -510,9 +510,9 @@ export const calificarPedido = async (req, res) => {
   } catch (error) {
     await t.rollback();
     console.error('Error al calificar pedido:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       message: "Error al guardar calificaciones",
-      error: error.message 
+      error: error.message
     });
   }
 };

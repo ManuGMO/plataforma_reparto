@@ -5,7 +5,7 @@ const { sequelize, Pedido, Usuario, Producto, pedido_repartidor, Producto_Pedido
 export const getPedidos = async (req, res) => {
   try {
     const { id } = req.params;
-   
+
     const pedidos = await db.pedido_vendedor.findAll({
       where: { id_usuario: id },
       include: [
@@ -34,12 +34,12 @@ export const getPedidos = async (req, res) => {
 
     const pedidosTransformados = pedidos.map((pedidoVendedor) => {
       const pedido = pedidoVendedor.Pedido;
-      
+
       if (!pedido) {
         console.warn('Pedido no encontrado para pedidoVendedor:', pedidoVendedor.id);
         return null;
       }
-     
+
       return {
         id_pedido: pedido.id_pedido,
         cliente: pedido.Comprador?.[0]?.nombre || "Cliente no disponible",
@@ -136,24 +136,24 @@ export const getPedidoDetalle = async (req, res) => {
       latitud: pedido.latitud,
       longitud: pedido.longitud,
       tiene_repartidor: pedido.tiene_repartidor,
-      
+
       // Información de pago
       comprobante_pago: pedido.comprobante_pago,
       pago_confirmado: pedido.pago_confirmado,
       fecha_confirmacion_pago: pedido.fecha_confirmacion_pago,
-      
+
       // Comprador
       comprador: pedido.Comprador?.[0] ? {
         id: pedido.Comprador[0].id_usuario,
         nombre: pedido.Comprador[0].nombre
       } : null,
-      
+
       // Repartidor
       repartidor: pedido.Repartidor?.[0] ? {
         id: pedido.Repartidor[0].id_usuario,
         nombre: pedido.Repartidor[0].nombre
       } : null,
-      
+
       // Productos
       productos: pedido.Productos.map(producto => ({
         id: producto.id_producto,
@@ -180,11 +180,12 @@ export const getPedidoDetalle = async (req, res) => {
 
 export const estadoPedido = async (req, res) => {
   const transaction = await sequelize.transaction();
- 
+
   try {
     const { id } = req.params;
     const { estado, id_vendedor } = req.body;
-    
+    console.log("Id del vendedor: ", id_vendedor);
+
     const pedido = await Pedido.findByPk(id, {
       include: [
         {
@@ -256,7 +257,7 @@ export const estadoPedido = async (req, res) => {
 
 export const marcarListoParaRecoger = async (req, res) => {
   const transaction = await sequelize.transaction();
-  
+
   try {
     const { pedidoId } = req.params;
     const { id_vendedor } = req.body;
@@ -274,8 +275,8 @@ export const marcarListoParaRecoger = async (req, res) => {
 
     if (!pedido) {
       await transaction.rollback();
-      return res.status(404).json({ 
-        error: 'Pedido no encontrado' 
+      return res.status(404).json({
+        error: 'Pedido no encontrado'
       });
     }
 
@@ -283,27 +284,27 @@ export const marcarListoParaRecoger = async (req, res) => {
     const vendedorAsignado = pedido.Vendedor.find(v => v.id_usuario == id_vendedor);
     if (!vendedorAsignado) {
       await transaction.rollback();
-      return res.status(403).json({ 
-        error: 'No tienes permisos para actualizar este pedido' 
+      return res.status(403).json({
+        error: 'No tienes permisos para actualizar este pedido'
       });
     }
 
     // Verificar que el pedido está en estado aceptado
     if (pedido.estado !== 'aceptado') {
       await transaction.rollback();
-      return res.status(400).json({ 
-        error: `No se puede marcar como listo. Estado actual: ${pedido.estado}` 
+      return res.status(400).json({
+        error: `No se puede marcar como listo. Estado actual: ${pedido.estado}`
       });
     }
 
     // Actualizar estado
-    await pedido.update({ 
-      estado: 'listo_para_recoger' 
+    await pedido.update({
+      estado: 'listo_para_recoger'
     }, { transaction });
 
     await transaction.commit();
 
-    res.json({ 
+    res.json({
       message: 'Pedido marcado como listo para recoger',
       pedido: {
         id_pedido: pedido.id_pedido,
@@ -313,9 +314,9 @@ export const marcarListoParaRecoger = async (req, res) => {
   } catch (error) {
     await transaction.rollback();
     console.error('Error al marcar pedido como listo:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Error interno del servidor',
-      message: error.message 
+      message: error.message
     });
   }
 };

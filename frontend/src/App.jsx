@@ -4,29 +4,41 @@ import Vendedor from "./pages/vendedor";
 import Comprador from "./pages/comprador";
 import Repartidor from "./pages/repartidor";
 import Administrador from "./pages/administrador";
-import Login from "./components/login";
-import Register from "./components/register";
+import Login from "./components/Login";
+import Register from "./components/Register";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { useLocation } from "react-router-dom";
 import React from "react";
 
 function Home() {
-  // Redirige según el rol del usuario autenticado
-  const auth = useAuth();
+  const { isAuthenticated, user, loading } = useAuth();
   const navigate = useNavigate();
+
   React.useEffect(() => {
-    if (!auth?.isAuthenticated) {
+    if (loading) return; // ⬅️ MUY IMPORTANTE
+
+    if (!isAuthenticated) {
       navigate('/login', { replace: true });
       return;
     }
-    const mapping = { comprador: '/comprador', vendedor: '/vendedor', repartidor: '/repartidor', admin: '/administrador' };
-    const userRole = auth.user?.roles?.[0] || null;
-    const dest = mapping[userRole] || '/';
-    navigate(dest, { replace: true });
-  }, [auth, navigate]);
 
-  return <div />;
+    const mapping = {
+      comprador: '/comprador',
+      vendedor: '/vendedor',
+      repartidor: '/repartidor',
+      admin: '/administrador',
+    };
+
+    const role = user?.roles?.[0];
+    const dest = mapping[role];
+
+    if (dest) {
+      navigate(dest, { replace: true });
+    }
+  }, [isAuthenticated, loading, user?.roles?.[0], navigate]);
+
+  return null;
 }
 
 function LoginPage() {

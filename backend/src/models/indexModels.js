@@ -63,12 +63,30 @@ Object.keys(db).forEach(modelName => {
 db.sequelize = sequelize_instance;
 db.Sequelize = Sequelize;
 
-db.sequelize.sync({ alter: true })
-  .then(() => {
+async function initDatabase() {
+  try {
+    await db.sequelize.sync({ alter: true });
     console.log("✅ Base de datos sincronizada con alter");
-  })
-  .catch(err => {
-    console.error("❌ Error al sincronizar la base de datos:", err);
-  });
+
+    await db.Rol.bulkCreate(
+      [
+        { id_rol: 1, nombreRol: 'comprador' },
+        { id_rol: 2, nombreRol: 'vendedor' },
+        { id_rol: 3, nombreRol: 'repartidor' },
+        { id_rol: 4, nombreRol: 'admin' }
+      ],
+      {
+        ignoreDuplicates: true
+      }
+    );
+
+    console.log("✅ Roles inicializados");
+  } catch (err) {
+    console.error("❌ Error inicializando la base de datos:", err);
+    process.exit(1);
+  }
+}
+
+initDatabase();
 
 export default db;

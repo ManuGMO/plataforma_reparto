@@ -39,17 +39,34 @@ export default function LocationModal({ initial, onClose, onSave }) {
     return () => { mounted = false; if (mapRef.current) mapRef.current.remove(); };
   }, []);
 
+  const [currentLocation, setCurrentLocation] = useState(null);
+
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          setCurrentLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        },
+        (err) => console.log('Error getting location for proximity', err)
+      );
+    }
+  }, []);
+
   useEffect(() => {
     const t = setTimeout(async () => {
       if (!query) return setResults([]);
       try {
-        const res = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${MAPBOX_TOKEN}&autocomplete=true&limit=5&language=es`);
+        let url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${MAPBOX_TOKEN}&autocomplete=true&limit=5&language=es`;
+        if (currentLocation) {
+          url += `&proximity=${currentLocation.lng},${currentLocation.lat}`;
+        }
+        const res = await fetch(url);
         const data = await res.json();
         setResults(data.features || []);
       } catch (e) { setResults([]); }
     }, 350);
     return () => clearTimeout(t);
-  }, [query]);
+  }, [query, currentLocation]);
 
   useEffect(() => {
     (async () => {
@@ -93,7 +110,7 @@ export default function LocationModal({ initial, onClose, onSave }) {
             <input value={query} onChange={(e) => setQuery(e.target.value)} className=" bg-gray-200 w-full border rounded p-2 mb-2 hover:bg-gray-300 placeholder-black focus:outline-none focus:border-gray-700" placeholder="Buscar dirección..." />
             <div className="space-y-2 max-h-60 overflow-auto">
               {results.map((r) => (
-                <button key={r.id} onClick={() => chooseResult(r)} className="w-full text-left px-2 py-2 hover:bg-gray-50">{r.place_name}</button>
+                <button key={r.id} onClick={() => chooseResult(r)} className="text-black w-full text-left px-2 py-2 hover:bg-gray-50">{r.place_name}</button>
               ))}
             </div>
             <div className="mt-4">

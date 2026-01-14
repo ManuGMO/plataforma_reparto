@@ -13,7 +13,7 @@ export default function OrderDetailAndDelivery({ order, currentView, onBack, onA
   const vendorMarkerRef = useRef(null);
   const driverMarkerRef = useRef(null);
 
-  console.log ('OrderDetailAndDelivery order:', order, 'view:', currentView);
+  console.log('OrderDetailAndDelivery order:', order, 'view:', currentView);
 
   const getOrderCoords = (o) => {
     if (!o) return null;
@@ -71,7 +71,7 @@ export default function OrderDetailAndDelivery({ order, currentView, onBack, onA
       mapRef.current = new (await import('mapbox-gl')).Map({ container: mapContainerRef.current, style: 'mapbox://styles/mapbox/streets-v11', center: [centerLng, centerLat], zoom: 13 });
       mapRef.current.addControl(new (await import('mapbox-gl')).NavigationControl());
       mapRef.current.on('load', () => {
-        try { mapRef.current.resize && mapRef.current.resize(); } catch (e) {}
+        try { mapRef.current.resize && mapRef.current.resize(); } catch (e) { }
       });
       return mapRef.current;
     } catch (err) { console.error('initMap error', err); }
@@ -119,8 +119,8 @@ export default function OrderDetailAndDelivery({ order, currentView, onBack, onA
       else if (type === 'vendor') label = vendorName || 'Vendedor';
       else if (type === 'driver') label = 'Tu ubicación';
 
-  // usar HTML para forzar color de texto negro en el popup
-  const popup = new mapboxgl.Popup({ offset: 25 }).setHTML(`<div style="color:#000; font-weight:600;">${label}</div>`);
+      // usar HTML para forzar color de texto negro en el popup
+      const popup = new mapboxgl.Popup({ offset: 25 }).setHTML(`<div style="color:#000; font-weight:600;">${label}</div>`);
 
       if (type === 'order') {
         if (orderMarkerRef.current) orderMarkerRef.current.remove();
@@ -140,8 +140,8 @@ export default function OrderDetailAndDelivery({ order, currentView, onBack, onA
     const R = 6371000;
     const dLat = toRad(lat2 - lat1);
     const dLon = toRad(lon2 - lon1);
-    const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon/2) * Math.sin(dLon/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c;
   };
 
@@ -205,14 +205,14 @@ export default function OrderDetailAndDelivery({ order, currentView, onBack, onA
     setup();
     return () => {
       mounted = false;
-      try { if (mapRef.current) { mapRef.current.remove(); mapRef.current = null; } } catch (e) {}
+      try { if (mapRef.current) { mapRef.current.remove(); mapRef.current = null; } } catch (e) { }
       orderMarkerRef.current = null; vendorMarkerRef.current = null; driverMarkerRef.current = null;
     };
   }, [order]);
 
   const getCurrentStep = () => {
     if (!order.tiene_repartidor) return 1;
-    if (order.estado === 'listo_para_recoger') return 2;
+    if (order.estado === 'aceptado' || order.estado === 'listo_para_recoger') return 2;
     if (order.estado === 'en_reparto') return 3;
     if (order.estado === 'entregado') return 4;
     return 1;
@@ -225,12 +225,16 @@ export default function OrderDetailAndDelivery({ order, currentView, onBack, onA
   const vendorName = order.Vendedor?.[0]?.nombre || order.vendedor?.nombre || 'Restaurante';
   const customerName = order.Comprador?.[0]?.nombre || order.comprador?.nombre || 'Cliente';
 
-  const steps = [ { id: 1, label: 'Disponible', icon: '1' }, { id: 2, label: 'Recoger', icon: '2' }, { id: 3, label: 'Entregar', icon: '3' } ];
+  const steps = [{ id: 1, label: 'Disponible', icon: '1' }, { id: 2, label: 'Recoger', icon: '2' }, { id: 3, label: 'Entregar', icon: '3' }];
 
   const getCurrentAction = () => {
     if (!order.tiene_repartidor) return { text: `Acepta este pedido para comenzar el reparto`, address: '', button: '🚲 Aceptar Pedido', action: 'accept' };
     switch (currentStep) {
-      case 2: return { text: `Dirígete a recoger el pedido en ${vendorName}`, address: vendorAddress || 'Dirección del vendedor', button: '📦 Confirmar Recogida', action: 'pickup' };
+      case 2:
+        if (order.estado === 'aceptado') {
+          return { text: `Dirígete a ${vendorName}. Esperando que el pedido esté listo.`, address: vendorAddress || 'Dirección del vendedor', button: '⏳ Esperando preparación...', action: 'wait' };
+        }
+        return { text: `Pedido listo en ${vendorName}. Confirma la recogida.`, address: vendorAddress || 'Dirección del vendedor', button: '📦 Confirmar Recogida', action: 'pickup' };
       case 3: return { text: `Entregar pedido a ${customerName}`, address: order.direccion || 'Dirección del cliente', button: '✅ Confirmar Entrega', action: 'delivery' };
       default: return { text: 'Entrega completada', address: '', button: 'Finalizar', action: 'complete' };
     }
@@ -285,7 +289,7 @@ export default function OrderDetailAndDelivery({ order, currentView, onBack, onA
               const response = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${MAPBOX_TOKEN}&types=address,poi,place&language=es&limit=1`);
               if (!response.ok) return 'Dirección no disponible';
               const data = await response.json();
-              if (data.features && data.features.length > 0) return data.features[0].place_name.split(',').slice(0,2).join(',');
+              if (data.features && data.features.length > 0) return data.features[0].place_name.split(',').slice(0, 2).join(',');
             } catch (e) { console.warn(e); }
             return 'Dirección no disponible';
           })(vendorCoords.lat, vendorCoords.lng);
@@ -316,17 +320,17 @@ export default function OrderDetailAndDelivery({ order, currentView, onBack, onA
         </div>
       </header>
       <div className="p-4 space-y-6">
-        {order.tiene_repartidor && (<div className="bg-white border rounded-lg p-4"><div className="flex items-center justify-between mb-4">{steps.map((step, index) => (<div key={step.id} className="flex items-center"><div className="step-item flex flex-col items-center"><div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${step.id <= currentStep ? step.id === 1 ? 'bg-green-600 text-white' : step.id === currentStep ? 'bg-blue-600 text-white' : 'bg-green-600 text-white' : 'bg-gray-300 text-gray-600'}`}>{step.id <= currentStep && step.id !== currentStep ? '✓' : step.icon}</div><span className="text-xs text-gray-600 mt-1">{step.label}</span></div>{index < steps.length - 1 && (<div className={`flex-1 h-1 mx-2 ${step.id < currentStep ? 'bg-green-600' : 'bg-gray-300'}`} style={{width: '50px'}}></div>)}</div>))}</div></div>)}
+        {order.tiene_repartidor && (<div className="bg-white border rounded-lg p-4"><div className="flex items-center justify-between mb-4">{steps.map((step, index) => (<div key={step.id} className="flex items-center"><div className="step-item flex flex-col items-center"><div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${step.id <= currentStep ? step.id === 1 ? 'bg-green-600 text-white' : step.id === currentStep ? 'bg-blue-600 text-white' : 'bg-green-600 text-white' : 'bg-gray-300 text-gray-600'}`}>{step.id <= currentStep && step.id !== currentStep ? '✓' : step.icon}</div><span className="text-xs text-gray-600 mt-1">{step.label}</span></div>{index < steps.length - 1 && (<div className={`flex-1 h-1 mx-2 ${step.id < currentStep ? 'bg-green-600' : 'bg-gray-300'}`} style={{ width: '50px' }}></div>)}</div>))}</div></div>)}
         <div className="bg-white border rounded-lg p-4"><h3 className="font-semibold text-gray-900 mb-3">Detalles del Pedido</h3><div className="space-y-3">
-            <div><p className="text-sm text-gray-600">Recoger en:</p><p className="font-medium text-gray-500">{vendorName}</p><p className="text-sm text-gray-500"> 📍{loadingAddress ? (<span className="inline-flex items-center">
+          <div><p className="text-sm text-gray-600">Recoger en:</p><p className="font-medium text-gray-500">{vendorName}</p><p className="text-sm text-gray-500"> 📍{loadingAddress ? (<span className="inline-flex items-center">
             <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-gray-400 mr-2"></div>Obteniendo dirección...</span>) : vendorAddress}</p></div>
-            <div><p className="text-sm text-gray-600">Entregar a:</p><p className="font-medium text-gray-500">{customerName}</p><p className="text-sm text-gray-500">📍 {order.direccion || 'Dirección del cliente'}</p></div>
-            <div><p className="text-sm text-gray-600">Productos:</p><div className="space-y-1">{order.productos?.map((producto, index) => (<div key={index} className="flex justify-between text-sm text-gray-400"><span>{producto.nombre}</span><span>x{producto.Producto_Pedido?.cantidad || 1}</span></div>)) || (<p className="text-sm text-gray-500">Cargando productos...</p>)}</div></div><div className="pt-2 border-t space-y-2">
-              <div className="flex justify-between text-sm"><span className='font-semibold text-gray-700'>Subtotal:</span><span className="text-gray-700">${order.precio_bruto || order.subtotal || 0}</span></div>
-              <div className="flex justify-between text-sm"><span className='font-semibold text-gray-700'>Comisión servicio:</span><span className="text-gray-700">${order.comision_servicio || 0}</span></div>
-              <div className="flex justify-between text-sm"><span className='font-semibold text-gray-700'>Ganancia del repartidor:</span><span className="text-gray-700">${order.pago_reparto || order.precio_reparto || 0}</span></div>
-              <div className="flex justify-between font-semibold"><span className='font-semibold text-gray-700'>Total:</span><span className="text-green-600">${order.total}</span></div></div></div></div>
-       
+          <div><p className="text-sm text-gray-600">Entregar a:</p><p className="font-medium text-gray-500">{customerName}</p><p className="text-sm text-gray-500">📍 {order.direccion || 'Dirección del cliente'}</p></div>
+          <div><p className="text-sm text-gray-600">Productos:</p><div className="space-y-1">{order.productos?.map((producto, index) => (<div key={index} className="flex justify-between text-sm text-gray-400"><span>{producto.nombre}</span><span>x{producto.Producto_Pedido?.cantidad || 1}</span></div>)) || (<p className="text-sm text-gray-500">Cargando productos...</p>)}</div></div><div className="pt-2 border-t space-y-2">
+            <div className="flex justify-between text-sm"><span className='font-semibold text-gray-700'>Subtotal:</span><span className="text-gray-700">${order.precio_bruto || order.subtotal || 0}</span></div>
+            <div className="flex justify-between text-sm"><span className='font-semibold text-gray-700'>Comisión servicio:</span><span className="text-gray-700">${order.comision_servicio || 0}</span></div>
+            <div className="flex justify-between text-sm"><span className='font-semibold text-gray-700'>Ganancia del repartidor:</span><span className="text-gray-700">${order.pago_reparto || order.precio_reparto || 0}</span></div>
+            <div className="flex justify-between font-semibold"><span className='font-semibold text-gray-700'>Total:</span><span className="text-green-600">${order.total}</span></div></div></div></div>
+
         {(getOrderCoords(order)) ? (
           <div className="bg-white border rounded-lg p-4">
             <h3 className="font-semibold text-gray-900 mb-3">Mapa</h3>
@@ -343,7 +347,7 @@ export default function OrderDetailAndDelivery({ order, currentView, onBack, onA
         ) : (
           <div className="bg-white border rounded-lg p-4"><p className="text-sm text-gray-500">Ubicación del cliente no disponible</p></div>
         )}
-        <button onClick={handleAction} disabled={loading} className="w-full bg-blue-600 text-white py-4 rounded-lg font-semibold text-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400">{loading ? 'Procesando...' : getCurrentAction().button}</button>
+        <button onClick={handleAction} disabled={loading || getCurrentAction().action === 'wait'} className="w-full bg-blue-600 text-white py-4 rounded-lg font-semibold text-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400">{loading ? 'Procesando...' : getCurrentAction().button}</button>
       </div>
     </div>
   );

@@ -1,7 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import {sequelize} from './src/config/db.js';
+import { sequelize } from './src/config/db.js';
 import db from './src/models/indexModels.js';
 import path from "path";
 import { fileURLToPath } from "url";
@@ -16,7 +16,9 @@ dotenv.config();
 const app = express();
 const PORT = process.env.BACK_PORT;
 
+
 // Sincronizar la base de datos
+await starServer();
 await db.sequelize.sync();
 
 // Middlewares
@@ -29,18 +31,24 @@ app.get('/', (req, res) => {
 });
 
 // Inicialización del servidor
-const startServer = async () => {
-  try {
-    await sequelize.authenticate();
-    console.log('✅ Conectado a MySQL');
+async function starServer(retries = 5, delay = 3000) {
+  while (retries > 0) {
+    try {
+      await sequelize.authenticate();
+      console.log('✅ Conectado a MySQL');
 
-    app.listen(PORT, () => {
-      console.log(`🚀Servidor corriendo en http://localhost:${PORT}`);
-    });
-  } catch (error) {
-    console.error('❌Error al conectar a la base de datos:', error);
-    process.exit(1);
+      app.listen(PORT, () => {
+        console.log(`🚀Servidor corriendo en http://localhost:${PORT}`);
+      });
+      return;
+
+    } catch (error) {
+      console.log('❌Error al conectar a la base de datos:');
+      retries--;
+      await new Promise(r => setTimeout(r, delay));
+    }
   }
+  throw new Error('No se pudo conectar a la DB');
 };
 
 import productosRoutes from "./src/routes/vendedor/productosRoutes.js";
@@ -110,4 +118,4 @@ app.use("/api/notificaciones", notificacionesRoutes);
 
 
 
-startServer();
+//startServer();

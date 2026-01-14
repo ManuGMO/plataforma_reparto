@@ -4,9 +4,19 @@ import db from "../models/indexModels.js";
 export const obtenerNotificacionesUsuario = async (req, res) => {
   try {
     const { id_usuario } = req.params;
+    const { rol } = req.query; // Rol activo del usuario (opcional)
+
+    const whereClause = { id_usuario };
+
+    // Si se especifica un rol, filtrar notificaciones para ese rol O generales (null)
+    if (rol) {
+      whereClause.rol_destino = {
+        [db.Sequelize.Op.or]: [rol, null]
+      };
+    }
 
     const notificaciones = await db.Notificacion.findAll({
-      where: { id_usuario },
+      where: whereClause,
       include: [
         {
           model: db.Pedido,
@@ -29,12 +39,22 @@ export const obtenerNotificacionesUsuario = async (req, res) => {
 export const obtenerNotificacionesNoLeidas = async (req, res) => {
   try {
     const { id_usuario } = req.params;
+    const { rol } = req.query; // Rol activo del usuario
+
+    const whereClause = {
+      id_usuario,
+      estado: 'no_leida'
+    };
+
+    // Filtro por rol si se proporciona
+    if (rol) {
+      whereClause.rol_destino = {
+        [db.Sequelize.Op.or]: [rol, null]
+      };
+    }
 
     const notificaciones = await db.Notificacion.findAll({
-      where: { 
-        id_usuario,
-        estado: 'no_leida'
-      },
+      where: whereClause,
       include: [
         {
           model: db.Pedido,
@@ -63,6 +83,7 @@ export const marcarComoLeida = async (req, res) => {
     }
 
     await notificacion.update({ estado: 'leida' });
+    console.log(`[NOTIFICACIÓN] 👀 Notificación ID: ${id_notificacion} leída por Usuario ID: ${notificacion.id_usuario}`);
     res.json(notificacion);
   } catch (error) {
     console.error("Error al marcar notificación como leída:", error);
@@ -77,8 +98,8 @@ export const marcarTodasComoLeidas = async (req, res) => {
 
     await db.Notificacion.update(
       { estado: 'leida' },
-      { 
-        where: { 
+      {
+        where: {
           id_usuario,
           estado: 'no_leida'
         }

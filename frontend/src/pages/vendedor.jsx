@@ -32,9 +32,51 @@ export default function Vendedor() {
     if (noLoc) setShowLocationModal(true);
   }, [user]);
 
+  // Polling de notificaciones
+  useEffect(() => {
+    if (!ID_VENDEDOR) return;
+
+    const checkNotifications = async () => {
+      try {
+        // Filtramos por rol=vendedor para evitar ver notificaciones de otros roles (ej: si soy también comprador)
+        const res = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/notificaciones/usuario/${ID_VENDEDOR}/no-leidas?rol=vendedor`);
+        const notificaciones = res.data;
+
+        if (notificaciones && notificaciones.length > 0) {
+          // Mostrar la más reciente
+          const ultima = notificaciones[0];
+          setNotification(ultima.mensaje); // Usa el componente Notification existente
+          console.log("🔔 Nueva notificación recibida:", ultima.titulo);
+
+          // Marcar como leídas para que no salgan de nuevo en el próximo poll
+          // (Idealmente se hace una por una o un endpoint bulk, aquí usamos un truco simple mark-all o loop)
+          await Promise.all(notificaciones.map(n =>
+            axios.put(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/notificaciones/${n.id_notificacion}/leer`)
+          ));
+
+          // Si la notificación es sobre un nuevo pedido, refrescar la lista de pedidos
+          if (ultima.tipo === 'pedido_nuevo' && activeTab === 'pedidos') {
+            // Forzamos update a PedidosTab pasando una prop nueva o usando contexto, pero
+            // como PedidosTab tiene su propio useEffect, tal vez necesitemos un trigger.
+            // Por ahora, confiamos en que el usuario recargue o el componente lo maneje.
+            // Una mejora seria pasar una prop 'lastUpdate' a PedidosTab.
+          }
+        }
+      } catch (error) {
+        console.error("Error checking notifications:", error);
+      }
+    };
+
+    // Revisar inmediatamente y luego cada 15 segundos
+    checkNotifications();
+    const intervalId = setInterval(checkNotifications, 15000);
+
+    return () => clearInterval(intervalId);
+  }, [ID_VENDEDOR, activeTab]);
+
   const handleProductAdded = () => {
     setRefreshProducts(prev => prev + 1);
-    setProductModalOpen(false); 
+    setProductModalOpen(false);
     setNotification("Producto agregado correctamente"); // ← Muestra notificación
   };
 
@@ -47,10 +89,10 @@ export default function Vendedor() {
 
   return (
     <AppMobileContainer header={header} footer={footer}>
-      {activeTab === "productos" && <ProductosTab openModal={() => setProductModalOpen(true)} refreshTrigger={refreshProducts}/>}
-  {/* por ahora usamos vendorId=1 como id del vendedor en este entorno local */}
-  {activeTab === "pedidos" && <PedidosTab setNotification={setNotification} vendorId={ID_VENDEDOR} />}
-      {activeTab === "repartidores" && <RepartidoresTab idUsuario={ID_VENDEDOR} openBlockModal={() => setBlockModalOpen(true) } />}
+      {activeTab === "productos" && <ProductosTab openModal={() => setProductModalOpen(true)} refreshTrigger={refreshProducts} />}
+      {/* por ahora usamos vendorId=1 como id del vendedor en este entorno local */}
+      {activeTab === "pedidos" && <PedidosTab setNotification={setNotification} vendorId={ID_VENDEDOR} />}
+      {activeTab === "repartidores" && <RepartidoresTab idUsuario={ID_VENDEDOR} openBlockModal={() => setBlockModalOpen(true)} />}
       {activeTab === "finanzas" && <FinanzasTab idUsuario={ID_VENDEDOR} />}
       {activeTab === "perfil" && <PerfilTab onSaved={(loc) => setNotification('Ubicación guardada')} onBack={() => setActiveTab('productos')} />}
       {showLocationModal && (
@@ -76,10 +118,10 @@ export default function Vendedor() {
         onClose={() => setProductModalOpen(false)}
         onProductAdded={handleProductAdded}
       />
-      
-      <Notification 
-        message={notification} 
-        onClose={() => setNotification("")} 
+
+      <Notification
+        message={notification}
+        onClose={() => setNotification("")}
       />
     </AppMobileContainer>
   )

@@ -89,7 +89,7 @@ export const AuthProvider = ({ children }) => {
     try {
       if (token) {
         // send Authorization header explicitly to ensure backend receives it
-        void axios.post('/api/auth/logout', {}, { headers: { Authorization: `Bearer ${token}` } }).catch(() => {});
+        void axios.post('/api/auth/logout', {}, { headers: { Authorization: `Bearer ${token}` } }).catch(() => { });
       }
     } catch (err) {
       // ignore

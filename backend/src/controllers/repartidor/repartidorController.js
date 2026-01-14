@@ -9,10 +9,10 @@ const { sequelize, Pedido, Usuario, Producto, pedido_repartidor, Producto_Pedido
 export const asignarRepartidor = async (req, res) => {
   try {
     const { pedidoId, repartidorId } = req.body;
-    
+
     const pedido = await db.Pedido.findByPk(pedidoId);
     const repartidor = await db.Usuario.findByPk(repartidorId);
-    
+
     // Calcular ruta y tiempo estimado
     const ruta = await calcularRuta(
       repartidor.latitud_actual,
@@ -20,15 +20,15 @@ export const asignarRepartidor = async (req, res) => {
       pedido.latitud,
       pedido.longitud
     );
-    
+
     await pedido.update({
       tiene_repartidor: true,
       tiempo_estimado_entrega: Math.ceil(ruta.duracion / 60), // minutos
       distancia_entrega: Math.ceil(ruta.distancia / 1000) // km
     });
-    
-    res.json({ 
-      success: true, 
+
+    res.json({
+      success: true,
       ruta,
       tiempo_estimado: `${Math.ceil(ruta.duracion / 60)} minutos`
     });
@@ -42,7 +42,7 @@ export const obtenerPedidosDisponibles = async (req, res) => {
   try {
     const pedidos = await Pedido.findAll({
       where: {
-        estado: ['aceptado','listo_para_recoger']
+        estado: ['aceptado', 'listo_para_recoger']
       },
       include: [
         {
@@ -72,9 +72,9 @@ export const obtenerPedidosDisponibles = async (req, res) => {
     res.json(pedidos);
   } catch (error) {
     console.error('Error al obtener pedidos disponibles:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Error interno del servidor',
-      message: error.message 
+      message: error.message
     });
   }
 };
@@ -83,7 +83,7 @@ export const obtenerPedidosDisponibles = async (req, res) => {
 export const obtenerPedidosAsignados = async (req, res) => {
   try {
     const { repartidorId } = req.params;
-    
+
     const pedidos = await Pedido.findAll({
       include: [
         {
@@ -119,9 +119,9 @@ export const obtenerPedidosAsignados = async (req, res) => {
     res.json(pedidos);
   } catch (error) {
     console.error('Error al obtener pedidos asignados:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Error interno del servidor',
-      message: error.message 
+      message: error.message
     });
   }
 };
@@ -132,18 +132,18 @@ export const getPedidosDisponibles = async (req, res) => {
   try {
     const { repartidorId } = req.params;
     // Buscar pedidos que estén listos para recoger
-    // Buscar pedidos en estados que indiquen que están listos para ser tomados
+    // Buscar pedidos en estados que indiquen que están listos para ser tomados o en curso
     const pedidosDisponibles = await Pedido.findAll({
       where: {
-        estado: ['aceptado', 'listo_para_recoger']
+        estado: ['aceptado', 'listo_para_recoger', 'en_reparto']
       },
       include: [
         {
           model: Usuario,
           as: 'Repartidor',
-          required: false, 
+          required: false,
           through: {
-            attributes: [] 
+            attributes: []
           }
         },
         {
@@ -151,7 +151,7 @@ export const getPedidosDisponibles = async (req, res) => {
           as: 'Comprador',
           attributes: ['id_usuario', 'nombre', 'correo', 'latitud', 'longitud'],
           through: {
-            attributes: [] 
+            attributes: []
           }
         },
         {
@@ -159,7 +159,7 @@ export const getPedidosDisponibles = async (req, res) => {
           as: 'Vendedor',
           attributes: ['id_usuario', 'nombre', 'correo', 'latitud', 'longitud'],
           through: {
-            attributes: [] 
+            attributes: []
           }
         },
         {
@@ -200,19 +200,19 @@ export const getPedidosDisponibles = async (req, res) => {
     const ROUTE_MAX_DISTANCE_METERS = Number(req.query.maxDistance || process.env.ROUTE_MAX_DISTANCE_METERS || 1000);
     console.log(`[repartidor] usando ROUTE_MAX_DISTANCE_METERS=${ROUTE_MAX_DISTANCE_METERS} (query:${req.query.maxDistance})`);
 
-  console.log(`[repartidor] repartidorId=${repartidorId} pedidosTotales=${pedidosDisponibles.length} pedidosSinRepartidor=${pedidosSinRepartidor.length} rutasEncontradas=${rutas.length} ROUTE_MAX_DISTANCE_METERS=${ROUTE_MAX_DISTANCE_METERS}`);
+    console.log(`[repartidor] repartidorId=${repartidorId} pedidosTotales=${pedidosDisponibles.length} pedidosSinRepartidor=${pedidosSinRepartidor.length} rutasEncontradas=${rutas.length} ROUTE_MAX_DISTANCE_METERS=${ROUTE_MAX_DISTANCE_METERS}`);
 
-  // Mostrar detalle de rutas para depuración (id y coords)
-  try {
-    const rutasDebug = (rutas || []).map(r => ({ id_ruta: r.id_ruta, origen_lat: r.origen_lat, origen_lng: r.origen_lng, destino_lat: r.destino_lat, destino_lng: r.destino_lng, hora_inicio: r.hora_inicio, hora_fin: r.hora_fin }));
-    console.log(`[repartidor][debug] rutasEncontradas detalle:`, JSON.stringify(rutasDebug));
-  } catch (e) {
-    console.log('[repartidor][debug] error al formatear rutas para debug', e);
-  }
+    // Mostrar detalle de rutas para depuración (id y coords)
+    try {
+      const rutasDebug = (rutas || []).map(r => ({ id_ruta: r.id_ruta, origen_lat: r.origen_lat, origen_lng: r.origen_lng, destino_lat: r.destino_lat, destino_lng: r.destino_lng, hora_inicio: r.hora_inicio, hora_fin: r.hora_fin }));
+      console.log(`[repartidor][debug] rutasEncontradas detalle:`, JSON.stringify(rutasDebug));
+    } catch (e) {
+      console.log('[repartidor][debug] error al formatear rutas para debug', e);
+    }
 
-  // Medir tiempos para detectar cuellos de botella
-  console.time(`[repartidor] tiempo_total_getPedidosDisponibles_${repartidorId}`);
-  console.time(`[repartidor] tiempo_db_findAll_${repartidorId}`);
+    // Medir tiempos para detectar cuellos de botella
+    console.time(`[repartidor] tiempo_total_getPedidosDisponibles_${repartidorId}`);
+    console.time(`[repartidor] tiempo_db_findAll_${repartidorId}`);
 
     // helpers de distancia
     const toRad = (v) => (v * Math.PI) / 180;
@@ -257,8 +257,8 @@ export const getPedidosDisponibles = async (req, res) => {
     const isOrderInRouteWindow = (orderDate, ruta) => {
       try {
         const horaPedidoMin = orderDate ? (new Date(orderDate)).getHours() * 60 + (new Date(orderDate)).getMinutes() : null;
-        const inicio = minutesOfDay(ruta.hora_inicio?.substring(0,5));
-        const fin = minutesOfDay(ruta.hora_fin?.substring(0,5));
+        const inicio = minutesOfDay(ruta.hora_inicio?.substring(0, 5));
+        const fin = minutesOfDay(ruta.hora_fin?.substring(0, 5));
         if (inicio == null || fin == null) return true; // si no hay horario, aceptar
         if (inicio <= fin) return horaPedidoMin >= inicio && horaPedidoMin <= fin;
         return horaPedidoMin >= inicio || horaPedidoMin <= fin;
@@ -268,6 +268,7 @@ export const getPedidosDisponibles = async (req, res) => {
     // Formatear la respuesta para que sea más fácil de usar en el frontend
     const pedidosFormateados = pedidosSinRepartidor.map(pedido => ({
       id_pedido: pedido.id_pedido,
+      tiene_repartidor: pedido.tiene_repartidor,
       direccion: pedido.direccion,
       total: pedido.total,
       precio_bruto: pedido.precio_bruto || 0,
@@ -312,8 +313,8 @@ export const getPedidosDisponibles = async (req, res) => {
         const aLon = Number(r.origen_lng);
         const bLat = Number(r.destino_lat);
         const bLon = Number(r.destino_lng);
-        const inicio = minutesOfDay(r.hora_inicio?.substring(0,5));
-        const fin = minutesOfDay(r.hora_fin?.substring(0,5));
+        const inicio = minutesOfDay(r.hora_inicio?.substring(0, 5));
+        const fin = minutesOfDay(r.hora_fin?.substring(0, 5));
         return { id_ruta: r.id_ruta, aLat, aLon, bLat, bLon, inicio, fin, raw: r };
       }).filter(r => ![r.aLat, r.aLon, r.bLat, r.bLon].some(x => x == null || isNaN(Number(x))));
 
@@ -396,10 +397,10 @@ export const getPedidosDisponibles = async (req, res) => {
 
   } catch (error) {
     console.error('Error al obtener pedidos disponibles:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
       error: 'Error interno del servidor',
-      message: error.message 
+      message: error.message
     });
   }
 };
@@ -414,7 +415,7 @@ export const getPedidosDisponiblesOptimized = async (req, res) => {
       attributes: ['id_pedido'],
       raw: true
     });
-    
+
     const idsConRepartidor = pedidosConRepartidor.map(item => item.id_pedido);
 
     // Buscar pedidos que estén listos para recoger y NO tengan repartidor
@@ -483,10 +484,10 @@ export const getPedidosDisponiblesOptimized = async (req, res) => {
 
   } catch (error) {
     console.error('Error al obtener pedidos disponibles:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
       error: 'Error interno del servidor',
-      message: error.message 
+      message: error.message
     });
   }
 };
@@ -494,7 +495,7 @@ export const getPedidosDisponiblesOptimized = async (req, res) => {
 // Aceptar un pedido como repartidor
 export const aceptarPedido = async (req, res) => {
   const transaction = await sequelize.transaction();
-  
+
   try {
     const { pedidoId } = req.params;
     const { id_repartidor } = req.body;
@@ -574,9 +575,9 @@ export const aceptarPedido = async (req, res) => {
       await transaction.rollback();
     }
     console.error('Error al aceptar pedido:', error);
-    return res.status(400).json({ 
+    return res.status(400).json({
       success: false,
-      error: error.message 
+      error: error.message
     });
   }
 };
@@ -655,7 +656,7 @@ export const confirmarRecogida = async (req, res) => {
 // Confirmar entrega del pedido
 export const confirmarEntrega = async (req, res) => {
   const transaction = await sequelize.transaction();
-  
+
   try {
     const { pedidoId } = req.params;
     const { id_repartidor } = req.body;
@@ -673,8 +674,8 @@ export const confirmarEntrega = async (req, res) => {
 
     if (!pedido) {
       await transaction.rollback();
-      return res.status(404).json({ 
-        error: 'Pedido no encontrado' 
+      return res.status(404).json({
+        error: 'Pedido no encontrado'
       });
     }
 
@@ -682,21 +683,21 @@ export const confirmarEntrega = async (req, res) => {
     const repartidorAsignado = pedido.Repartidor.find(r => r.id_usuario == id_repartidor);
     if (!repartidorAsignado) {
       await transaction.rollback();
-      return res.status(403).json({ 
-        error: 'No tienes permisos para actualizar este pedido' 
+      return res.status(403).json({
+        error: 'No tienes permisos para actualizar este pedido'
       });
     }
 
     // Verificar que el pedido está en reparto
     if (pedido.estado !== 'en_reparto') {
       await transaction.rollback();
-      return res.status(400).json({ 
-        error: `No se puede confirmar entrega. Estado actual: ${pedido.estado}` 
+      return res.status(400).json({
+        error: `No se puede confirmar entrega. Estado actual: ${pedido.estado}`
       });
     }
 
     // Actualizar estado y fecha/hora de entrega
-    await pedido.update({ 
+    await pedido.update({
       estado: 'entregado',
       fecha_entrega: new Date(),
       hora_entrega: new Date().toTimeString().slice(0, 8)
@@ -704,7 +705,7 @@ export const confirmarEntrega = async (req, res) => {
 
     await transaction.commit();
 
-    res.json({ 
+    res.json({
       success: true,
       message: 'Entrega confirmada exitosamente',
       pedido: {
@@ -722,10 +723,10 @@ export const confirmarEntrega = async (req, res) => {
   } catch (error) {
     await transaction.rollback();
     console.error('Error al confirmar entrega:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
       error: 'Error interno del servidor',
-      message: error.message 
+      message: error.message
     });
   }
 };
@@ -733,14 +734,14 @@ export const confirmarEntrega = async (req, res) => {
 // Obtener entregas de un repartidor
 export const getEntregasRepartidor = async (req, res) => {
   try {
-  const { repartidorId } = req.params;
-  const { filter = 'today', from, to } = req.query;
+    const { repartidorId } = req.params;
+    const { filter = 'today', from, to } = req.query;
 
     // Verificar que el repartidor existe
     const repartidor = await Usuario.findByPk(repartidorId);
     if (!repartidor) {
-      return res.status(404).json({ 
-        error: 'Repartidor no encontrado' 
+      return res.status(404).json({
+        error: 'Repartidor no encontrado'
       });
     }
 
@@ -751,29 +752,29 @@ export const getEntregasRepartidor = async (req, res) => {
     if (from && to) {
       // Si el cliente envía un rango explícito, usarlo
       fechaDesde = new Date(from);
-      fechaDesde.setHours(0,0,0,0);
+      fechaDesde.setHours(0, 0, 0, 0);
       fechaHasta = new Date(to);
-      fechaHasta.setHours(23,59,59,999);
+      fechaHasta.setHours(23, 59, 59, 999);
     } else {
       switch (filter) {
-      case 'today':
-        fechaDesde.setHours(0, 0, 0, 0);
-        fechaHasta.setHours(23, 59, 59, 999);
-        break;
-      case 'week':
-        fechaDesde.setDate(fechaDesde.getDate() - 7);
-        fechaDesde.setHours(0, 0, 0, 0);
-        fechaHasta.setHours(23, 59, 59, 999);
-        break;
-      case 'month':
-        fechaDesde.setMonth(fechaDesde.getMonth() - 1);
-        fechaDesde.setHours(0, 0, 0, 0);
-        fechaHasta.setHours(23, 59, 59, 999);
-        break;
-      default:
-        fechaDesde.setHours(0, 0, 0, 0);
-        fechaHasta.setHours(23, 59, 59, 999);
-    }
+        case 'today':
+          fechaDesde.setHours(0, 0, 0, 0);
+          fechaHasta.setHours(23, 59, 59, 999);
+          break;
+        case 'week':
+          fechaDesde.setDate(fechaDesde.getDate() - 7);
+          fechaDesde.setHours(0, 0, 0, 0);
+          fechaHasta.setHours(23, 59, 59, 999);
+          break;
+        case 'month':
+          fechaDesde.setMonth(fechaDesde.getMonth() - 1);
+          fechaDesde.setHours(0, 0, 0, 0);
+          fechaHasta.setHours(23, 59, 59, 999);
+          break;
+        default:
+          fechaDesde.setHours(0, 0, 0, 0);
+          fechaHasta.setHours(23, 59, 59, 999);
+      }
     }
 
     // Obtener entregas del repartidor en el período especificado (filtrando por fecha_entrega)
@@ -817,9 +818,9 @@ export const getEntregasRepartidor = async (req, res) => {
     // Calcular estadísticas
     const entregasCompletadas = entregas.filter(e => e.estado === 'entregado');
     const entregasCanceladas = entregas.filter(e => e.estado === 'cancelado');
-    
-  const totalEarnings = entregasCompletadas.reduce((sum, e) => sum + parseInt(e.pago_reparto || e.total || 0), 0);
-    
+
+    const totalEarnings = entregasCompletadas.reduce((sum, e) => sum + parseInt(e.pago_reparto || e.total || 0), 0);
+
     // Estimación de distancia basada en coordenadas (simulado)
     const distanciaPromedio = 2.5; // km por entrega
     const totalDistance = entregasCompletadas.length * distanciaPromedio;
@@ -829,7 +830,7 @@ export const getEntregasRepartidor = async (req, res) => {
       totalCanceled: entregasCanceladas.length,
       totalDistance: Math.round(totalDistance * 10) / 10,
       totalEarnings,
-      averageEarningsPerDelivery: entregasCompletadas.length > 0 ? 
+      averageEarningsPerDelivery: entregasCompletadas.length > 0 ?
         Math.round(totalEarnings / entregasCompletadas.length) : 0
     };
 
@@ -858,9 +859,9 @@ export const getEntregasRepartidor = async (req, res) => {
     });
   } catch (error) {
     console.error('Error al obtener entregas:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Error interno del servidor',
-      message: error.message 
+      message: error.message
     });
   }
 };
@@ -873,14 +874,14 @@ export const getEstadisticasRepartidor = async (req, res) => {
     // Verificar que el repartidor existe
     const repartidor = await Usuario.findByPk(repartidorId);
     if (!repartidor) {
-      return res.status(404).json({ 
-        error: 'Repartidor no encontrado' 
+      return res.status(404).json({
+        error: 'Repartidor no encontrado'
       });
     }
 
     let fechaDesde = new Date();
     let fechaHasta = new Date();
-    
+
     switch (periodo) {
       case 'hoy':
         fechaDesde.setHours(0, 0, 0, 0);
@@ -931,14 +932,14 @@ export const getEstadisticasRepartidor = async (req, res) => {
       rating: Math.round(rating * 10) / 10,
       period: periodo,
       totalOrders: entregas.length,
-      successRate: entregas.length > 0 ? 
+      successRate: entregas.length > 0 ?
         Math.round((deliveries / entregas.length) * 100) : 0
     });
   } catch (error) {
     console.error('Error al obtener estadísticas:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Error interno del servidor',
-      message: error.message 
+      message: error.message
     });
   }
 };
@@ -1000,9 +1001,9 @@ export const getPedidosActivos = async (req, res) => {
     res.json(activosFormateados);
   } catch (error) {
     console.error('Error al obtener pedidos activos:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Error interno del servidor',
-      message: error.message 
+      message: error.message
     });
   }
 };
@@ -1010,7 +1011,7 @@ export const getPedidosActivos = async (req, res) => {
 // Cancelar pedido (solo si está en_reparto y hay una razón válida)
 export const cancelarPedido = async (req, res) => {
   const transaction = await sequelize.transaction();
-  
+
   try {
     const { pedidoId } = req.params;
     const { id_repartidor, motivo } = req.body;
@@ -1028,8 +1029,8 @@ export const cancelarPedido = async (req, res) => {
 
     if (!pedido) {
       await transaction.rollback();
-      return res.status(404).json({ 
-        error: 'Pedido no encontrado' 
+      return res.status(404).json({
+        error: 'Pedido no encontrado'
       });
     }
 
@@ -1037,20 +1038,20 @@ export const cancelarPedido = async (req, res) => {
     const repartidorAsignado = pedido.Repartidor.find(r => r.id_usuario == id_repartidor);
     if (!repartidorAsignado) {
       await transaction.rollback();
-      return res.status(403).json({ 
-        error: 'No tienes permisos para cancelar este pedido' 
+      return res.status(403).json({
+        error: 'No tienes permisos para cancelar este pedido'
       });
     }
 
     if (pedido.estado !== 'en_reparto') {
       await transaction.rollback();
-      return res.status(400).json({ 
-        error: 'Solo se pueden cancelar pedidos en reparto' 
+      return res.status(400).json({
+        error: 'Solo se pueden cancelar pedidos en reparto'
       });
     }
 
     // Actualizar estado a cancelado
-    await pedido.update({ 
+    await pedido.update({
       estado: 'cancelado'
     }, { transaction });
 
@@ -1064,22 +1065,22 @@ export const cancelarPedido = async (req, res) => {
     });
 
     // Volver el pedido a listo_para_recoger para que otro repartidor pueda tomarlo
-    await pedido.update({ 
+    await pedido.update({
       estado: 'listo_para_recoger'
     }, { transaction });
 
     await transaction.commit();
 
-    res.json({ 
+    res.json({
       message: 'Pedido cancelado correctamente',
       motivo: motivo || 'No especificado'
     });
   } catch (error) {
     await transaction.rollback();
     console.error('Error al cancelar pedido:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Error interno del servidor',
-      message: error.message 
+      message: error.message
     });
   }
 };

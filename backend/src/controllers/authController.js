@@ -82,14 +82,19 @@ export const login = async (req, res) => {
         }
       ]
     });
+
     if (!user) return res.status(401).json({ message: 'Credenciales inválidas' });
 
     const match = await bcrypt.compare(contraseña, user.contraseña);
     if (!match) return res.status(401).json({ message: 'Credenciales inválidas' });
 
+
     const token = jwt.sign({ id: user.id_usuario, nombre: user.nombre, correo: user.correo }, process.env.JWT_SECRET || 'secret', { expiresIn: '4h' });
 
+
+
     const roles = user.Rols ? user.Rols.map(r => r.nombreRol) : [];
+
 
     return res.json({ token, user: { id: user.id_usuario, nombre: user.nombre, correo: user.correo, roles, latitud: user.latitud, longitud: user.longitud } });
   } catch (err) {

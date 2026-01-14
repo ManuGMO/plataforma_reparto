@@ -8,7 +8,10 @@ import axios from "axios";
 // Configurar tu token de Mapbox (regístrate en https://mapbox.com)
 mapboxgl.accessToken = 'pk.eyJ1IjoibWFudWdtbyIsImEiOiJjbWZocHBobnkwZTFzMmpteTBqejdjM2NyIn0.szPCGrt15ZmioZVcXyGycA';
 
+import { useAuth } from "../../contexts/AuthContext";
+
 export default function PaymentModal({ isOpen, onClose, carritoData, onConfirmOrder }) {
+  const { user } = useAuth();
   const [direccion, setDireccion] = useState("");
   const [direccionCompleta, setDireccionCompleta] = useState(""); // Para guardar en DB
   const [metodoPago, setMetodoPago] = useState("transfer");
@@ -32,18 +35,63 @@ export default function PaymentModal({ isOpen, onClose, carritoData, onConfirmOr
 
   console.log("Carrito en Modal:", carritoData);
 
-  // Inicializar mapa cuando se muestra
+  // Cargar ubicación del perfil si existe
+  // Cargar ubicación del perfil si existe al abrir
+  useEffect(() => {
+    // Solo intentar si está abierto y no tenemos ubicación establecida manualmente aún
+    if (isOpen && user && !ubicacion) {
+      const lat = parseFloat(user.latitud);
+      const lng = parseFloat(user.longitud);
+
+      if (!isNaN(lat) && !isNaN(lng)) {
+        console.log("Auto-rellenando ubicación desde perfil:", { lat, lng });
+        actualizarUbicacion(lng, lat);
+        // Solo buscar dirección si no hay una escrita (aunque usualmente estará vacía al abrir)
+        if (!direccion) {
+          geocodificarInverso(lng, lat);
+        }
+      }
+    }
+  }, [isOpen, user]); // Se ejecuta al montar (por key en padre) o si user carga tarde
+
+  // Limpiar estado al cerrar el modal (por si se usa sin desmontar)
+  useEffect(() => {
+    if (!isOpen) {
+      setDireccion("");
+      setDireccionCompleta("");
+      setUbicacion(null);
+      setSugerencias([]);
+      setMostrarMapa(false);
+      setMostrarSugerencias(false);
+      setIndiceSugerenciaActiva(-1);
+    }
+  }, [isOpen]);
+
+  // Inicializar mapa cuando se muestra y activar marcador si existe ubicación
   useEffect(() => {
     if (mostrarMapa && mapContainer.current && !map.current) {
+      const center = ubicacion ? [ubicacion.lng, ubicacion.lat] : [-70.6693, -33.4489];
+      const zoom = ubicacion ? 15 : 13;
+
       map.current = new mapboxgl.Map({
         container: mapContainer.current,
         style: 'mapbox://styles/mapbox/streets-v12',
-        center: [-70.6693, -33.4489],
-        zoom: 13
+        center: center,
+        zoom: zoom
       });
 
-      // Obtener ubicación del usuario automáticamente
-      obtenerUbicacionUsuario();
+      // Si ya hay ubicación, poner el marcador
+      if (ubicacion) {
+        marker.current = new mapboxgl.Marker({
+          color: '#22c55e',
+          scale: 1.2
+        })
+          .setLngLat([ubicacion.lng, ubicacion.lat])
+          .addTo(map.current);
+      } else {
+        // Obtener ubicación del usuario automáticamente solo si no hay ubicación predefinida
+        obtenerUbicacionUsuario();
+      }
 
       // Agregar evento de click en el mapa
       map.current.on('click', (e) => {
@@ -57,19 +105,19 @@ export default function PaymentModal({ isOpen, onClose, carritoData, onConfirmOr
   // Función para obtener ubicación del usuario
   const obtenerUbicacionUsuario = () => {
     setCargandoGeolocalizacion(true);
-    
+
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
           const { longitude, latitude } = position.coords;
-          
+
           if (map.current) {
             map.current.flyTo({
               center: [longitude, latitude],
               zoom: 15
             });
           }
-          
+
           actualizarUbicacion(longitude, latitude);
           geocodificarInverso(longitude, latitude);
           setCargandoGeolocalizacion(false);
@@ -94,13 +142,13 @@ export default function PaymentModal({ isOpen, onClose, carritoData, onConfirmOr
   // Función para actualizar marcador en el mapa
   const actualizarUbicacion = (lng, lat) => {
     setUbicacion({ lng, lat });
-    
+
     if (map.current) {
       if (marker.current) {
         marker.current.remove();
       }
-      
-      marker.current = new mapboxgl.Marker({ 
+
+      marker.current = new mapboxgl.Marker({
         color: '#22c55e',
         scale: 1.2
       })
@@ -123,7 +171,7 @@ export default function PaymentModal({ isOpen, onClose, carritoData, onConfirmOr
         `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${mapboxgl.accessToken}&language=es`
       );
       const data = await response.json();
-      
+
       if (data.features && data.features.length > 0) {
         const feature = data.features[0];
         setDireccion(formatearDireccionDisplay(feature.place_name));
@@ -144,7 +192,7 @@ export default function PaymentModal({ isOpen, onClose, carritoData, onConfirmOr
 
     try {
       const proximity = ubicacion ? `${ubicacion.lng},${ubicacion.lat}` : '-70.6693,-33.4489';
-      
+
       const response = await fetch(
         `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?` +
         `access_token=${mapboxgl.accessToken}&` +
@@ -153,7 +201,7 @@ export default function PaymentModal({ isOpen, onClose, carritoData, onConfirmOr
         `language=es&` +
         `limit=5`
       );
-      
+
       const data = await response.json();
       setSugerencias(data.features || []);
       setMostrarSugerencias((data.features || []).length > 0);
@@ -178,28 +226,28 @@ export default function PaymentModal({ isOpen, onClose, carritoData, onConfirmOr
     switch (e.key) {
       case 'ArrowDown':
         e.preventDefault();
-        setIndiceSugerenciaActiva(prev => 
+        setIndiceSugerenciaActiva(prev =>
           prev < sugerencias.length - 1 ? prev + 1 : prev
         );
         break;
-        
+
       case 'ArrowUp':
         e.preventDefault();
         setIndiceSugerenciaActiva(prev => prev > 0 ? prev - 1 : -1);
         break;
-        
+
       case 'Enter':
         e.preventDefault();
         if (indiceSugerenciaActiva >= 0 && indiceSugerenciaActiva < sugerencias.length) {
           seleccionarSugerencia(sugerencias[indiceSugerenciaActiva]);
         }
         break;
-        
+
       case 'Escape':
         setMostrarSugerencias(false);
         setIndiceSugerenciaActiva(-1);
         break;
-        
+
       case 'Tab':
         if (indiceSugerenciaActiva >= 0 && indiceSugerenciaActiva < sugerencias.length) {
           e.preventDefault();
@@ -216,10 +264,10 @@ export default function PaymentModal({ isOpen, onClose, carritoData, onConfirmOr
     setSugerencias([]);
     setMostrarSugerencias(false);
     setIndiceSugerenciaActiva(-1);
-    
+
     const [lng, lat] = sugerencia.center;
     actualizarUbicacion(lng, lat);
-    
+
     if (map.current) {
       map.current.flyTo({
         center: [lng, lat],
@@ -258,12 +306,12 @@ export default function PaymentModal({ isOpen, onClose, carritoData, onConfirmOr
       longitud: ubicacion.lng,
       carritoData
     });
-    
-    // Abrir modal de comprobante SIN crear el pedido todavía
+
+    // Abrir modal de comprobante sin crear el pedido todavía
     setShowReceiptModal(true);
   };
 
-  // NUEVA FUNCIÓN: Manejar subida de comprobante
+  // Manejar subida de comprobante
   const handleUploadReceipt = async (file) => {
     try {
       // Crear el pedido CON el comprobante en una sola operación
@@ -275,11 +323,11 @@ export default function PaymentModal({ isOpen, onClose, carritoData, onConfirmOr
         longitud: pedidoCreado.longitud,
         comprobante: file // Pasar el archivo también
       });
-      
+
       // Cerrar ambos modales
       setShowReceiptModal(false);
       onClose();
-      
+
       // Limpiar estado
       setDireccion("");
       setDireccionCompleta("");
@@ -288,16 +336,16 @@ export default function PaymentModal({ isOpen, onClose, carritoData, onConfirmOr
       setMostrarMapa(false);
       setMostrarSugerencias(false);
       setPedidoCreado(null);
-      
+
       alert("✅ ¡Pedido creado y comprobante enviado exitosamente!");
-      
+
     } catch (error) {
       console.error('Error creando pedido con comprobante:', error);
       throw error;
     }
   };
 
-  // NUEVA FUNCIÓN: Cerrar modal de comprobante
+  // Cerrar modal de comprobante
   const handleCloseReceiptModal = () => {
     setShowReceiptModal(false);
     // No cerrar el modal principal para permitir modificaciones
@@ -308,11 +356,11 @@ export default function PaymentModal({ isOpen, onClose, carritoData, onConfirmOr
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-start justify-center p-4">
       <div className="bg-white rounded-xl w-full max-w-md mt-8 max-h-[95vh] overflow-hidden shadow-2xl">
-        
+
         {/* Header */}
         <div className="bg-gradient-to-r from-blue-500 to-green-600 text-white">
           <div className="px-4 py-4 flex items-center">
-            <button 
+            <button
               onClick={onClose}
               className="mr-3 text-2xl hover:bg-white hover:bg-opacity-20 rounded-full w-10 h-10 flex items-center justify-center transition-all"
             >
@@ -333,7 +381,7 @@ export default function PaymentModal({ isOpen, onClose, carritoData, onConfirmOr
                   <span className="text-green-500 mr-2">📍</span>
                   Dirección de entrega
                 </h3>
-                
+
                 <div className="relative">
                   <div className="relative">
                     <input
@@ -355,10 +403,10 @@ export default function PaymentModal({ isOpen, onClose, carritoData, onConfirmOr
                       </div>
                     )}
                   </div>
-                  
+
                   {/* Sugerencias de autocompletado mejoradas */}
                   {mostrarSugerencias && sugerencias.length > 0 && (
-                    <div 
+                    <div
                       ref={sugerenciasRef}
                       className="absolute top-full left-0 right-0 bg-white border-2 border-gray-200 rounded-xl shadow-xl z-[60] max-h-60 overflow-y-auto mt-2"
                     >
@@ -366,9 +414,8 @@ export default function PaymentModal({ isOpen, onClose, carritoData, onConfirmOr
                         <div
                           key={idx}
                           onMouseDown={() => seleccionarSugerencia(sugerencia)}
-                          className={`w-full text-left px-4 py-3 hover:bg-green-50 transition-colors border-b border-gray-100 last:border-b-0 cursor-pointer ${
-                            idx === indiceSugerenciaActiva ? 'bg-green-100 border-green-200' : ''
-                          }`}
+                          className={`w-full text-left px-4 py-3 hover:bg-green-50 transition-colors border-b border-gray-100 last:border-b-0 cursor-pointer ${idx === indiceSugerenciaActiva ? 'bg-green-100 border-green-200' : ''
+                            }`}
                         >
                           <div className="flex items-start">
                             <span className="text-green-500 mr-3 mt-0.5">📍</span>
@@ -383,7 +430,7 @@ export default function PaymentModal({ isOpen, onClose, carritoData, onConfirmOr
                           </div>
                         </div>
                       ))}
-                      
+
                       <div className="px-4 py-2 bg-gray-50 text-xs text-gray-500 flex items-center justify-between">
                         <span>↑↓ Navegar • Enter Seleccionar • Esc Cerrar</span>
                       </div>
@@ -423,19 +470,19 @@ export default function PaymentModal({ isOpen, onClose, carritoData, onConfirmOr
                       )}
                     </button>
                   </div>
-                  
-                  <div 
+
+                  <div
                     ref={mapContainer}
                     className="h-72 rounded-xl overflow-hidden shadow-inner border-2 border-gray-200"
                     style={{ minHeight: '288px' }}
                   />
-                  
+
                   <div className="mt-3 bg-white rounded-lg p-3 shadow-sm border border-gray-200">
                     <p className="text-xs text-gray-600 flex items-center mb-1">
                       <span className="text-green-500 mr-1">💡</span>
                       Haz clic en el mapa para ajustar la ubicación exacta
                     </p>
-                    
+
                     {ubicacion && (
                       <p className="text-sm text-gray-700 font-mono">
                         📍 {ubicacion.lat.toFixed(5)}, {ubicacion.lng.toFixed(5)}
@@ -452,10 +499,10 @@ export default function PaymentModal({ isOpen, onClose, carritoData, onConfirmOr
                   Método de pago
                 </h3>
                 <label className="flex items-center space-x-3 text-gray-700 bg-white rounded-lg p-4 border-2 border-gray-200 hover:border-purple-300 transition-colors cursor-pointer">
-                  <input 
-                    type="radio" 
-                    name="paymentMethod" 
-                    value="transfer" 
+                  <input
+                    type="radio"
+                    name="paymentMethod"
+                    value="transfer"
                     checked={metodoPago === "transfer"}
                     onChange={(e) => setMetodoPago(e.target.value)}
                     className="w-5 h-5 text-purple-600 focus:ring-purple-500"
@@ -502,21 +549,20 @@ export default function PaymentModal({ isOpen, onClose, carritoData, onConfirmOr
 
               {/* Botones mejorados */}
               <div className="flex space-x-3 pt-2">
-                <button 
+                <button
                   type="button"
                   onClick={onClose}
                   className="flex-1 bg-gray-200 hover:bg-gray-300 py-4 rounded-xl font-medium text-gray-700 transition-all duration-200"
                 >
                   Cancelar
                 </button>
-                <button 
+                <button
                   type="submit"
                   disabled={procesando || !direccion.trim() || !ubicacion}
-                  className={`flex-1 py-4 rounded-xl font-medium transition-all duration-200 ${
-                    procesando || !direccion.trim() || !ubicacion
-                      ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
-                      : 'bg-gradient-to-r from-green-500 to-green-600 text-white hover:from-green-600 hover:to-green-700 shadow-lg hover:shadow-xl'
-                  }`}
+                  className={`flex-1 py-4 rounded-xl font-medium transition-all duration-200 ${procesando || !direccion.trim() || !ubicacion
+                    ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
+                    : 'bg-gradient-to-r from-green-500 to-green-600 text-white hover:from-green-600 hover:to-green-700 shadow-lg hover:shadow-xl'
+                    }`}
                 >
                   {procesando ? (
                     <span className="flex items-center justify-center">

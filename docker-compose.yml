@@ -1,0 +1,65 @@
+version: '3.8'
+
+services:
+  db:
+    image: mysql:8.0
+    container_name: plataforma_db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: 12345
+      MYSQL_DATABASE: plataforma_reparto
+    volumes:
+      - db_data:/var/lib/mysql
+    networks:
+      - red
+
+  backend:
+    build: ./backend
+    container_name: plataforma_backend
+    restart: always
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_USER=root
+      - DB_PASSWORD=12345
+      - DB_NAME=plataforma_reparto
+      - JWT_SECRET=clave_secreta
+      - ORS_API_KEY=
+      - MAPBOX_TOKEN=
+    depends_on:
+      - db
+    networks:
+      - red
+
+  frontend:
+    image: plataforma_frontend_dev
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: plataforma_frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+    depends_on:
+      - backend
+    networks:
+      - red
+
+volumes:
+  db_data:
+
+
+networks:
+  red:
+    name: red

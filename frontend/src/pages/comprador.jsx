@@ -8,14 +8,14 @@ import TabsComprador from "../components/comprador/TabsComprador";
 import ProductosTabComprador from "../components/comprador/ProductosTabComprador";
 import CarritoTab from "../components/comprador/CarritoTab";
 import PedidosTabComprador from "../components/comprador/PedidosTabComprador";
-import CuentaTab from "../components/comprador/CuentaTab";
+import ComprasTab from "../components/comprador/ComprasTab";
 import Notification from "../components/Notification";
 import AppMobileContainer from "../components/common/AppMobileContainer";
 
 export default function Comprador() {
   const [activeTab, setActiveTab] = useState("productos");
   const [notification, setNotification] = useState("");
-  
+
   const { user, isAuthenticated, updateUser } = useAuth();
   // ID del comprador obtenido del usuario autenticado
   const ID_COMPRADOR = user?.id;
@@ -34,15 +34,15 @@ export default function Comprador() {
         if (!ID_COMPRADOR) return; // aún no hay usuario
         const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/notificaciones/usuario/${ID_COMPRADOR}/no-leidas`);
         const notificaciones = await response.json();
-        
+
         if (notificaciones.length > 0) {
           const ultimaNotificacion = notificaciones[0];
           setNotification(ultimaNotificacion.mensaje);
-          
+
           // Marcar como leída después de mostrarla
           setTimeout(async () => {
-            await fetch(`http://localhost:3001/api/notificaciones/${ultimaNotificacion.id_notificacion}/leer`, { 
-              method: 'PUT' 
+            await fetch(`http://localhost:3001/api/notificaciones/${ultimaNotificacion.id_notificacion}/leer`, {
+              method: 'PUT'
             });
           }, 5000); // Esperar 5 segundos antes de marcar como leída
         }
@@ -53,10 +53,10 @@ export default function Comprador() {
 
     // Verificar inmediatamente
     checkNotifications();
-    
+
     // Verificar cada 10 segundos
     const interval = setInterval(checkNotifications, 10000);
-    
+
     return () => clearInterval(interval);
   }, [ID_COMPRADOR]);
 
@@ -74,7 +74,7 @@ export default function Comprador() {
       )}
       {activeTab === "carrito" && <CarritoTab setNotification={setNotification} CompradorID={ID_COMPRADOR} />}
       {activeTab === "pedidos" && <PedidosTabComprador CompradorID={ID_COMPRADOR} />}
-      {activeTab === "cuenta" && <CuentaTab CompradorID={ID_COMPRADOR} />}
+      {activeTab === "compras" && <ComprasTab CompradorID={ID_COMPRADOR} />}
       {activeTab === 'perfil' && <PerfilTab onSaved={(loc) => setNotification('Ubicación guardada')} onBack={() => setActiveTab('productos')} />}
       {showLocationModal && (
         <LocationModal

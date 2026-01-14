@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import axios from "axios";
 import { useAuth } from "../contexts/AuthContext";
 import Header from "../components/repartidor/Header";
 import TabsRepartidor from "../components/repartidor/TabsRepartidor";
@@ -22,7 +23,42 @@ export default function Repartidor() {
   const [todayStats, setTodayStats] = useState({ earnings: 0, deliveries: 0, rating: 4.8 });
 
   const { user } = useAuth();
-  const ID_REPARTIDOR = user?.id;
+  const ID_REPARTIDOR = user?.id_usuario || user?.id;
+
+  // Polling de notificaciones
+  useEffect(() => {
+    if (!ID_REPARTIDOR) return;
+
+    const checkNotifications = async () => {
+      try {
+        // Consultar notificaciones filtrando por rol=repartidor
+        const res = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/notificaciones/usuario/${ID_REPARTIDOR}/no-leidas?rol=repartidor`);
+        const notificaciones = res.data;
+
+        if (notificaciones && notificaciones.length > 0) {
+          const ultima = notificaciones[0];
+          console.log("🔔 Nueva notificación repartidor:", ultima.titulo);
+
+          // Mostrar notificación
+          setNotification(ultima.mensaje);
+
+          // Si es un pedido nuevo, tal vez queramos usar el componente especial NewOrderNotification
+          // Por ahora, usaremos la notificación genérica y marcaremos como leída
+
+          await Promise.all(notificaciones.map(n =>
+            axios.put(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/notificaciones/${n.id_notificacion}/leer`)
+          ));
+        }
+      } catch (error) {
+        console.error("Error checking notifications:", error);
+      }
+    };
+
+    checkNotifications();
+    const intervalId = setInterval(checkNotifications, 15000); // Cada 15s
+
+    return () => clearInterval(intervalId);
+  }, [ID_REPARTIDOR]);
 
   useEffect(() => {
     const loadTodayStats = async () => {
@@ -128,6 +164,10 @@ export default function Repartidor() {
   return (
     <AppMobileContainer header={header} footer={footer}>
       {mainContent()}
+      <Notification
+        message={notification}
+        onClose={() => setNotification("")}
+      />
     </AppMobileContainer>
   )
 }

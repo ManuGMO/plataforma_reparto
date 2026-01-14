@@ -100,7 +100,7 @@ export default (sequelize) => {
         if (pedido.changed('estado')) {
           const estadoAnterior = pedido.estado_anterior;
           const estadoNuevo = pedido.estado;
-          
+
           if (options.transaction) {
             options.transaction.afterCommit(async () => {
               const { enviarNotificacionCambioEstado } = await import('../services/notificationService.js');
@@ -115,6 +115,25 @@ export default (sequelize) => {
             await enviarNotificacionCambioEstado(pedido, estadoAnterior, estadoNuevo);
           }
         }
+      },
+      afterCreate: async (pedido, options) => {
+        console.log("🪝 [HOOK] afterCreate disparado para pedido:", pedido.id_pedido);
+        if (options.transaction) {
+          options.transaction.afterCommit(async () => {
+            console.log("🪝 [HOOK] Transaction afterCommit ejecutándose para pedido:", pedido.id_pedido);
+            const { enviarNotificacionNuevoPedido } = await import('../services/notificationService.js');
+            try {
+              await enviarNotificacionNuevoPedido(pedido);
+              console.log("🪝 [HOOK] enviarNotificacionNuevoPedido ejecutado");
+            } catch (err) {
+              console.error("Error enviando notificación nuevo pedido:", err);
+            }
+          });
+        } else {
+          console.log("🪝 [HOOK] Ejecutando sin transacción para pedido:", pedido.id_pedido);
+          const { enviarNotificacionNuevoPedido } = await import('../services/notificationService.js');
+          await enviarNotificacionNuevoPedido(pedido);
+        }
       }
     }
   });
@@ -125,7 +144,7 @@ export default (sequelize) => {
       through: models.Producto_Pedido,
       foreignKey: 'id_pedido'
     });
-   
+
     // Relaciones con usuarios por roles
     Pedido.belongsToMany(models.Usuario, {
       through: models.pedido_comprador,
@@ -142,10 +161,10 @@ export default (sequelize) => {
       foreignKey: 'id_pedido',
       as: 'Repartidor'
     });
-   
+
     // Calificación
     Pedido.hasMany(models.Calificacion, { foreignKey: 'id_pedido' });
-   
+
     // Notificaciones
     Pedido.hasMany(models.Notificacion, { foreignKey: 'id_pedido' });
   };

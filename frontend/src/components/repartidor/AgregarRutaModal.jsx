@@ -1,10 +1,14 @@
 import { useState, useEffect, useRef } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
+import { useAuth } from '../../contexts/AuthContext';
 
 mapboxgl.accessToken = 'pk.eyJ1IjoibWFudWdtbyIsImEiOiJjbWZocHBobnkwZTFzMmpteTBqejdjM2NyIn0.szPCGrt15ZmioZVcXyGycA';
 
 export default function AgregarRutaModal({ isOpen, onClose, onGuardar, rutaEditar }) {
+  const { user } = useAuth();
+  const [userLocation, setUserLocation] = useState(null);
+
   const [formData, setFormData] = useState({
     nombre_ruta: '',
     origen: '',
@@ -13,12 +17,12 @@ export default function AgregarRutaModal({ isOpen, onClose, onGuardar, rutaEdita
     hora_fin: '',
     dia: 'lunes'
   });
-  
+
   const [coordenadas, setCoordenadas] = useState({
     origen: null,
     destino: null
   });
-  
+
   const [sugerenciasOrigen, setSugerenciasOrigen] = useState([]);
   const [sugerenciasDestino, setSugerenciasDestino] = useState([]);
   const [mostrarSugerenciasOrigen, setMostrarSugerenciasOrigen] = useState(false);
@@ -37,6 +41,22 @@ export default function AgregarRutaModal({ isOpen, onClose, onGuardar, rutaEdita
     coordenadasRef.current = coordenadas;
   }, [coordenadas]);
 
+  // Obtener ubicación del usuario para proximidad y centro del mapa
+  useEffect(() => {
+    if (isOpen) {
+      if (user?.latitud && user?.longitud) {
+        setUserLocation({ lng: parseFloat(user.longitud), lat: parseFloat(user.latitud) });
+      } else if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            setUserLocation({ lng: pos.coords.longitude, lat: pos.coords.latitude });
+          },
+          (err) => console.log("Error obteniendo ubicación:", err)
+        );
+      }
+    }
+  }, [isOpen, user]);
+
   // Cargar datos si es edición
   useEffect(() => {
     if (rutaEditar) {
@@ -48,15 +68,15 @@ export default function AgregarRutaModal({ isOpen, onClose, onGuardar, rutaEdita
         hora_fin: rutaEditar.hora_fin,
         dia: rutaEditar.dia
       });
-      
+
       setCoordenadas({
-        origen: { 
-          lat: parseFloat(rutaEditar.origen_lat), 
-          lng: parseFloat(rutaEditar.origen_lng) 
+        origen: {
+          lat: parseFloat(rutaEditar.origen_lat),
+          lng: parseFloat(rutaEditar.origen_lng)
         },
-        destino: { 
-          lat: parseFloat(rutaEditar.destino_lat), 
-          lng: parseFloat(rutaEditar.destino_lng) 
+        destino: {
+          lat: parseFloat(rutaEditar.destino_lat),
+          lng: parseFloat(rutaEditar.destino_lng)
         }
       });
     }
@@ -64,22 +84,35 @@ export default function AgregarRutaModal({ isOpen, onClose, onGuardar, rutaEdita
 
   // Inicializar mapa
   useEffect(() => {
-    if (isOpen && mapContainer.current && !map.current) {
-      setTimeout(() => {
-        try {
-          map.current = new mapboxgl.Map({
-            container: mapContainer.current,
-            style: 'mapbox://styles/mapbox/streets-v12',
-            center: [-70.6693, -33.4489],
-            zoom: 12
-          });
+    if (!isOpen || !mapContainer.current) return;
 
-          map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
+    if (map.current) return; // Ya inicializado
 
-          map.current.on('load', () => {
-            console.log('Mapa de rutas cargado');
-            
-            // Añadir capa para la línea de ruta
+    // Usar timeout para permitir que el modal renderice el contenedor
+    const initTimer = setTimeout(() => {
+      // Doble verificación dentro del timeout
+      if (map.current) return;
+
+      try {
+        const center = userLocation ? [userLocation.lng, userLocation.lat] : [-70.6693, -33.4489];
+        const zoom = userLocation ? 14 : 12;
+
+        map.current = new mapboxgl.Map({
+          container: mapContainer.current,
+          style: 'mapbox://styles/mapbox/streets-v12',
+          center: center,
+          zoom: zoom
+        });
+
+        map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
+
+        map.current.on('load', () => {
+          console.log('Mapa de rutas cargado');
+
+          if (!map.current) return;
+
+          // Añadir capa para la línea de ruta (verificar si existe primero)
+          if (!map.current.getSource('route')) {
             map.current.addSource('route', {
               type: 'geojson',
               data: {
@@ -106,51 +139,51 @@ export default function AgregarRutaModal({ isOpen, onClose, onGuardar, rutaEdita
                 'line-opacity': 0.8
               }
             });
+          }
 
-            // Si hay coordenadas de edición, mostrarlas
-            if (coordenadas.origen && coordenadas.destino) {
-              actualizarMarcador(coordenadas.origen.lng, coordenadas.origen.lat, 'origen');
-              actualizarMarcador(coordenadas.destino.lng, coordenadas.destino.lat, 'destino');
-            }
+          // Si hay coordenadas de edición, mostrarlas
+          if (coordenadas.origen && coordenadas.destino) {
+            actualizarMarcador(coordenadas.origen.lng, coordenadas.origen.lat, 'origen');
+            actualizarMarcador(coordenadas.destino.lng, coordenadas.destino.lat, 'destino');
+          }
 
-            // Intentar centrar en la ubicación actual del repartidor
-            if (navigator.geolocation) {
-              navigator.geolocation.getCurrentPosition(
-                (pos) => {
-                  const lat = pos.coords.latitude;
-                  const lng = pos.coords.longitude;
-                  try {
-                    map.current.flyTo({ center: [lng, lat], zoom: 14, duration: 800 });
+          // Mostrar ubicación actual si está disponible (inicial)
+          if (userLocation) {
+            if (markerCurrent.current) markerCurrent.current.remove();
+            markerCurrent.current = new mapboxgl.Marker({ color: '#2563eb' })
+              .setLngLat([userLocation.lng, userLocation.lat])
+              .setPopup(new mapboxgl.Popup({ offset: 25 }).setText('📍 Tu ubicación'))
+              .addTo(map.current);
+          } else if (navigator.geolocation) {
+            // Fallback geolocation si no tenemos userLocation de Auth aún
+            navigator.geolocation.getCurrentPosition((pos) => {
+              if (!map.current) return;
+              const lng = pos.coords.longitude;
+              const lat = pos.coords.latitude;
+              // No sobreescribir userLocation state aquí para evitar re-render loops si no es necesario,
+              // pero sí usarlo para el mapa.
 
-                    // marcador de ubicación actual
-                    if (markerCurrent.current) markerCurrent.current.remove();
-                    markerCurrent.current = new mapboxgl.Marker({ color: '#2563eb' })
-                      .setLngLat([lng, lat])
-                      .setPopup(new mapboxgl.Popup({ offset: 25 }).setText('📍 Tu ubicación'))
-                      .addTo(map.current);
-                  } catch (err) {
-                    // no bloquear si falla
-                    console.debug('No se pudo centrar en ubicación actual:', err);
-                  }
-                },
-                (err) => {
-                  console.debug('Geolocation falló o fue denegada:', err && err.message);
-                },
-                { enableHighAccuracy: true, timeout: 5000 }
-              );
-            }
+              map.current.flyTo({ center: [lng, lat], zoom: 14 });
 
-            // Manejar clicks en el mapa para colocar origen/destino
-            map.current.on('click', onMapClick);
-          });
-        } catch (error) {
-          console.error('Error inicializando mapa:', error);
-        }
-      }, 200);
-    }
+              if (markerCurrent.current) markerCurrent.current.remove();
+              markerCurrent.current = new mapboxgl.Marker({ color: '#2563eb' })
+                .setLngLat([lng, lat])
+                .setPopup(new mapboxgl.Popup({ offset: 25 }).setText('📍 Tu ubicación'))
+                .addTo(map.current);
+            });
+          }
+
+          // Manejar clicks en el mapa para colocar origen/destino
+          map.current.on('click', onMapClick);
+        });
+      } catch (error) {
+        console.error('Error inicializando mapa:', error);
+      }
+    }, 200);
 
     return () => {
-      if (!isOpen && map.current) {
+      clearTimeout(initTimer);
+      if (map.current) {
         try {
           map.current.off('click', onMapClick);
           map.current.remove();
@@ -163,7 +196,23 @@ export default function AgregarRutaModal({ isOpen, onClose, onGuardar, rutaEdita
         if (markerCurrent.current) { markerCurrent.current = null; }
       }
     };
-  }, [isOpen]);
+  }, [isOpen]); // Solo depende de isOpen. Si userLocation cambia, usamos otro effect.
+
+  // Effect secundario: Si userLocation llega después de que el mapa cargó
+  useEffect(() => {
+    if (userLocation && map.current && map.current.loaded()) {
+      try {
+        map.current.flyTo({ center: [userLocation.lng, userLocation.lat], zoom: 14 });
+
+        if (markerCurrent.current) markerCurrent.current.remove();
+        markerCurrent.current = new mapboxgl.Marker({ color: '#2563eb' })
+          .setLngLat([userLocation.lng, userLocation.lat])
+          .setPopup(new mapboxgl.Popup({ offset: 25 }).setText('📍 Tu ubicación'))
+          .addTo(map.current);
+      } catch (e) { console.error("Error updating user location on map", e); }
+    }
+  }, [userLocation]);
+
 
   // Buscar direcciones (Geocoding)
   const buscarDirecciones = async (query, tipo) => {
@@ -174,17 +223,21 @@ export default function AgregarRutaModal({ isOpen, onClose, onGuardar, rutaEdita
     }
 
     try {
-      const response = await fetch(
-        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?` +
+      let url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?` +
         `access_token=${mapboxgl.accessToken}&` +
         `country=CL&` +
         `language=es&` +
-        `limit=5`
-      );
-      
+        `limit=5`;
+
+      if (userLocation) {
+        url += `&proximity=${userLocation.lng},${userLocation.lat}`;
+      }
+
+      const response = await fetch(url);
+
       const data = await response.json();
       const features = data.features || [];
-      
+
       if (tipo === 'origen') {
         setSugerenciasOrigen(features);
         setMostrarSugerenciasOrigen(features.length > 0);
@@ -207,7 +260,7 @@ export default function AgregarRutaModal({ isOpen, onClose, onGuardar, rutaEdita
   const seleccionarSugerencia = (sugerencia, tipo) => {
     const direccionFormateada = formatearDireccion(sugerencia.place_name);
     const [lng, lat] = sugerencia.center;
-    
+
     if (tipo === 'origen') {
       setFormData(prev => ({ ...prev, origen: direccionFormateada }));
       setCoordenadas(prev => ({ ...prev, origen: { lng, lat } }));
@@ -240,7 +293,7 @@ export default function AgregarRutaModal({ isOpen, onClose, onGuardar, rutaEdita
           } catch (e) { /* noop */ }
           markerOrigen.current.remove();
         }
-        markerOrigen.current = new mapboxgl.Marker({ 
+        markerOrigen.current = new mapboxgl.Marker({
           color: '#22c55e',
           scale: 1.2
         })
@@ -264,7 +317,7 @@ export default function AgregarRutaModal({ isOpen, onClose, onGuardar, rutaEdita
           } catch (e) { /* noop */ }
           markerDestino.current.remove();
         }
-        markerDestino.current = new mapboxgl.Marker({ 
+        markerDestino.current = new mapboxgl.Marker({
           color: '#ef4444',
           scale: 1.2
         })
@@ -308,8 +361,8 @@ export default function AgregarRutaModal({ isOpen, onClose, onGuardar, rutaEdita
     const toRad = (v) => (v * Math.PI) / 180;
     const dLat = toRad(lat2 - lat1);
     const dLon = toRad(lon2 - lon1);
-    const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon/2) * Math.sin(dLon/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c;
   };
 
@@ -330,7 +383,7 @@ export default function AgregarRutaModal({ isOpen, onClose, onGuardar, rutaEdita
     try {
       const lng = e.lngLat.lng;
       const lat = e.lngLat.lat;
-  console.debug('[AgregarRutaModal] onMapClick', { lng, lat, coordenadas: coordenadasRef.current });
+      console.debug('[AgregarRutaModal] onMapClick', { lng, lat, coordenadas: coordenadasRef.current });
 
       // Umbral para considerar "mismo punto" en metros
       const UMBRAL = 20; // metros
@@ -414,15 +467,15 @@ export default function AgregarRutaModal({ isOpen, onClose, onGuardar, rutaEdita
         `steps=true&` +
         `access_token=${mapboxgl.accessToken}`
       );
-      
+
       const data = await response.json();
-      
+
       if (data.routes && data.routes[0]) {
         const route = data.routes[0].geometry;
-        
+
         // Guardar GeoJSON para la base de datos
         setRutaGeojson(JSON.stringify(route));
-        
+
         // Actualizar el mapa
         map.current.getSource('route').setData({
           type: 'Feature',
@@ -444,7 +497,7 @@ export default function AgregarRutaModal({ isOpen, onClose, onGuardar, rutaEdita
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     // Validaciones
     if (!formData.origen || !formData.destino || !formData.hora_inicio || !formData.hora_fin || !formData.dia) {
       alert('Por favor completa todos los campos');
@@ -462,7 +515,7 @@ export default function AgregarRutaModal({ isOpen, onClose, onGuardar, rutaEdita
     }
 
     setGuardando(true);
-    
+
     try {
       const datosRuta = {
         nombre_ruta: formData.nombre_ruta || `${formData.origen} → ${formData.destino}`,
@@ -479,15 +532,15 @@ export default function AgregarRutaModal({ isOpen, onClose, onGuardar, rutaEdita
       };
 
       await onGuardar(datosRuta);
-      
+
       // Limpiar formulario
-      setFormData({ 
+      setFormData({
         nombre_ruta: '',
-        origen: '', 
-        destino: '', 
-        hora_inicio: '', 
-        hora_fin: '', 
-        dia: 'lunes' 
+        origen: '',
+        destino: '',
+        hora_inicio: '',
+        hora_fin: '',
+        dia: 'lunes'
       });
       setCoordenadas({ origen: null, destino: null });
       setRutaGeojson(null);
@@ -503,7 +556,7 @@ export default function AgregarRutaModal({ isOpen, onClose, onGuardar, rutaEdita
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-xl w-full max-w-3xl max-h-[95vh] overflow-hidden shadow-2xl">
-        
+
         {/* Header */}
         <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-6 py-4">
           <div className="flex items-center justify-between">
@@ -529,7 +582,7 @@ export default function AgregarRutaModal({ isOpen, onClose, onGuardar, rutaEdita
         {/* Content */}
         <div className="overflow-y-auto max-h-[calc(95vh-100px)]">
           <form onSubmit={handleSubmit} className="p-6 space-y-6">
-            
+
             {/* Nombre de la ruta (opcional) */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -602,7 +655,7 @@ export default function AgregarRutaModal({ isOpen, onClose, onGuardar, rutaEdita
                   placeholder="Escribe la dirección de inicio..."
                   required
                 />
-                
+
                 {mostrarSugerenciasOrigen && sugerenciasOrigen.length > 0 && (
                   <div className="absolute top-full left-0 right-0 bg-white border-2 border-gray-200 rounded-lg shadow-xl z-[60] mt-2 max-h-48 overflow-y-auto">
                     {sugerenciasOrigen.map((sug, idx) => (
@@ -649,7 +702,7 @@ export default function AgregarRutaModal({ isOpen, onClose, onGuardar, rutaEdita
                   placeholder="Escribe la dirección de destino..."
                   required
                 />
-                
+
                 {mostrarSugerenciasDestino && sugerenciasDestino.length > 0 && (
                   <div className="absolute top-full left-0 right-0 bg-white border-2 border-gray-200 rounded-lg shadow-xl z-[60] mt-2 max-h-48 overflow-y-auto">
                     {sugerenciasDestino.map((sug, idx) => (
@@ -758,11 +811,10 @@ export default function AgregarRutaModal({ isOpen, onClose, onGuardar, rutaEdita
               <button
                 type="submit"
                 disabled={guardando || !coordenadas.origen || !coordenadas.destino}
-                className={`flex-1 py-3 rounded-lg font-medium transition-all ${
-                  guardando || !coordenadas.origen || !coordenadas.destino
-                    ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
-                    : 'bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-lg hover:shadow-xl'
-                }`}
+                className={`flex-1 py-3 rounded-lg font-medium transition-all ${guardando || !coordenadas.origen || !coordenadas.destino
+                  ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
+                  : 'bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-lg hover:shadow-xl'
+                  }`}
               >
                 {guardando ? (
                   <span className="flex items-center justify-center">

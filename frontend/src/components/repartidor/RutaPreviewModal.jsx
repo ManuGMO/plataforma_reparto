@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 
+
 const MAPBOX_TOKEN = 'pk.eyJ1IjoibWFudWdtbyIsImEiOiJjbWZocHBobnkwZTFzMmpteTBqejdjM2NyIn0.szPCGrt15ZmioZVcXyGycA';
 
 export default function RutaPreviewModal({ isOpen, onClose, ruta }) {
@@ -42,7 +43,7 @@ export default function RutaPreviewModal({ isOpen, onClose, ruta }) {
             try {
               if (mapRef.current.getLayer('ruta-preview')) mapRef.current.removeLayer('ruta-preview');
               if (mapRef.current.getSource('ruta-preview')) mapRef.current.removeSource('ruta-preview');
-            } catch (e) {}
+            } catch (e) { }
             mapRef.current.addSource('ruta-preview', { type: 'geojson', data: { type: 'Feature', geometry: route } });
             mapRef.current.addLayer({ id: 'ruta-preview', type: 'line', source: 'ruta-preview', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#2563eb', 'line-width': 5 } });
             // markers
@@ -68,7 +69,7 @@ export default function RutaPreviewModal({ isOpen, onClose, ruta }) {
           mapRef.current.remove();
           mapRef.current = null;
         }
-      } catch (e) {}
+      } catch (e) { }
     };
   }, [isOpen, ruta]);
 
@@ -87,7 +88,7 @@ export default function RutaPreviewModal({ isOpen, onClose, ruta }) {
         <div className="w-full h-64" ref={containerRef} />
         <div className="p-4 border-t">
           <div className="text-sm text-gray-700"><strong>Día:</strong> {ruta.dia}</div>
-          <div className="text-sm text-gray-700"><strong>Horario:</strong> {ruta.hora_inicio?.substring(0,5)} - {ruta.hora_fin?.substring(0,5)}</div>
+          <div className="text-sm text-gray-700"><strong>Horario:</strong> {ruta.hora_inicio?.substring(0, 5)} - {ruta.hora_fin?.substring(0, 5)}</div>
         </div>
       </div>
     </div>

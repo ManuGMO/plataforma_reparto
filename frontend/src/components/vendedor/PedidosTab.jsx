@@ -14,6 +14,7 @@ export default function PedidosTab({ setNotification, vendorId }) {
 
   const cargarPedidos = async () => {
     try {
+      console.log('Cargando pedidos para vendedor:', vendorId);
       const res = await axios.get(`http://localhost:3001/api/pedidos/vendedor/${vendorId}`);
       // Filtrar pedidos entregados para que se vayan eliminando de la vista
       const visibles = (res.data || []).filter(p => p.estado !== 'entregado');
@@ -30,19 +31,19 @@ export default function PedidosTab({ setNotification, vendorId }) {
   const cargarDetallePedido = async (id_pedido) => {
     try {
       setLoadingDetalle(true);
-  const res = await axios.get(`http://localhost:3001/api/pedidos/detalle/${id_pedido}?vendedorId=${vendorId}`);
-      
+      const res = await axios.get(`http://localhost:3001/api/pedidos/detalle/${id_pedido}?vendedorId=${vendorId}`);
+
       const estadoKey = `pedido_${id_pedido}_fecha_estado`;
-    const fechaGuardada = localStorage.getItem(estadoKey);
-    
-    if (!fechaGuardada && res.data.fecha_ultimo_cambio_estado) {
-      localStorage.setItem(estadoKey, res.data.fecha_ultimo_cambio_estado);
-    }
-    
-    setPedidoSeleccionado({
-      ...res.data,
-      fecha_estado_anterior_guardada: fechaGuardada
-    });
+      const fechaGuardada = localStorage.getItem(estadoKey);
+
+      if (!fechaGuardada && res.data.fecha_ultimo_cambio_estado) {
+        localStorage.setItem(estadoKey, res.data.fecha_ultimo_cambio_estado);
+      }
+
+      setPedidoSeleccionado({
+        ...res.data,
+        fecha_estado_anterior_guardada: fechaGuardada
+      });
 
     } catch (error) {
       console.error("Error cargando detalle:", error);
@@ -54,10 +55,14 @@ export default function PedidosTab({ setNotification, vendorId }) {
 
   const cambiarEstado = async (id_pedido, nuevoEstado, mensaje) => {
     try {
+      console.log("Id del vendedor: ", vendorId);
+
       await axios.patch(`http://localhost:3001/api/pedidos/${id_pedido}/estado`, {
         estado: nuevoEstado,
-        id_vendedor: 1 
+        id_vendedor: vendorId
       });
+
+      console.log("Id del vendedor: ", vendorId);
       setNotification(mensaje);
       // Si el pedido quedó como entregado, eliminarlo inmediatamente de la lista local
       if (nuevoEstado === 'entregado') {
@@ -106,8 +111,8 @@ export default function PedidosTab({ setNotification, vendorId }) {
     return nombres[estado] || estado;
   };
 
-  const pedidosFiltrados = filtroEstado === 'todos' 
-    ? pedidos 
+  const pedidosFiltrados = filtroEstado === 'todos'
+    ? pedidos
     : pedidos.filter(pedido => pedido.estado === filtroEstado);
 
   const contarPedidosPorEstado = (estado) => {
@@ -135,66 +140,60 @@ export default function PedidosTab({ setNotification, vendorId }) {
         <div className="flex flex-wrap gap-2">
           <button
             onClick={() => setFiltroEstado('todos')}
-            className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-              filtroEstado === 'todos' 
-                ? 'bg-blue-600 text-white' 
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
+            className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${filtroEstado === 'todos'
+              ? 'bg-blue-600 text-white'
+              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
           >
             Todos ({pedidos.length})
           </button>
-          
+
           <button
             onClick={() => setFiltroEstado('pendiente')}
-            className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-              filtroEstado === 'pendiente' 
-                ? 'bg-yellow-600 text-white' 
-                : 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
-            }`}
+            className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${filtroEstado === 'pendiente'
+              ? 'bg-yellow-600 text-white'
+              : 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
+              }`}
           >
             Pendientes ({contarPedidosPorEstado('pendiente')})
           </button>
-          
+
           <button
             onClick={() => setFiltroEstado('aceptado')}
-            className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-              filtroEstado === 'aceptado' 
-                ? 'bg-blue-600 text-white' 
-                : 'bg-blue-100 text-blue-800 hover:bg-blue-200'
-            }`}
+            className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${filtroEstado === 'aceptado'
+              ? 'bg-blue-600 text-white'
+              : 'bg-blue-100 text-blue-800 hover:bg-blue-200'
+              }`}
           >
             En Preparación ({contarPedidosPorEstado('aceptado')})
           </button>
-          
+
           <button
             onClick={() => setFiltroEstado('listo_para_recoger')}
-            className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-              filtroEstado === 'listo_para_recoger' 
-                ? 'bg-purple-600 text-white' 
-                : 'bg-purple-100 text-purple-800 hover:bg-purple-200'
-            }`}
+            className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${filtroEstado === 'listo_para_recoger'
+              ? 'bg-purple-600 text-white'
+              : 'bg-purple-100 text-purple-800 hover:bg-purple-200'
+              }`}
           >
             Listos ({contarPedidosPorEstado('listo_para_recoger')})
           </button>
-          
+
           <button
             onClick={() => setFiltroEstado('en_reparto')}
-            className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-              filtroEstado === 'en_reparto' 
-                ? 'bg-green-600 text-white' 
-                : 'bg-green-100 text-green-800 hover:bg-green-200'
-            }`}
+            className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${filtroEstado === 'en_reparto'
+              ? 'bg-green-600 text-white'
+              : 'bg-green-100 text-green-800 hover:bg-green-200'
+              }`}
           >
             En Reparto ({contarPedidosPorEstado('en_reparto')})
           </button>
-          
+
           <button
             onClick={() => setFiltroEstado('entregado')}
-            className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-              filtroEstado === 'entregado' 
-                ? 'bg-emerald-600 text-white' 
-                : 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
-            }`}
+            className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${filtroEstado === 'entregado'
+              ? 'bg-emerald-600 text-white'
+              : 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
+              }`}
           >
             Entregados ({contarPedidosPorEstado('entregado')})
           </button>
@@ -207,8 +206,8 @@ export default function PedidosTab({ setNotification, vendorId }) {
           <div className="text-center py-8 text-gray-500">
             <div className="text-4xl mb-4">📋</div>
             <p className="text-lg font-medium">
-              {filtroEstado === 'todos' 
-                ? 'No tienes pedidos' 
+              {filtroEstado === 'todos'
+                ? 'No tienes pedidos'
                 : `No hay pedidos ${getEstadoNombre(filtroEstado).toLowerCase()}`
               }
             </p>
@@ -234,18 +233,17 @@ export default function PedidosTab({ setNotification, vendorId }) {
                   <span className={`px-2 py-1 rounded-full text-xs font-medium ${getEstadoStyle(pedido.estado)}`}>
                     {getEstadoNombre(pedido.estado)}
                   </span>
-                  
+
                   {/* Indicador de comprobante */}
                   {pedido.comprobante_pago && (
-                    <div className={`flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                      pedido.pago_confirmado 
-                        ? 'bg-green-100 text-green-800' 
-                        : 'bg-orange-100 text-orange-800'
-                    }`}>
+                    <div className={`flex items-center px-2 py-1 rounded-full text-xs font-medium ${pedido.pago_confirmado
+                      ? 'bg-green-100 text-green-800'
+                      : 'bg-orange-100 text-orange-800'
+                      }`}>
                       {pedido.pago_confirmado ? '✔ Pago confirmado' : '⏳ Pago pendiente'}
                     </div>
                   )}
-                  
+
                   {pedido.tiene_repartidor && (
                     <div className="flex items-center bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium">
                       🚚 Repartidor asignado
