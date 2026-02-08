@@ -21,6 +21,14 @@ export default (sequelize) => {
         key: 'id_usuario'
       }
     },
+    id_pedido: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: 'Pedido',
+        key: 'id_pedido'
+      }
+    },
     tipo: {
       type: DataTypes.ENUM('comprador_a_repartidor', 'comprador_a_vendedor'),
       allowNull: false

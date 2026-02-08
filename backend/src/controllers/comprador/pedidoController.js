@@ -8,6 +8,10 @@ export const crearPedidoDesdeCarrito = async (req, res) => {
   const t = await db.sequelize.transaction();
 
   try {
+    console.log("crearPedidoDesdeCarrito");
+    console.log(req.headers);
+    console.log(req.body);
+
     const { id_comprador, direccion, latitud, longitud, metodo_pago } = req.body;
 
     console.log('📦 Datos recibidos:', { id_comprador, direccion, latitud, longitud, metodo_pago });
@@ -311,6 +315,13 @@ export const obtenerPedidosDelComprador = async (req, res) => {
           through: { attributes: [] },
           required: false,
           attributes: ['id_usuario', 'nombre']
+        },
+        {
+          model: db.Valoracion,
+          required: false,
+          where: {
+            id_comprador: id_usuario
+          }
         }
       ],
       order: [["fecha_creacion", "DESC"]]
@@ -356,7 +367,8 @@ export const obtenerPedidosDelComprador = async (req, res) => {
         tiene_repartidor: pedido.tiene_repartidor,
         items: items,
         repartidor: pedido.Repartidor && pedido.Repartidor[0] ? { id: pedido.Repartidor[0].id_usuario, nombre: pedido.Repartidor[0].nombre } : null,
-        direccion: pedido.direccion
+        direccion: pedido.direccion,
+        ya_calificado: pedido.Valoracions && pedido.Valoracions.length > 0
       };
     });
 
@@ -451,53 +463,35 @@ export const calificarPedido = async (req, res) => {
     // Crear calificación para el vendedor (si se proporcionó)
     if (calificaciones.vendedor && calificaciones.vendedor.calificacion > 0 && pedido.Vendedor?.[0]) {
       // Verificar que no haya calificado antes al vendedor
-      const calificacionExistente = await db.Valoracion.findOne({
-        where: {
-          id_comprador: id_comprador,
-          id_usuario_evaluado: pedido.Vendedor[0].id_usuario,
-          tipo: 'comprador_a_vendedor'
-        },
-        transaction: t
-      });
+      // Permitir múltiples calificaciones (por pedido) - Se eliminó la validación de calificación única por usuario
+      const valoracionVendedor = await db.Valoracion.create({
+        id_comprador: id_comprador,
+        id_usuario_evaluado: pedido.Vendedor[0].id_usuario,
+        id_pedido: id_pedido,
+        tipo: 'comprador_a_vendedor',
+        calificacion: calificaciones.vendedor.calificacion,
+        comentario: calificaciones.vendedor.comentario || null,
+        fecha: new Date()
+      }, { transaction: t });
 
-      if (!calificacionExistente) {
-        const valoracionVendedor = await db.Valoracion.create({
-          id_comprador: id_comprador,
-          id_usuario_evaluado: pedido.Vendedor[0].id_usuario,
-          tipo: 'comprador_a_vendedor',
-          calificacion: calificaciones.vendedor.calificacion,
-          comentario: calificaciones.vendedor.comentario || null,
-          fecha: new Date()
-        }, { transaction: t });
-
-        valoracionesCreadas.push(valoracionVendedor);
-      }
+      valoracionesCreadas.push(valoracionVendedor);
     }
 
     // Crear calificación para el repartidor (si se proporcionó)
     if (calificaciones.repartidor && calificaciones.repartidor.calificacion > 0 && pedido.Repartidor?.[0]) {
       // Verificar que no haya calificado antes al repartidor
-      const calificacionExistente = await db.Valoracion.findOne({
-        where: {
-          id_comprador: id_comprador,
-          id_usuario_evaluado: pedido.Repartidor[0].id_usuario,
-          tipo: 'comprador_a_repartidor'
-        },
-        transaction: t
-      });
+      // Permitir múltiples calificaciones (por pedido) - Se eliminó la validación de calificación única por usuario
+      const valoracionRepartidor = await db.Valoracion.create({
+        id_comprador: id_comprador,
+        id_usuario_evaluado: pedido.Repartidor[0].id_usuario,
+        id_pedido: id_pedido,
+        tipo: 'comprador_a_repartidor',
+        calificacion: calificaciones.repartidor.calificacion,
+        comentario: calificaciones.repartidor.comentario || null,
+        fecha: new Date()
+      }, { transaction: t });
 
-      if (!calificacionExistente) {
-        const valoracionRepartidor = await db.Valoracion.create({
-          id_comprador: id_comprador,
-          id_usuario_evaluado: pedido.Repartidor[0].id_usuario,
-          tipo: 'comprador_a_repartidor',
-          calificacion: calificaciones.repartidor.calificacion,
-          comentario: calificaciones.repartidor.comentario || null,
-          fecha: new Date()
-        }, { transaction: t });
-
-        valoracionesCreadas.push(valoracionRepartidor);
-      }
+      valoracionesCreadas.push(valoracionRepartidor);
     }
 
     await t.commit();

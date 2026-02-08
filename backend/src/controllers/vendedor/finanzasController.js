@@ -14,7 +14,7 @@ export const getFinanzasVendedor = async (req, res) => {
       include: [
         {
           model: Pedido,
-          as: 'Pedido', 
+          as: 'Pedido',
           attributes: [
             'id_pedido',
             'total',
@@ -23,7 +23,18 @@ export const getFinanzasVendedor = async (req, res) => {
             'fecha_entrega',
             'direccion'
           ],
-          required: true
+          required: true,
+          include: [
+            {
+              model: db.Valoracion,
+              required: false,
+              where: {
+                tipo: 'comprador_a_vendedor',
+                id_usuario_evaluado: id
+              },
+              attributes: ['calificacion', 'comentario']
+            }
+          ]
         }
       ],
       attributes: [
@@ -43,7 +54,8 @@ export const getFinanzasVendedor = async (req, res) => {
       monto: parseFloat(item.Pedido.total) || 0,
       estado_pedido: item.Pedido.estado,
       estado_pago: item.estado_pago,
-      direccion: item.Pedido.direccion
+      direccion: item.Pedido.direccion,
+      valoracion: item.Pedido.Valoracions && item.Pedido.Valoracions.length > 0 ? item.Pedido.Valoracions[0] : null
     }));
 
     // Calcular estadísticas
@@ -71,9 +83,9 @@ export const getFinanzasVendedor = async (req, res) => {
 
   } catch (error) {
     console.error("Error al obtener finanzas:", error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: "Error al obtener información financiera",
-      details: error.message 
+      details: error.message
     });
   }
 };

@@ -804,6 +804,12 @@ export const getEntregasRepartidor = async (req, res) => {
           },
           attributes: ['nombre', 'precio'],
           required: false
+        },
+        {
+          model: db.Valoracion,
+          required: false,
+          where: { tipo: 'comprador_a_repartidor' },
+          attributes: ['calificacion', 'comentario']
         }
       ],
       where: {
@@ -843,9 +849,11 @@ export const getEntregasRepartidor = async (req, res) => {
       precio_bruto: e.precio_bruto || 0,
       comision_servicio: e.comision_servicio || 0,
       pago_reparto: e.pago_reparto || 0,
+      pago_reparto: e.pago_reparto || 0,
       Comprador: e.Comprador,
       Vendedor: e.Vendedor,
-      Productos: e.Productos
+      Productos: e.Productos,
+      valoracion: e.Valoracions && e.Valoracions.length > 0 ? e.Valoracions[0] : null
     }));
 
     res.json({

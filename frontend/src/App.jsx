@@ -86,22 +86,70 @@ function RegisterPage() {
   return <Register onGoLogin={onGoLogin} showNotification={showNotification} onRegister={onRegister} />;
 }
 
+const BlockedScreen = () => {
+  const { user, logout } = useAuth();
+
+  return (
+    <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
+      <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-8 text-center border-l-4 border-red-500">
+        <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
+          <span className="text-4xl">🚫</span>
+        </div>
+
+        <h2 className="text-2xl font-bold text-gray-900 mb-2">Cuenta Bloqueada</h2>
+        <p className="text-gray-600 mb-6">
+          Tu cuenta ha sido restringida por un administrador. No puedes acceder a la plataforma.
+        </p>
+
+        {user?.bloqueo && (
+          <div className="bg-red-50 rounded-lg p-4 mb-8 text-left">
+            <h3 className="text-sm font-bold text-red-800 uppercase tracking-wide mb-1">Motivo:</h3>
+            <p className="text-red-700 italic">"{user.bloqueo.motivo}"</p>
+            <p className="text-xs text-red-500 mt-2 text-right">
+              Fecha: {new Date(user.bloqueo.fecha).toLocaleDateString()}
+            </p>
+          </div>
+        )}
+
+        <button
+          onClick={logout}
+          className="w-full bg-red-600 text-white font-semibold py-3 rounded-lg hover:bg-red-700 transition-colors shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+        >
+          Cerrar Sesión
+        </button>
+      </div>
+    </div>
+  );
+};
+
 function App() {
   return (
     <Router>
       <AuthProvider>
-        <Routes>
-          {/* Rutas públicas de autenticación: aparecen antes de las rutas de aplicación */}
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
-          <Route path="/" element={<Home />} />
-          <Route path="/vendedor" element={<ProtectedRoute allowedRoles={["vendedor"]}><Vendedor /></ProtectedRoute>} />
-          <Route path="/comprador" element={<ProtectedRoute allowedRoles={["comprador"]}><Comprador /></ProtectedRoute>} />
-          <Route path="/repartidor" element={<ProtectedRoute allowedRoles={["repartidor"]}><Repartidor /></ProtectedRoute>} />
-          <Route path="/administrador" element={<ProtectedRoute allowedRoles={["admin"]}><Administrador /></ProtectedRoute>} />
-        </Routes>
+        <AppContent />
       </AuthProvider>
     </Router>
+  );
+}
+
+function AppContent() {
+  const { user } = useAuth();
+
+  if (user?.estado === 'bloqueado') {
+    return <BlockedScreen />;
+  }
+
+  return (
+    <Routes>
+      {/* Rutas públicas de autenticación: aparecen antes de las rutas de aplicación */}
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/register" element={<RegisterPage />} />
+      <Route path="/" element={<Home />} />
+      <Route path="/vendedor" element={<ProtectedRoute allowedRoles={["vendedor"]}><Vendedor /></ProtectedRoute>} />
+      <Route path="/comprador" element={<ProtectedRoute allowedRoles={["comprador"]}><Comprador /></ProtectedRoute>} />
+      <Route path="/repartidor" element={<ProtectedRoute allowedRoles={["repartidor"]}><Repartidor /></ProtectedRoute>} />
+      <Route path="/administrador" element={<ProtectedRoute allowedRoles={["admin"]}><Administrador /></ProtectedRoute>} />
+    </Routes>
   );
 }
 

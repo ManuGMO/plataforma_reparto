@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 
-export default function FinanzasTab({ idUsuario}) {
+export default function FinanzasTab({ idUsuario }) {
   const [historial, setHistorial] = useState([]);
   const [estadisticas, setEstadisticas] = useState({});
   const [loading, setLoading] = useState(true);
   const [filtro, setFiltro] = useState('todos'); // 'todos', 'pagado', 'pendiente'
+
+  const [selectedOrder, setSelectedOrder] = useState(null);
 
   // 🔹 Obtener datos financieros
   useEffect(() => {
@@ -13,12 +15,12 @@ export default function FinanzasTab({ idUsuario}) {
       try {
         setLoading(true);
         console.log("Obteniendo finanzas para vendedor ID:", idUsuario);
-        
+
         const response = await axios.get(`http://localhost:3001/api/finanzas/${idUsuario}`);
         setHistorial(response.data.historial || []);
         setEstadisticas(response.data.estadisticas || {});
         console.log("Finanzas obtenidas:", response.data);
-        
+
       } catch (error) {
         console.error("Error al obtener finanzas:", error);
         setHistorial([]);
@@ -68,22 +70,22 @@ export default function FinanzasTab({ idUsuario}) {
   }
 
   const formatearEstado = (estado) => {
-  const estados = {
-    'pendiente': 'Pendiente',
-    'aceptado': 'Aceptado', 
-    'listo_para_recoger': 'Listo para recoger',
-    'en_reparto': 'En reparto',
-    'entregado': 'Entregado',
-    'rechazado': 'Rechazado',
-    'cancelado': 'Cancelado'
+    const estados = {
+      'pendiente': 'Pendiente',
+      'aceptado': 'Aceptado',
+      'listo_para_recoger': 'Listo para recoger',
+      'en_reparto': 'En reparto',
+      'entregado': 'Entregado',
+      'rechazado': 'Rechazado',
+      'cancelado': 'Cancelado'
+    };
+    return estados[estado] || estado;
   };
-  return estados[estado] || estado;
-};
 
   return (
     <div className="p-4">
       <h2 className="text-lg font-bold text-gray-900 mb-4">Historial de Cobros</h2>
-      
+
       {/* 📊 Resumen estadístico */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
@@ -110,31 +112,28 @@ export default function FinanzasTab({ idUsuario}) {
       <div className="flex gap-2 mb-4">
         <button
           onClick={() => setFiltro('todos')}
-          className={`px-3 py-1 rounded text-sm ${
-            filtro === 'todos' 
-              ? 'bg-blue-600 text-white' 
+          className={`px-3 py-1 rounded text-sm ${filtro === 'todos'
+              ? 'bg-blue-600 text-white'
               : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-          }`}
+            }`}
         >
           Todos ({estadisticas.totalPedidos || 0})
         </button>
         <button
           onClick={() => setFiltro('pagado')}
-          className={`px-3 py-1 rounded text-sm ${
-            filtro === 'pagado' 
-              ? 'bg-green-600 text-white' 
+          className={`px-3 py-1 rounded text-sm ${filtro === 'pagado'
+              ? 'bg-green-600 text-white'
               : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-          }`}
+            }`}
         >
           Pagados ({estadisticas.pedidosPagados || 0})
         </button>
         <button
           onClick={() => setFiltro('pendiente')}
-          className={`px-3 py-1 rounded text-sm ${
-            filtro === 'pendiente' 
-              ? 'bg-yellow-600 text-white' 
+          className={`px-3 py-1 rounded text-sm ${filtro === 'pendiente'
+              ? 'bg-yellow-600 text-white'
               : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-          }`}
+            }`}
         >
           Pendientes ({estadisticas.pedidosPendientes || 0})
         </button>
@@ -150,11 +149,11 @@ export default function FinanzasTab({ idUsuario}) {
           {historialFiltrado.map((pedido) => (
             <div
               key={pedido.id_pedido}
-              className={`border rounded-lg p-4 shadow-sm ${
-                pedido.estado_pago === 'pagado' 
-                  ? 'bg-green-50 border-green-200' 
+              onClick={() => setSelectedOrder(pedido)}
+              className={`border rounded-lg p-4 shadow-sm cursor-pointer hover:shadow-md transition-shadow ${pedido.estado_pago === 'pagado'
+                  ? 'bg-green-50 border-green-200'
                   : 'bg-yellow-50 border-yellow-200'
-              }`}
+                }`}
             >
               <div className="flex justify-between items-start">
                 <div className="flex-1">
@@ -162,15 +161,14 @@ export default function FinanzasTab({ idUsuario}) {
                     <h3 className="font-semibold text-gray-900">
                       Pedido #{pedido.id_pedido}
                     </h3>
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      pedido.estado_pago === 'pagado'
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${pedido.estado_pago === 'pagado'
                         ? 'bg-green-100 text-green-800'
                         : 'bg-yellow-100 text-yellow-800'
-                    }`}>
+                      }`}>
                       {pedido.estado_pago === 'pagado' ? '✅ Pagado' : '⏳ Pendiente'}
                     </span>
                   </div>
-                  
+
                   <div className="text-sm text-gray-600 space-y-1">
                     <p>📅 Fecha: {formatearFecha(pedido.fecha_pedido)}</p>
                     <p>📦 Estado: {formatearEstado(pedido.estado_pedido)}</p>
@@ -181,8 +179,15 @@ export default function FinanzasTab({ idUsuario}) {
                       <p className="text-xs">📍 {pedido.direccion}</p>
                     )}
                   </div>
+
+                  {/* Visual indicator for review */}
+                  {pedido.valoracion && (
+                    <div className="mt-2 text-xs text-yellow-600 font-medium">
+                      ★ Opinión del comprador disponible
+                    </div>
+                  )}
                 </div>
-                
+
                 <div className="text-right">
                   <p className="text-xl font-bold text-green-600">
                     {formatearMoneda(pedido.monto)}
@@ -193,7 +198,72 @@ export default function FinanzasTab({ idUsuario}) {
           ))}
         </div>
       )}
+
+      {/* Modal de Detalle */}
+      {selectedOrder && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg max-w-md w-full max-h-[90vh] overflow-y-auto p-6 relative">
+            <button
+              onClick={() => setSelectedOrder(null)}
+              className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 text-xl"
+            >
+              ✕
+            </button>
+
+            <h3 className="text-lg font-bold text-gray-900 mb-4">Detalle del Pedido #{selectedOrder.id_pedido}</h3>
+
+            <div className="space-y-4">
+              <div className="border-b pb-4">
+                <p className="text-sm text-gray-500">Estado del pago</p>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${selectedOrder.estado_pago === 'pagado'
+                      ? 'bg-green-100 text-green-800'
+                      : 'bg-yellow-100 text-yellow-800'
+                    }`}>
+                    {selectedOrder.estado_pago === 'pagado' ? '✅ Pagado' : '⏳ Pendiente'}
+                  </span>
+                  {selectedOrder.estado_pago === 'pagado' && (
+                    <span className="text-green-600 font-bold">{formatearMoneda(selectedOrder.monto)}</span>
+                  )}
+                </div>
+              </div>
+
+              {selectedOrder.valoracion ? (
+                <div className="bg-yellow-50 border border-yellow-100 p-4 rounded-lg">
+                  <h4 className="font-semibold text-yellow-900 mb-2">Opinión del Comprador</h4>
+                  <div className="flex items-center space-x-1 mb-2">
+                    {[1, 2, 3, 4, 5].map(star => (
+                      <span key={star} className={`text-xl ${star <= selectedOrder.valoracion.calificacion ? 'text-yellow-500' : 'text-gray-300'
+                        }`}>★</span>
+                    ))}
+                    <span className="ml-2 text-yellow-800 font-medium">
+                      {selectedOrder.valoracion.calificacion}/5
+                    </span>
+                  </div>
+                  {selectedOrder.valoracion.comentario && (
+                    <p className="text-yellow-800 text-sm italic">
+                      "{selectedOrder.valoracion.comentario}"
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div className="bg-gray-50 border border-dashed border-gray-300 p-4 rounded-lg text-center">
+                  <p className="text-gray-500 text-sm">El comprador aún no ha dejado una opinión para este pedido.</p>
+                </div>
+              )}
+            </div>
+
+            <div className="mt-6">
+              <button
+                onClick={() => setSelectedOrder(null)}
+                className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition"
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
-        

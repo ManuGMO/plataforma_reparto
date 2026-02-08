@@ -33,6 +33,10 @@ export const authenticate = async (req, res, next) => {
     });
     if (!user) return res.status(401).json({ message: 'Usuario no encontrado' });
 
+    if (user.estado === 'bloqueado') {
+      return res.status(403).json({ message: 'Usuario bloqueado' });
+    }
+
     const roles = user.Rols ? user.Rols.map(r => r.nombreRol) : [];
 
     req.user = { id: user.id_usuario, nombre: user.nombre, correo: user.correo, roles };

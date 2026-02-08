@@ -54,12 +54,12 @@ export default function CalificacionModal({ pedido, showModal, onClose, id_compr
         repartidor: tieneRepartidor ? calificaciones.repartidor : null
       };
 
-      await axios.post('http://localhost:3000/api/comprador/pedidos/calificar', {
+      await axios.post('http://localhost:3001/api/pedidos/comprador/calificar', {
         id_pedido: pedido.id,
         id_comprador: id_comprador,
         calificaciones: calificacionesAEnviar
       });
-      
+
       alert('Gracias por tu calificación');
       if (onCalificacionEnviada) onCalificacionEnviada();
       onClose();
@@ -85,10 +85,10 @@ export default function CalificacionModal({ pedido, showModal, onClose, id_compr
               className="bg-transparent rounded-md p-1 w-9 h-9 flex items-center justify-center transition-all duration-150 outline-none ring-transparent focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 focus:ring-transparent focus-visible:ring-transparent focus:border-transparent focus-visible:border-transparent active:outline-none"
               style={{ outline: 'none', boxShadow: 'none' }}
             >
-              <svg 
-                width="28" 
-                height="28" 
-                viewBox="0 0 24 24" 
+              <svg
+                width="28"
+                height="28"
+                viewBox="0 0 24 24"
                 fill={filled ? "#FCD34D" : "none"}
                 stroke={filled ? "#FCD34D" : "#D1D5DB"}
                 strokeWidth="2"
@@ -131,7 +131,7 @@ export default function CalificacionModal({ pedido, showModal, onClose, id_compr
                 <p className="text-sm text-gray-700 mt-1">{vendedorNombre}</p>
               </div>
             </div>
-            
+
             <div className="flex items-center space-x-3 mb-3">
               {renderEstrellas('vendedor')}
               {calificaciones.vendedor.calificacion > 0 && (
@@ -142,7 +142,7 @@ export default function CalificacionModal({ pedido, showModal, onClose, id_compr
             </div>
 
             {calificaciones.vendedor.calificacion > 0 && (
-                <textarea
+              <textarea
                 value={calificaciones.vendedor.comentario}
                 onChange={(e) => handleComentarioChange('vendedor', e.target.value)}
                 placeholder="Comentario (opcional)"
@@ -168,7 +168,7 @@ export default function CalificacionModal({ pedido, showModal, onClose, id_compr
                 <p className="text-sm text-gray-700 mt-1">{repartidorNombre}</p>
               </div>
             </div>
-            
+
             <div className="flex items-center space-x-3 mb-3">
               {renderEstrellas('repartidor')}
               {calificaciones.repartidor.calificacion > 0 && (
@@ -200,14 +200,13 @@ export default function CalificacionModal({ pedido, showModal, onClose, id_compr
             <button
               onClick={handleEnviar}
               disabled={
-                (calificaciones.vendedor.calificacion === 0 && calificaciones.repartidor.calificacion === 0) || 
+                (calificaciones.vendedor.calificacion === 0 && calificaciones.repartidor.calificacion === 0) ||
                 enviando
               }
-              className={`flex-1 py-3 rounded-lg font-medium transition-colors ${
-                (calificaciones.vendedor.calificacion === 0 && calificaciones.repartidor.calificacion === 0) || enviando
-                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                  : 'bg-blue-600 text-white hover:bg-blue-700'
-              }`}
+              className={`flex-1 py-3 rounded-lg font-medium transition-colors ${(calificaciones.vendedor.calificacion === 0 && calificaciones.repartidor.calificacion === 0) || enviando
+                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                : 'bg-blue-600 text-white hover:bg-blue-700'
+                }`}
             >
               {enviando ? 'Enviando...' : 'Enviar calificación'}
             </button>

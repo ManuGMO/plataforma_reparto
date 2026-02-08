@@ -41,7 +41,7 @@ export const obtenerCarrito = async (req, res) => {
       const categoriaNombre = producto.Categoria?.nombre?.toLowerCase() || 'comida';
       const cantidad = producto.Carrito_Producto.cantidad;
       const precioUnitario = producto.precio
-      
+
       return {
         id: producto.id_producto,
         nombre: producto.nombre,
@@ -49,10 +49,10 @@ export const obtenerCarrito = async (req, res) => {
         cantidad: cantidad,
         subtotal: producto.precio,
         imagen: producto.imagen ? `${req.protocol}://${req.get("host")}/uploads/products/${producto.imagen}`
-        : null,
+          : null,
         categoria: categoriaNombre,
-        vendedor: producto.Vendedor ? 
-          `${producto.Vendedor.nombre}` : 
+        vendedor: producto.Vendedor ?
+          `${producto.Vendedor.nombre}` :
           'Vendedor',
         stock: producto.stock,
         id_vendedor: producto.id_usuario
@@ -70,9 +70,9 @@ export const obtenerCarrito = async (req, res) => {
     });
   } catch (error) {
     console.error("Error al obtener carrito:", error);
-    return res.status(500).json({ 
+    return res.status(500).json({
       message: "Error al obtener carrito",
-      error: error.message 
+      error: error.message
     });
   }
 };
@@ -81,6 +81,10 @@ export const obtenerCarrito = async (req, res) => {
 export const agregarAlCarrito = async (req, res) => {
   const t = await db.sequelize.transaction();
   try {
+    console.log("agregarAlCarrito");
+    console.log(req.headers);
+    console.log(req.body);
+
     const { id_usuario } = req.params;
     const { id_producto, cantidad = 1 } = req.body;
 
@@ -119,7 +123,7 @@ export const agregarAlCarrito = async (req, res) => {
 
     if (itemExistente) {
       const nuevaCantidad = itemExistente.cantidad + Number(cantidad);
-      
+
       if (producto.stock < nuevaCantidad) {
         return res.status(400).json({ message: "Stock insuficiente para la cantidad solicitada" });
       }
@@ -138,9 +142,9 @@ export const agregarAlCarrito = async (req, res) => {
   } catch (error) {
     await t.rollback();
     console.error("Error al agregar producto al carrito:", error);
-    return res.status(500).json({ 
+    return res.status(500).json({
       message: "Error al agregar producto al carrito",
-      error: error.message 
+      error: error.message
     });
   }
 };
@@ -177,9 +181,9 @@ export const eliminarDelCarrito = async (req, res) => {
   } catch (error) {
     await t.rollback();
     console.error("Error al eliminar producto del carrito:", error);
-    return res.status(500).json({ 
+    return res.status(500).json({
       message: "Error al eliminar producto del carrito",
-      error: error.message 
+      error: error.message
     });
   }
 };
@@ -234,9 +238,9 @@ export const actualizarCantidadCarrito = async (req, res) => {
   } catch (error) {
     await t.rollback();
     console.error("Error al actualizar cantidad:", error);
-    return res.status(500).json({ 
+    return res.status(500).json({
       message: "Error al actualizar cantidad",
-      error: error.message 
+      error: error.message
     });
   }
 };
@@ -266,9 +270,9 @@ export const vaciarCarrito = async (req, res) => {
   } catch (error) {
     await t.rollback();
     console.error("Error al vaciar carrito:", error);
-    return res.status(500).json({ 
+    return res.status(500).json({
       message: "Error al vaciar carrito",
-      error: error.message 
+      error: error.message
     });
   }
 };

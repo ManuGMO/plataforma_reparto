@@ -69,6 +69,8 @@ export const register = async (req, res) => {
 
 export const login = async (req, res) => {
   try {
+    console.log(req.headers);
+    console.log(req.body);
     const { correo, contraseña } = req.body;
     if (!correo || !contraseña) return res.status(400).json({ message: 'Faltan credenciales' });
 
@@ -89,14 +91,36 @@ export const login = async (req, res) => {
     if (!match) return res.status(401).json({ message: 'Credenciales inválidas' });
 
 
+    // Obtener bloqueo si el usuario está bloqueado
+    let bloqueoDetalle = null;
+    if (user.estado === 'bloqueado') {
+      const bloqueo = await db.Bloqueo.findOne({
+        where: { id_bloqueado: user.id_usuario }
+      });
+      if (bloqueo) {
+        bloqueoDetalle = {
+          motivo: bloqueo.motivo
+        };
+      }
+    }
+
     const token = jwt.sign({ id: user.id_usuario, nombre: user.nombre, correo: user.correo }, process.env.JWT_SECRET || 'secret', { expiresIn: '4h' });
-
-
 
     const roles = user.Rols ? user.Rols.map(r => r.nombreRol) : [];
 
-
-    return res.json({ token, user: { id: user.id_usuario, nombre: user.nombre, correo: user.correo, roles, latitud: user.latitud, longitud: user.longitud } });
+    return res.json({
+      token,
+      user: {
+        id: user.id_usuario,
+        nombre: user.nombre,
+        correo: user.correo,
+        roles,
+        latitud: user.latitud,
+        longitud: user.longitud,
+        estado: user.estado, // 👈 Importante
+        bloqueo: bloqueoDetalle // 👈 Importante
+      }
+    });
   } catch (err) {
     console.error(err);
     return res.status(500).json({ message: 'Error al iniciar sesión' });

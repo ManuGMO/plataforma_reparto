@@ -167,6 +167,7 @@ export default (sequelize) => {
 
     // Notificaciones
     Pedido.hasMany(models.Notificacion, { foreignKey: 'id_pedido' });
+    Pedido.hasMany(models.Valoracion, { foreignKey: 'id_pedido' });
   };
 
   return Pedido;

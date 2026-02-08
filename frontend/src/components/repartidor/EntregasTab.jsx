@@ -13,6 +13,8 @@ export default function EntregasTab({ repartidorId }) {
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
 
+  const [selectedDelivery, setSelectedDelivery] = useState(null);
+
   const filterOptions = [
     { value: 'today', label: 'Hoy' },
     { value: 'week', label: 'Esta semana' },
@@ -66,8 +68,8 @@ export default function EntregasTab({ repartidorId }) {
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('es-ES', { 
-      day: '2-digit', 
+    return date.toLocaleDateString('es-ES', {
+      day: '2-digit',
       month: '2-digit',
       hour: '2-digit',
       minute: '2-digit'
@@ -139,7 +141,14 @@ export default function EntregasTab({ repartidorId }) {
           </div>
         ) : (
           deliveries.map((delivery) => (
-            <DeliveryCard key={delivery.id_pedido} delivery={delivery} formatDate={formatDate} getStatusColor={getStatusColor} getStatusText={getStatusText} />
+            <DeliveryCard
+              key={delivery.id_pedido}
+              delivery={delivery}
+              formatDate={formatDate}
+              getStatusColor={getStatusColor}
+              getStatusText={getStatusText}
+              onClick={() => setSelectedDelivery(delivery)}
+            />
           ))
         )}
       </div>
@@ -158,16 +167,74 @@ export default function EntregasTab({ repartidorId }) {
           </div>
         </div>
       </div>
+
+      {/* Review Modal */}
+      {selectedDelivery && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg max-w-md w-full max-h-[90vh] overflow-y-auto p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-bold text-gray-900">Detalle de la Entrega</h3>
+              <button
+                onClick={() => setSelectedDelivery(null)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div className="bg-gray-50 p-3 rounded-lg">
+                <p className="text-sm text-gray-500">Comprador</p>
+                <p className="font-medium">{selectedDelivery.Comprador?.[0]?.nombre || 'Cliente'}</p>
+              </div>
+
+              {selectedDelivery.valoracion ? (
+                <div className="bg-blue-50 border border-blue-100 p-4 rounded-lg">
+                  <h4 className="font-semibold text-blue-900 mb-2">Opinión del comprador</h4>
+                  <div className="flex items-center space-x-1 mb-2">
+                    {[1, 2, 3, 4, 5].map(star => (
+                      <span key={star} className={`text-xl ${star <= selectedDelivery.valoracion.calificacion ? 'text-yellow-400' : 'text-gray-300'
+                        }`}>★</span>
+                    ))}
+                    <span className="ml-2 text-blue-800 font-medium">
+                      {selectedDelivery.valoracion.calificacion}/5
+                    </span>
+                  </div>
+                  {selectedDelivery.valoracion.comentario && (
+                    <p className="text-blue-800 text-sm italic">
+                      "{selectedDelivery.valoracion.comentario}"
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div className="bg-gray-50 border border-dashed border-gray-300 p-4 rounded-lg text-center">
+                  <p className="text-gray-500 text-sm">El cliente aún no ha dejado una opinión para esta entrega.</p>
+                </div>
+              )}
+            </div>
+
+            <button
+              onClick={() => setSelectedDelivery(null)}
+              className="mt-6 w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition"
+            >
+              Cerrar
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-function DeliveryCard({ delivery, formatDate, getStatusColor, getStatusText }) {
+function DeliveryCard({ delivery, formatDate, getStatusColor, getStatusText, onClick }) {
   const vendorName = delivery.Vendedor?.[0]?.nombre || 'Restaurante';
   const customerName = delivery.Comprador?.[0]?.nombre || 'Cliente';
 
   return (
-    <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
+    <div
+      onClick={onClick}
+      className="bg-white rounded-lg p-4 shadow-sm border border-gray-200 cursor-pointer hover:shadow-md transition-shadow"
+    >
       <div className="flex justify-between items-start mb-3">
         <div>
           <h3 className="font-semibold text-gray-900">Pedido #{delivery.id_pedido}</h3>
@@ -180,13 +247,21 @@ function DeliveryCard({ delivery, formatDate, getStatusColor, getStatusText }) {
           </span>
         </div>
       </div>
-      
+
       <div className="space-y-1 text-sm">
-        <p><span className="font-semibold text-gray-600">De:</span> 
-            <span className='text-gray-600'>  {vendorName}</span></p>
+        <p><span className="font-semibold text-gray-600">De:</span>
+          <span className='text-gray-600'>  {vendorName}</span></p>
         <p><span className="font-semibold text-gray-600">Para:</span> <span className='text-gray-600'>{customerName}</span></p>
         <p><span className="font-semibold text-gray-600">Dirección:</span> <span className='text-gray-600'>{delivery.direccion}</span></p>
       </div>
+
+      {/* Indicador visual si hay reseña */}
+      {delivery.valoracion && (
+        <div className="mt-2 pt-2 border-t border-gray-100 flex items-center text-xs text-yellow-600 font-medium">
+          <span className="mr-1">★</span>
+          Opinión del cliente disponible
+        </div>
+      )}
     </div>
   );
 }

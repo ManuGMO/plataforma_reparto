@@ -6,7 +6,7 @@ export const getStatusColor = (estado) => {
     'en-espera': 'bg-gray-300 text-gray-800',
     'confirmado': 'bg-blue-100 text-blue-800',
     'preparando': 'bg-yellow-100 text-yellow-800',
-    'esperando-repartidor' : 'bg-pink-100 text-pink-800',
+    'esperando-repartidor': 'bg-pink-100 text-pink-800',
     'en-camino': 'bg-purple-100 text-purple-800',
     'entregado': 'bg-green-100 text-green-800',
     'cancelado': 'bg-red-100 text-red-800'
@@ -19,7 +19,7 @@ export const getStatusText = (estado) => {
     'en-espera': 'En espera',
     'confirmado': 'Confirmado',
     'preparando': 'En preparación',
-    'esperando-repartidor' : 'Esperando Repartidor',
+    'esperando-repartidor': 'Esperando Repartidor',
     'en-camino': 'En camino',
     'entregado': 'Entregado',
     'cancelado': 'Cancelado'
@@ -29,7 +29,7 @@ export const getStatusText = (estado) => {
 
 export const getStatusIcon = (estado) => {
   const icons = {
-    'esperando-repartidor' : '⏱️',
+    'esperando-repartidor': '⏱️',
     'confirmado': '✅',
     'preparando': '👨‍🍳',
     'en-camino': '🚲',
@@ -43,7 +43,7 @@ export const getProgressStep = (estado) => {
   const steps = {
     'confirmado': 1,
     'preparando': 2,
-    'esperando-repartidor' : 2,
+    'esperando-repartidor': 2,
     'en-camino': 3,
     'entregado': 4,
     'cancelado': 0
@@ -74,7 +74,7 @@ export default function PedidoModal({ pedido, showModal, onClose }) {
         {/* Header */}
         <div className="bg-white shadow-sm border-b sticky top-0 z-10">
           <div className="px-4 py-3 flex items-center">
-            <button 
+            <button
               onClick={onClose}
               className="mr-3 text-2xl hover:bg-gray-100 rounded-full w-8 h-8 flex items-center justify-center"
             >
@@ -83,7 +83,7 @@ export default function PedidoModal({ pedido, showModal, onClose }) {
             <h1 className="text-lg font-bold text-gray-900">Detalle del Pedido</h1>
           </div>
         </div>
-        
+
         <div className="p-4 space-y-6">
           {/* Order Progress */}
           <div className="bg-gray-50 rounded-lg p-4">
@@ -93,22 +93,20 @@ export default function PedidoModal({ pedido, showModal, onClose }) {
                 const currentStep = getProgressStep(pedido.estado);
                 const isCompleted = step < currentStep;
                 const isActive = step === currentStep;
-                
+
                 return (
                   <div key={step} className="flex items-center flex-1">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
-                      isCompleted 
-                        ? 'bg-green-500 text-white' 
-                        : isActive 
-                        ? 'bg-blue-500 text-white' 
-                        : 'bg-gray-300 text-gray-600'
-                    }`}>
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${isCompleted
+                        ? 'bg-green-500 text-white'
+                        : isActive
+                          ? 'bg-blue-500 text-white'
+                          : 'bg-gray-300 text-gray-600'
+                      }`}>
                       {step}
                     </div>
                     {step < 4 && (
-                      <div className={`flex-1 h-1 mx-2 ${
-                        isCompleted ? 'bg-green-500' : 'bg-gray-300'
-                      }`}></div>
+                      <div className={`flex-1 h-1 mx-2 ${isCompleted ? 'bg-green-500' : 'bg-gray-300'
+                        }`}></div>
                     )}
                   </div>
                 );
@@ -121,7 +119,7 @@ export default function PedidoModal({ pedido, showModal, onClose }) {
               <span>Entregado</span>
             </div>
           </div>
-          
+
           {/* Delivery Info - Solo mostrar si está en camino o entregado */}
           {(pedido.estado === 'en-camino' || pedido.estado === 'entregado') && (
             <div className="bg-gray-50 rounded-lg p-4">
@@ -138,7 +136,7 @@ export default function PedidoModal({ pedido, showModal, onClose }) {
               </div>
             </div>
           )}
-          
+
           {/* Order Info */}
           <div className="bg-gray-50 rounded-lg p-4">
             <h3 className="font-semibold text-gray-900 mb-3">Información del pedido</h3>
@@ -155,7 +153,7 @@ export default function PedidoModal({ pedido, showModal, onClose }) {
               )}
             </div>
           </div>
-          
+
           {/* Order Items */}
           <div className="bg-gray-50 rounded-lg p-4">
             <h3 className="font-semibold text-gray-900 mb-3">Productos</h3>
@@ -174,10 +172,10 @@ export default function PedidoModal({ pedido, showModal, onClose }) {
                   <span className="font-semibold text-green-600">${item.subtotal}</span>
                 </div>
               ))}
-              
+
               {/* Resumen de costos */}
               <div className="border-t pt-3 mt-3 space-y-2">
-                
+
                 {/* Subtotal */}
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600">Subtotal</span>
@@ -204,19 +202,19 @@ export default function PedidoModal({ pedido, showModal, onClose }) {
               </div>
             </div>
           </div>
-          
-          {/* Rate Order Button - Solo mostrar si está entregado */}
-          {pedido.estado === 'entregado' && (
-          <button 
-            onClick={handleCalificar}
-            className="w-full bg-yellow-500 text-white py-4 rounded-lg font-semibold hover:bg-yellow-600 transition-colors"
-          >
-            ⭐ Calificar Experiencia
-          </button>
-        )}
-          
+
+          {/* Rate Order Button - Solo mostrar si está entregado y no ha sido calificado */}
+          {pedido.estado === 'entregado' && !pedido.ya_calificado && (
+            <button
+              onClick={handleCalificar}
+              className="w-full bg-yellow-500 text-white py-4 rounded-lg font-semibold hover:bg-yellow-600 transition-colors"
+            >
+              ⭐ Calificar Experiencia
+            </button>
+          )}
+
           {/* Close Button */}
-          <button 
+          <button
             onClick={onClose}
             className="w-full bg-gray-600 text-white py-3 rounded-lg font-semibold hover:bg-gray-700 transition-colors"
           >
@@ -224,12 +222,12 @@ export default function PedidoModal({ pedido, showModal, onClose }) {
           </button>
         </div>
         <CalificacionModal
-        pedido={pedido}
-        showModal={showCalificacionModal}
-        onClose={() => setShowCalificacionModal(false)}
-        id_comprador={pedido.id_comprador}
-        onCalificacionEnviada={handleCalificacionEnviada}
-      />
+          pedido={pedido}
+          showModal={showCalificacionModal}
+          onClose={() => setShowCalificacionModal(false)}
+          id_comprador={pedido.id_comprador}
+          onCalificacionEnviada={handleCalificacionEnviada}
+        />
       </div>
     </div>
   );
