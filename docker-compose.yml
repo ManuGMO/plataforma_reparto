@@ -6,8 +6,8 @@ services:
     container_name: plataforma_db
     restart: always
     environment:
-      MYSQL_ROOT_PASSWORD: 12345
-      MYSQL_DATABASE: plataforma_reparto
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${DB_NAME}
     volumes:
       - db_data:/var/lib/mysql
     networks:
@@ -24,14 +24,14 @@ services:
       - /app/node_modules
     environment:
       - CHOKIDAR_USEPOLLING=true
-      - DB_HOST=db
-      - DB_PORT=3306
-      - DB_USER=root
-      - DB_PASSWORD=12345
-      - DB_NAME=plataforma_reparto
-      - JWT_SECRET=clave_secreta
+      - DB_HOST=${DB_HOST}
+      - DB_PORT=${DB_PORT}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_NAME=${DB_NAME}
+      - JWT_SECRET=${JWT_SECRET}
       - ORS_API_KEY=
-      - MAPBOX_TOKEN=
+      - MAPBOX_TOKEN=${MAPBOX_TOKEN}
     depends_on:
       - db
     networks:

@@ -2,11 +2,11 @@ import { useState } from "react";
 import { useEffect } from "react";
 import axios from "axios";
 
-export default function PedidosModal({ 
-  pedido, 
-  loadingDetalle, 
-  onCerrar, 
-  onCambiarEstado, 
+export default function PedidosModal({
+  pedido,
+  loadingDetalle,
+  onCerrar,
+  onCambiarEstado,
   getEstadoNombre,
   vendorId: propVendorId = 1
 }) {
@@ -14,6 +14,8 @@ export default function PedidosModal({
   const [repartidoresCercanos, setRepartidoresCercanos] = useState(null);
   const [cargandoRepartidores, setCargandoRepartidores] = useState(false);
   const DEFAULT_UMBRAL = 1000; // metros
+
+  const API_URL = import.meta.env.VITE_API_URL;
 
   if (!pedido) return null;
 
@@ -29,7 +31,7 @@ export default function PedidosModal({
     const fetchRepartidores = async () => {
       setCargandoRepartidores(true);
       try {
-        const res = await axios.get(`http://localhost:3001/api/repartidores/cercanos/${vendorIdToUse}/${DEFAULT_UMBRAL}`, { signal: controller.signal });
+        const res = await axios.get(`${API_URL}/api/repartidores/cercanos/${vendorIdToUse}/${DEFAULT_UMBRAL}`, { signal: controller.signal });
         setRepartidoresCercanos(res.data.data || []);
         console.debug('Repartidores cercanos recibidos:', (res.data && res.data.data) ? res.data.data.length : 0);
       } catch (e) {
@@ -51,7 +53,7 @@ export default function PedidosModal({
     const minutos = Math.floor(diff / 60000);
     const horas = Math.floor(minutos / 60);
     const dias = Math.floor(horas / 24);
-    
+
     if (dias > 0) return `${dias} día(s)`;
     if (horas > 0) return `${horas} hora(s)`;
     return `${minutos} minuto(s)`;
@@ -63,7 +65,7 @@ export default function PedidosModal({
       {/* Modal de Detalles Mejorado */}
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
         <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden">
-          
+
           {/* Header del Modal */}
           <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-6">
             <div className="flex justify-between items-start">
@@ -90,18 +92,17 @@ export default function PedidosModal({
                 </svg>
               </button>
             </div>
-            
+
             <div className="flex items-center space-x-3 mt-4">
               <span className={`px-3 py-1 rounded-full text-sm font-medium bg-white bg-opacity-20`}>
                 {getEstadoNombre(pedido.estado)}
               </span>
-              
+
               {pedido.comprobante_pago && (
-                <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                  pedido.pago_confirmado 
-                    ? 'bg-green-500 bg-opacity-70' 
-                    : 'bg-orange-500 bg-opacity-30'
-                }`}>
+                <span className={`px-3 py-1 rounded-full text-sm font-medium ${pedido.pago_confirmado
+                  ? 'bg-green-500 bg-opacity-70'
+                  : 'bg-orange-500 bg-opacity-30'
+                  }`}>
                   {pedido.pago_confirmado ? '✔ Pago confirmado' : '⏳ Pago en revisión'}
                 </span>
               )}
@@ -117,10 +118,10 @@ export default function PedidosModal({
               </div>
             ) : (
               <div className="grid md:grid-cols-2 gap-6">
-                
+
                 {/* Columna Izquierda: Info del Cliente */}
                 <div className="space-y-6">
-                  
+
                   {/* Info del Cliente */}
                   <div className="bg-gray-50 rounded-lg p-4">
                     <h4 className="font-semibold text-gray-900 mb-3 flex items-center">
@@ -193,71 +194,70 @@ export default function PedidosModal({
 
                 {/* Columna Derecha: Comprobante de Pago */}
                 <div className="space-y-6">
-                    {/* Panel derecho: mostrar repartidor asignado si existe, sino repartidores cercanos */}
-                    {(pedido.tiene_repartidor || (pedido.repartidor && pedido.repartidor.id)) ? (
-                      <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
-                        <h4 className="font-semibold text-gray-900 mb-3 flex items-center">
-                          <span className="mr-2">🚚</span>
-                          Repartidor asignado
-                        </h4>
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <div className="font-medium text-sm text-gray-900">{pedido.repartidor?.nombre || 'Repartidor'}</div>
-                            <div className="text-xs text-gray-500">{pedido.repartidor?.telefono || 'Sin teléfono'}</div>
-                            {pedido.repartidor?.email && (
-                              <div className="text-xs text-gray-500">{pedido.repartidor.email}</div>
-                            )}
-                          </div>
-                          {pedido.repartidor?.distancia_m && (
-                            <div className="text-sm font-semibold text-gray-900">{pedido.repartidor.distancia_m} m</div>
-                          )}
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="bg-gray-50 rounded-lg p-4">
-                        <h4 className="font-semibold text-gray-900 mb-3 flex items-center">
-                          <span className="mr-2">🚚</span>
-                          Repartidores cercanos
-                        </h4>
+                  {/* Panel derecho: mostrar repartidor asignado si existe, sino repartidores cercanos */}
+                  {(pedido.tiene_repartidor || (pedido.repartidor && pedido.repartidor.id)) ? (
+                    <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                      <h4 className="font-semibold text-gray-900 mb-3 flex items-center">
+                        <span className="mr-2">🚚</span>
+                        Repartidor asignado
+                      </h4>
+                      <div className="flex items-center justify-between">
                         <div>
-                          {cargandoRepartidores ? (
-                            <div className="text-sm text-gray-600">Buscando repartidores...</div>
-                          ) : repartidoresCercanos ? (
-                            repartidoresCercanos.length === 0 ? (
-                              <div className="text-sm text-gray-600">No hay repartidores dentro de 1 km.</div>
-                            ) : (
-                              <ul className="space-y-2">
-                                {repartidoresCercanos.map(r => (
-                                  <li key={r.id_usuario} className="p-2 bg-white rounded shadow-sm flex justify-between items-center">
-                                    <div>
-                                      <div className="font-medium text-sm text-gray-900">{r.nombre}</div>
-                                      <div className="text-xs text-gray-500">{r.telefono || 'Sin teléfono'}</div>
-                                    </div>
-                                    <div className="text-sm font-semibold text-gray-900">{r.distancia_m} m</div>
-                                  </li>
-                                ))}
-                              </ul>
-                            )
-                          ) : (
-                            <div className="text-sm text-gray-500">Buscando repartidores...</div>
+                          <div className="font-medium text-sm text-gray-900">{pedido.repartidor?.nombre || 'Repartidor'}</div>
+                          <div className="text-xs text-gray-500">{pedido.repartidor?.telefono || 'Sin teléfono'}</div>
+                          {pedido.repartidor?.email && (
+                            <div className="text-xs text-gray-500">{pedido.repartidor.email}</div>
                           )}
                         </div>
+                        {pedido.repartidor?.distancia_m && (
+                          <div className="text-sm font-semibold text-gray-900">{pedido.repartidor.distancia_m} m</div>
+                        )}
                       </div>
-                    )}
-                  
+                    </div>
+                  ) : (
+                    <div className="bg-gray-50 rounded-lg p-4">
+                      <h4 className="font-semibold text-gray-900 mb-3 flex items-center">
+                        <span className="mr-2">🚚</span>
+                        Repartidores cercanos
+                      </h4>
+                      <div>
+                        {cargandoRepartidores ? (
+                          <div className="text-sm text-gray-600">Buscando repartidores...</div>
+                        ) : repartidoresCercanos ? (
+                          repartidoresCercanos.length === 0 ? (
+                            <div className="text-sm text-gray-600">No hay repartidores dentro de 1 km.</div>
+                          ) : (
+                            <ul className="space-y-2">
+                              {repartidoresCercanos.map(r => (
+                                <li key={r.id_usuario} className="p-2 bg-white rounded shadow-sm flex justify-between items-center">
+                                  <div>
+                                    <div className="font-medium text-sm text-gray-900">{r.nombre}</div>
+                                    <div className="text-xs text-gray-500">{r.telefono || 'Sin teléfono'}</div>
+                                  </div>
+                                  <div className="text-sm font-semibold text-gray-900">{r.distancia_m} m</div>
+                                </li>
+                              ))}
+                            </ul>
+                          )
+                        ) : (
+                          <div className="text-sm text-gray-500">Buscando repartidores...</div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Estado de Pago */}
-                  <div className={`rounded-lg p-4 ${
-                    pedido.pago_confirmado 
-                      ? 'bg-green-50 border border-green-200' 
-                      : pedido.comprobante_pago 
-                        ? 'bg-orange-50 border border-orange-200'
-                        : 'bg-gray-50 border border-gray-200'
-                  }`}>
+                  <div className={`rounded-lg p-4 ${pedido.pago_confirmado
+                    ? 'bg-green-50 border border-green-200'
+                    : pedido.comprobante_pago
+                      ? 'bg-orange-50 border border-orange-200'
+                      : 'bg-gray-50 border border-gray-200'
+                    }`}>
                     <h4 className="font-semibold text-gray-900 mb-3 flex items-center">
                       <span className="mr-2">💳</span>
                       Estado del Pago
                     </h4>
-                    
+
                     {pedido.comprobante_pago ? (
                       <div className="space-y-3">
                         {pedido.pago_confirmado ? (
@@ -275,13 +275,13 @@ export default function PedidosModal({
                             <span className="font-medium">Esperando confirmación del administrador</span>
                           </div>
                         )}
-                        
+
                         {pedido.fecha_confirmacion_pago && (
                           <p className="text-xs text-gray-600">
                             Confirmado el: {new Date(pedido.fecha_confirmacion_pago).toLocaleString('es-CL')}
                           </p>
                         )}
-                        
+
                         {/* Botón para ver comprobante */}
                         <button
                           onClick={() => setMostrarComprobante(true)}
@@ -312,10 +312,10 @@ export default function PedidosModal({
                       <span className="mr-2">📅</span>
                       Historial del Pedido
                     </h4>
-                    
+
                     <div className="relative">
                       <div className="absolute left-2 top-2 bottom-2 w-0.5 bg-gray-300"></div>
-                      
+
                       <div className="space-y-4 relative">
 
                         {/* Pedido creado */}
@@ -324,14 +324,14 @@ export default function PedidosModal({
                           <div className="ml-4">
                             <p className="font-medium text-sm text-gray-900">Pedido creado</p>
                             <p className="text-xs text-gray-500">
-                              {new Date(pedido.fecha_creacion).toLocaleTimeString('es-CL', { 
-                                hour: '2-digit', 
-                                minute: '2-digit' 
+                              {new Date(pedido.fecha_creacion).toLocaleTimeString('es-CL', {
+                                hour: '2-digit',
+                                minute: '2-digit'
                               })}
                             </p>
                           </div>
                         </div>
-                        
+
                         {/* Estado anterior (si existe) */}
                         {pedido.estado_anterior && pedido.estado !== 'pendiente' && (
                           <div className="flex items-start">
@@ -341,30 +341,29 @@ export default function PedidosModal({
                                 {getEstadoNombre(pedido.estado_anterior)}
                               </p>
                               <p className="text-xs text-gray-500">
-                                {pedido.fecha_estado_anterior_guardada ? 
-                                  new Date(pedido.fecha_estado_anterior_guardada).toLocaleTimeString('es-CL', { 
-                                    hour: '2-digit', 
+                                {pedido.fecha_estado_anterior_guardada ?
+                                  new Date(pedido.fecha_estado_anterior_guardada).toLocaleTimeString('es-CL', {
+                                    hour: '2-digit',
                                     minute: '2-digit',
-                                    second: '2-digit' 
-                                  }) : 
+                                    second: '2-digit'
+                                  }) :
                                   'hora no disponible'
                                 }
                               </p>
                             </div>
                           </div>
                         )}
-                        
+
                         {/* Estado actual */}
                         {pedido.estado !== 'pendiente' && (
                           <div className="flex items-start">
-                            <div className={`w-4 h-4 rounded-full mt-1 z-10 ${
-                              pedido.estado === 'entregado' ? 'bg-green-500' :
+                            <div className={`w-4 h-4 rounded-full mt-1 z-10 ${pedido.estado === 'entregado' ? 'bg-green-500' :
                               pedido.estado === 'rechazado' ? 'bg-red-500' :
-                              pedido.estado === 'cancelado' ? 'bg-gray-500' :
-                              pedido.estado === 'en_reparto' ? 'bg-indigo-500' :
-                              pedido.estado === 'listo_para_recoger' ? 'bg-purple-500' :
-                              'bg-blue-500'
-                            }`}></div>
+                                pedido.estado === 'cancelado' ? 'bg-gray-500' :
+                                  pedido.estado === 'en_reparto' ? 'bg-indigo-500' :
+                                    pedido.estado === 'listo_para_recoger' ? 'bg-purple-500' :
+                                      'bg-blue-500'
+                              }`}></div>
                             <div className="ml-4">
                               <div className="flex items-center gap-2">
                                 <p className="font-medium text-sm text-gray-900">
@@ -375,15 +374,15 @@ export default function PedidosModal({
                                 </span>
                               </div>
                               <p className="text-xs text-gray-500">
-                                {pedido.fecha_ultimo_cambio_estado ? 
-                                  new Date(pedido.fecha_ultimo_cambio_estado).toLocaleTimeString('es-CL', { 
-                                    hour: '2-digit', 
+                                {pedido.fecha_ultimo_cambio_estado ?
+                                  new Date(pedido.fecha_ultimo_cambio_estado).toLocaleTimeString('es-CL', {
+                                    hour: '2-digit',
                                     minute: '2-digit',
-                                    second: '2-digit'  
-                                  }) : 
-                                  new Date(pedido.fecha_creacion).toLocaleTimeString('es-CL', { 
-                                    hour: '2-digit', 
-                                    minute: '2-digit' 
+                                    second: '2-digit'
+                                  }) :
+                                  new Date(pedido.fecha_creacion).toLocaleTimeString('es-CL', {
+                                    hour: '2-digit',
+                                    minute: '2-digit'
                                   })
                                 }
                               </p>
@@ -396,47 +395,28 @@ export default function PedidosModal({
 
                   {/* Acciones del Pedido */}
                   <div className="bg-white rounded-lg p-4 border">
+
+
                     <h4 className="font-semibold text-gray-900 mb-3">Acciones</h4>
-                    
+
                     <div className="space-y-2">
                       {pedido.estado === "pendiente" && (
                         <>
-                          <button
-                            onClick={() => {
-                              onCambiarEstado(
-                                pedido.id_pedido,
-                                "aceptado",
-                                "Pedido aceptado. Comenzando preparación."
-                              );
-                            }}
+                          <button onClick={() => { onCambiarEstado(pedido.id_pedido, "aceptado", "Pedido aceptado. Comenzando preparación.") }}
                             className="w-full bg-green-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition-colors"
                           >
                             Aceptar Pedido
                           </button>
-                          <button
-                            onClick={() => {
-                              onCambiarEstado(
-                                pedido.id_pedido,
-                                "rechazado",
-                                "Pedido rechazado. Cliente notificado."
-                              );
-                            }}
+                          <button onClick={() => { onCambiarEstado(pedido.id_pedido, "rechazado", "Pedido rechazado. Cliente notificado.") }}
                             className="w-full bg-red-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-red-700 transition-colors"
                           >
                             Rechazar Pedido
                           </button>
                         </>
                       )}
-                      
+
                       {pedido.estado === "aceptado" && (
-                        <button
-                          onClick={() => {
-                            onCambiarEstado(
-                              pedido.id_pedido,
-                              "listo_para_recoger",
-                              "Pedido listo para recoger. Repartidor notificado."
-                            );
-                          }}
+                        <button onClick={() => { onCambiarEstado(pedido.id_pedido, "listo_para_recoger", "Pedido listo. Repartidor notificado.") }}
                           className="w-full bg-purple-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-purple-700 transition-colors"
                         >
                           Marcar como Listo
@@ -478,11 +458,11 @@ export default function PedidosModal({
                 </svg>
               </button>
             </div>
-            
+
             <div className="p-4 max-h-[calc(90vh-80px)] overflow-y-auto">
               <div className="text-center">
                 <img
-                  src={`http://localhost:3001/${pedido.comprobante_pago}`}
+                  src={`${API_URL}/${pedido.comprobante_pago}`}
                   alt="Comprobante de pago"
                   className="max-w-full max-h-[70vh] object-contain mx-auto rounded-lg shadow-lg"
                   onError={(e) => {
@@ -490,7 +470,7 @@ export default function PedidosModal({
                   }}
                 />
               </div>
-              
+
               {pedido.pago_confirmado ? (
                 <div className="mt-4 bg-green-50 border border-green-200 rounded-lg p-4 text-center">
                   <p className="text-green-700 font-medium">
@@ -509,7 +489,7 @@ export default function PedidosModal({
                   </p>
                 </div>
               )}
-              
+
               <div className="mt-4 flex justify-center">
                 <button
                   onClick={() => setMostrarComprobante(false)}

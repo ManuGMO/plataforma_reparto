@@ -25,6 +25,8 @@ export default function Repartidor() {
   const { user } = useAuth();
   const ID_REPARTIDOR = user?.id_usuario || user?.id;
 
+  const API_URL = import.meta.env.VITE_API_URL;
+
   // Polling de notificaciones
   useEffect(() => {
     if (!ID_REPARTIDOR) return;
@@ -32,7 +34,7 @@ export default function Repartidor() {
     const checkNotifications = async () => {
       try {
         // Consultar notificaciones filtrando por rol=repartidor
-        const res = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/notificaciones/usuario/${ID_REPARTIDOR}/no-leidas?rol=repartidor`);
+        const res = await axios.get(`${API_URL}/api/notificaciones/usuario/${ID_REPARTIDOR}/no-leidas?rol=repartidor`);
         const notificaciones = res.data;
 
         if (notificaciones && notificaciones.length > 0) {
@@ -46,7 +48,7 @@ export default function Repartidor() {
           // Por ahora, usaremos la notificación genérica y marcaremos como leída
 
           await Promise.all(notificaciones.map(n =>
-            axios.put(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/notificaciones/${n.id_notificacion}/leer`)
+            axios.put(`${API_URL}/api/notificaciones/${n.id_notificacion}/leer`)
           ));
         }
       } catch (error) {
@@ -64,7 +66,7 @@ export default function Repartidor() {
     const loadTodayStats = async () => {
       try {
         if (!ID_REPARTIDOR) return;
-        const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/repartidor/${ID_REPARTIDOR}/estadisticas/hoy`);
+        const response = await fetch(`${API_URL}/api/repartidor/${ID_REPARTIDOR}/estadisticas/hoy`);
         const stats = await response.json();
         setTodayStats(stats);
       } catch (error) {

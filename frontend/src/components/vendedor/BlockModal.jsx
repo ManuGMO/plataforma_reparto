@@ -4,6 +4,7 @@ import axios from "axios";
 export default function BlockModal({ repartidor, onClose, idUsuario, onBlockSuccess }) {
   const [motivo, setMotivo] = useState("");
   const [loading, setLoading] = useState(false);
+  const API_URL = import.meta.env.VITE_API_URL;
 
   const handleBlock = async () => {
     if (!motivo.trim()) {
@@ -13,7 +14,7 @@ export default function BlockModal({ repartidor, onClose, idUsuario, onBlockSucc
 
     try {
       setLoading(true);
-      
+
       console.log("Enviando bloqueo:", {
         id_repartidor: repartidor.id_usuario,
         id_bloqueador: idUsuario,
@@ -21,32 +22,32 @@ export default function BlockModal({ repartidor, onClose, idUsuario, onBlockSucc
       });
 
       // Arreglé la URL - quitando el :id del endpoint
-      const response = await axios.post(`http://localhost:3001/api/repartidores/bloquear/${repartidor.id_usuario}`, {
+      const response = await axios.post(`${API_URL}/api/repartidores/bloquear/${repartidor.id_usuario}`, {
         id_bloqueador: idUsuario,
         motivo: motivo.trim(),
       });
 
       console.log("Respuesta del bloqueo:", response.data);
-      
+
       alert(`Se bloqueó exitosamente a ${repartidor.nombre}`);
-      
+
       // Llamar callback para actualizar la lista con el motivo
       if (onBlockSuccess) {
         onBlockSuccess(repartidor.id_usuario, motivo.trim());
       } else {
         onClose();
       }
-      
+
     } catch (error) {
       console.error("Error al bloquear repartidor:", error);
-      
+
       let errorMessage = "Error al bloquear.";
       if (error.response?.data?.message) {
         errorMessage = error.response.data.message;
       } else if (error.message) {
         errorMessage = error.message;
       }
-      
+
       alert(errorMessage);
     } finally {
       setLoading(false);
@@ -61,19 +62,19 @@ export default function BlockModal({ repartidor, onClose, idUsuario, onBlockSucc
   };
 
   return (
-    <div 
+    <div
       className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50"
       onClick={onClose} // Cerrar al hacer clic fuera
       onKeyDown={handleKeyDown}
     >
-      <div 
+      <div
         className="bg-white rounded-lg p-6 w-96 shadow-lg max-w-md mx-4"
         onClick={(e) => e.stopPropagation()} // Evitar cerrar al hacer clic dentro
       >
         <h2 className="text-lg font-bold text-gray-900 mb-4">
           Bloquear a {repartidor?.nombre || "Usuario"}
         </h2>
-        
+
         <div className="mb-4">
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Motivo del bloqueo:

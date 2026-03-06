@@ -7,7 +7,7 @@ export default function WeeklyEarnings({ setNotification }) {
   const [selectedWeek, setSelectedWeek] = useState(null);
   const [detalle, setDetalle] = useState([]);
 
-  const API = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+  const API_URL = import.meta.env.VITE_API_URL;
 
   const fetchWeeks = async () => {
     try {
@@ -31,7 +31,7 @@ export default function WeeklyEarnings({ setNotification }) {
     try {
       setDetalle([]);
       setSelectedWeek(weekStart);
-      const res = await axios.get(`${API}/api/admin/ganancias-semanales/${weekStart}/detalle`);
+      const res = await axios.get(`${API_URL}/api/admin/ganancias-semanales/${weekStart}/detalle`);
       setDetalle(res.data || []);
     } catch (err) {
       console.error('Error cargando detalle de semana', err);
@@ -81,7 +81,7 @@ export default function WeeklyEarnings({ setNotification }) {
 
         <div className="bg-white rounded-lg shadow-sm p-4">
           <h3 className="font-medium mb-3">Detalle {selectedWeek || ''}</h3>
-              {selectedWeek ? (
+          {selectedWeek ? (
             detalle.length === 0 ? (
               <div className="text-sm text-gray-600">No hay pedidos para esta semana</div>
             ) : (

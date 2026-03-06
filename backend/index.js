@@ -15,7 +15,7 @@ const __dirname = path.dirname(__filename);
 dotenv.config();
 const app = express();
 const PORT = process.env.BACK_PORT;
-
+const HOST = process.env.HOST;
 
 // Sincronizar la base de datos
 await starServer();
@@ -37,8 +37,8 @@ async function starServer(retries = 5, delay = 3000) {
       await sequelize.authenticate();
       console.log('✅ Conectado a MySQL');
 
-      app.listen(PORT, () => {
-        console.log(`🚀Servidor corriendo en http://localhost:${PORT}`);
+      app.listen(PORT, HOST, () => {
+        console.log(`🚀Servidor corriendo en http://${HOST}:${PORT}`);
       });
       return;
 

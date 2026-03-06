@@ -12,13 +12,14 @@ export default function PerfilTab({ onSaved, onBack, forceOpenModal }) {
   const miniContainerRef = useRef(null);
   const miniMapRef = useRef(null);
 
-  const MAPBOX_TOKEN = 'pk.eyJ1IjoibWFudWdtbyIsImEiOiJjbWZocHBobnkwZTFzMmpteTBqejdjM2NyIn0.szPCGrt15ZmioZVcXyGycA';
+  const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
+  const API_URL = import.meta.env.VITE_API_URL;
 
   useEffect(() => {
     const fetch = async () => {
       try {
         if (!userId) return setLoading(false);
-        const res = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/usuarios/${userId}`);
+        const res = await axios.get(`${API_URL}/api/usuarios/${userId}`);
         if (res.data && res.data.usuario) {
           const u = res.data.usuario;
           if (u.latitud != null && u.longitud != null) setLocation({ lat: Number(u.latitud), lng: Number(u.longitud) });
@@ -91,7 +92,7 @@ export default function PerfilTab({ onSaved, onBack, forceOpenModal }) {
               onClose={() => setModalOpen(false)}
               onSave={async (loc) => {
                 try {
-                  await axios.put(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/usuarios/${userId}/ubicacion`, { latitud: loc.lat, longitud: loc.lng });
+                  await axios.put(`${API_URL}/api/usuarios/${userId}/ubicacion`, { latitud: loc.lat, longitud: loc.lng });
                   updateUser({ latitud: loc.lat, longitud: loc.lng });
                   setLocation({ lat: loc.lat, lng: loc.lng });
                   if (onSaved) onSaved(loc);

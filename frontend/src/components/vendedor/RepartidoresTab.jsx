@@ -11,17 +11,19 @@ export default function RepartidoresTab({ idUsuario }) {
   const [selectedRepartidorValoraciones, setSelectedRepartidorValoraciones] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const API_URL = import.meta.env.VITE_API_URL;
+
   // Obtener repartidores desde backend
   useEffect(() => {
     const fetchRepartidores = async () => {
       try {
         setLoading(true);
         console.log("Obteniendo repartidores para vendedor ID:", idUsuario);
-        
-        const response = await axios.get(`http://localhost:3001/api/repartidores/${idUsuario}`);
+
+        const response = await axios.get(`${API_URL}/api/repartidores/${idUsuario}`);
         setRepartidores(response.data);
         console.log("Repartidores obtenidos:", response.data);
-        
+
       } catch (error) {
         console.error("Error al obtener repartidores:", error);
         setRepartidores([]);
@@ -62,9 +64,9 @@ export default function RepartidoresTab({ idUsuario }) {
   // Callback para actualizar la lista después del bloqueo
   const handleBlockSuccess = (repartidorId, motivoBloqueo) => {
     console.log("Bloqueo exitoso, marcando como bloqueado:", repartidorId);
-    setRepartidores(prev => 
-      prev.map(r => 
-        r.id_usuario === repartidorId 
+    setRepartidores(prev =>
+      prev.map(r =>
+        r.id_usuario === repartidorId
           ? { ...r, bloqueado: true, motivoBloqueo: motivoBloqueo }
           : r
       )
@@ -79,14 +81,14 @@ export default function RepartidoresTab({ idUsuario }) {
     }
 
     try {
-      await axios.post(`http://localhost:3001/api/repartidores/desbloquear/${repartidor.id_usuario}`, {
+      await axios.post(`${API_URL}/api/repartidores/desbloquear/${repartidor.id_usuario}`, {
         id_bloqueador: idUsuario
       });
 
       // Actualizar estado local
-      setRepartidores(prev => 
-        prev.map(r => 
-          r.id_usuario === repartidor.id_usuario 
+      setRepartidores(prev =>
+        prev.map(r =>
+          r.id_usuario === repartidor.id_usuario
             ? { ...r, bloqueado: false, motivoBloqueo: null }
             : r
         )
@@ -101,12 +103,12 @@ export default function RepartidoresTab({ idUsuario }) {
 
   const renderStars = (rating) => {
     if (!rating) return <span className="text-gray-400 text-sm">Sin calificar</span>;
-    
+
     return (
       <div className="flex items-center">
         {Array.from({ length: 5 }, (_, i) => (
-          <span 
-            key={i} 
+          <span
+            key={i}
             className={`text-sm ${i < Math.floor(rating) ? 'text-yellow-400' : 'text-gray-300'}`}
           >
             ★
@@ -137,7 +139,7 @@ export default function RepartidoresTab({ idUsuario }) {
           {repartidores.length} repartidores
         </div>
       </div>
-      
+
       {repartidores.length === 0 ? (
         <div className="text-center py-8 text-gray-500">
           <div className="text-4xl mb-4">🚚</div>
@@ -149,14 +151,13 @@ export default function RepartidoresTab({ idUsuario }) {
           {repartidores.map((r) => (
             <div
               key={r.id_usuario}
-              className={`border rounded-lg p-4 shadow-sm transition-all duration-200 ${
-                r.bloqueado 
-                  ? 'bg-red-50 border-red-200' 
-                  : 'bg-white border-gray-200 hover:shadow-md'
-              }`}
+              className={`border rounded-lg p-4 shadow-sm transition-all duration-200 ${r.bloqueado
+                ? 'bg-red-50 border-red-200'
+                : 'bg-white border-gray-200 hover:shadow-md'
+                }`}
             >
               {/* Información principal del repartidor */}
-              <div 
+              <div
                 className="flex justify-between items-center cursor-pointer"
                 onClick={() => !r.bloqueado && openValoracionesModal(r)}
                 title={!r.bloqueado ? "Click para ver valoraciones detalladas" : ""}
@@ -177,7 +178,7 @@ export default function RepartidoresTab({ idUsuario }) {
                       </span>
                     )}
                   </div>
-                  
+
                   {/* Estadísticas */}
                   <div className="mt-1 space-y-1">
                     <div className="flex items-center gap-4">
@@ -197,7 +198,7 @@ export default function RepartidoresTab({ idUsuario }) {
                     </p>
                   )}
                 </div>
-                
+
                 {/* Botones de acción */}
                 <div className="flex items-center gap-2">
                   {r.bloqueado ? (

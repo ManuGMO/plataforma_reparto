@@ -14,6 +14,7 @@ export default function EntregasTab({ repartidorId }) {
   const [toDate, setToDate] = useState('');
 
   const [selectedDelivery, setSelectedDelivery] = useState(null);
+  const API_URL = import.meta.env.VITE_API_URL;
 
   const filterOptions = [
     { value: 'today', label: 'Hoy' },
@@ -22,7 +23,7 @@ export default function EntregasTab({ repartidorId }) {
   ];
 
   const buildUrl = () => {
-    const base = `http://localhost:3001/api/repartidor/${repartidorId}/entregas`;
+    const base = `${API_URL}/api/repartidor/${repartidorId}/entregas`;
     if (fromDate && toDate) {
       return `${base}?from=${encodeURIComponent(fromDate)}&to=${encodeURIComponent(toDate)}`;
     }

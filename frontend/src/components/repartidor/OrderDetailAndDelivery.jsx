@@ -5,13 +5,14 @@ export default function OrderDetailAndDelivery({ order, currentView, onBack, onA
   const [vendorAddress, setVendorAddress] = useState('');
   const [vendorCoords, setVendorCoords] = useState(null);
   // Mapbox token (mejor mover a env más adelante)
-  const MAPBOX_TOKEN = 'pk.eyJ1IjoibWFudWdtbyIsImEiOiJjbWZocHBobnkwZTFzMmpteTBqejdjM2NyIn0.szPCGrt15ZmioZVcXyGycA';
+  const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
 
   const mapContainerRef = useRef(null);
   const mapRef = useRef(null);
   const orderMarkerRef = useRef(null);
   const vendorMarkerRef = useRef(null);
   const driverMarkerRef = useRef(null);
+  const API_URL = import.meta.env.VITE_API_URL;
 
   console.log('OrderDetailAndDelivery order:', order, 'view:', currentView);
 
@@ -38,7 +39,7 @@ export default function OrderDetailAndDelivery({ order, currentView, onBack, onA
   const fetchVendorCoords = async (vendorId) => {
     try {
       if (!vendorId) return null;
-      const res = await fetch(`http://localhost:3001/api/usuarios/${vendorId}`);
+      const res = await fetch(`${API_URL}/api/usuarios/${vendorId}`);
       const payload = await res.json();
       if (payload && payload.success && payload.usuario) {
         const u = payload.usuario;

@@ -9,6 +9,7 @@ export default function SellersPayments({ setNotification }) {
   const [loading, setLoading] = useState(true);
   const [selectedPayment, setSelectedPayment] = useState(null);
   const [statusFilter, setStatusFilter] = useState('all');
+  const API_URL = import.meta.env.VITE_API_URL;
 
   useEffect(() => {
     fetchPayments();
@@ -17,7 +18,7 @@ export default function SellersPayments({ setNotification }) {
   const fetchPayments = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('http://localhost:3001/api/admin/pagos-vendedores', {
+      const response = await axios.get(`${API_URL}/api/admin/pagos-vendedores`, {
         params: { estado: statusFilter }
       });
       setPayments(response.data);
@@ -32,7 +33,7 @@ export default function SellersPayments({ setNotification }) {
 
   const handleMarkAsPaid = async (vendedorId, weekStart = null) => {
     try {
-      const url = `http://localhost:3001/api/admin/pagos-vendedores/${vendedorId}/marcar-pagado`;
+      const url = `${API_URL}/api/admin/pagos-vendedores/${vendedorId}/marcar-pagado`;
       let response;
       if (weekStart) {
         response = await axios.post(url, { weekStart });
@@ -86,7 +87,7 @@ export default function SellersPayments({ setNotification }) {
           </select>
         </div>
       </div>
-     
+
       {payments.length === 0 ? (
         <div className="bg-white rounded-lg shadow-sm p-8 text-center">
           <span className="text-6xl">💰</span>
@@ -120,9 +121,8 @@ export default function SellersPayments({ setNotification }) {
                     <td className="px-6 py-4 text-sm text-orange-600">{formatCurrency(payment.iva_comision)}</td>
                     <td className="px-6 py-4 text-sm font-medium text-green-600">{formatCurrency(payment.monto_a_pagar)}</td>
                     <td className="px-6 py-4">
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                        payment.pedidos_pendientes > 0 ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'
-                      }`}>
+                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${payment.pedidos_pendientes > 0 ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'
+                        }`}>
                         {payment.pedidos_pendientes} pedidos
                       </span>
                     </td>

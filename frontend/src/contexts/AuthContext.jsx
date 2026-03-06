@@ -4,10 +4,10 @@ import { useNavigate } from 'react-router-dom';
 
 const AuthContext = createContext(null);
 
+const API_URL = import.meta.env.VITE_API_URL;
+
 export const AuthProvider = ({ children }) => {
   const navigate = useNavigate();
-
-  axios.defaults.baseURL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
   const initialToken = localStorage.getItem('authToken');
   if (initialToken) axios.defaults.headers.common['Authorization'] = `Bearer ${initialToken}`;
@@ -15,7 +15,7 @@ export const AuthProvider = ({ children }) => {
   const [token, setToken] = useState(() => initialToken);
 
   try {
-    const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+    const apiBase = API_URL;
     if (typeof window !== 'undefined' && window.fetch && !window._auth_fetch_patched) {
       const originalFetch = window.fetch.bind(window);
       window.fetch = (input, init = {}) => {
@@ -68,7 +68,7 @@ export const AuthProvider = ({ children }) => {
 
   //   Funcion para el login
   const login = async ({ correo, contraseña }) => {
-    const res = await axios.post('/api/auth/login', { correo, contraseña });
+    const res = await axios.post(`${API_URL}/api/auth/login`, { correo, contraseña });
     console.log("LOGIN RESPONSE DATA:", res.data);
     // Set header immediately to ensure subsequent requests include it
     if (res.data?.token) axios.defaults.headers.common['Authorization'] = `Bearer ${res.data.token}`;
@@ -80,7 +80,7 @@ export const AuthProvider = ({ children }) => {
 
   //  Funcion para el registro
   const register = async ({ nombre, correo, contraseña, userType }) => {
-    const res = await axios.post('/api/auth/register', { nombre, correo, contraseña, userType });
+    const res = await axios.post(`${API_URL}/api/auth/register`, { nombre, correo, contraseña, userType });
     return res.data;
   };
 
@@ -89,7 +89,7 @@ export const AuthProvider = ({ children }) => {
     try {
       if (token) {
         // send Authorization header explicitly to ensure backend receives it
-        void axios.post('/api/auth/logout', {}, { headers: { Authorization: `Bearer ${token}` } }).catch(() => { });
+        void axios.post(`${API_URL}/api/auth/logout`, {}, { headers: { Authorization: `Bearer ${token}` } }).catch(() => { });
       }
     } catch (err) {
       // ignore
@@ -102,7 +102,7 @@ export const AuthProvider = ({ children }) => {
 
   // Funcion para seleccionar rol
   const selectRole = async (role) => {
-    const res = await axios.post('/api/auth/select-role', { role });
+    const res = await axios.post(`${API_URL}/api/auth/select-role`, { role });
     // reflect chosen role in local user state
     setUser((u) => (u ? { ...u, activeRole: role } : u));
     return res.data;

@@ -105,9 +105,7 @@ const BlockedScreen = () => {
           <div className="bg-red-50 rounded-lg p-4 mb-8 text-left">
             <h3 className="text-sm font-bold text-red-800 uppercase tracking-wide mb-1">Motivo:</h3>
             <p className="text-red-700 italic">"{user.bloqueo.motivo}"</p>
-            <p className="text-xs text-red-500 mt-2 text-right">
-              Fecha: {new Date(user.bloqueo.fecha).toLocaleDateString()}
-            </p>
+
           </div>
         )}
 

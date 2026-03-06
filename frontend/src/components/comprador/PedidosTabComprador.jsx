@@ -10,6 +10,8 @@ export default function PedidosTabComprador(CompradorID) {
   const [selectedPedido, setSelectedPedido] = useState(null);
   const [showModal, setShowModal] = useState(false);
 
+  const API_URL = import.meta.env.VITE_API_URL;
+
   // ID del comprador (pasado como prop)
   const ID_COMPRADOR = CompradorID.CompradorID;
 
@@ -22,7 +24,7 @@ export default function PedidosTabComprador(CompradorID) {
     try {
       setLoading(true);
       console.log("ID_COMPRADOR: ", ID_COMPRADOR);
-      const response = await axios.get(`http://localhost:3001/api/pedidos/comprador/${ID_COMPRADOR}`);
+      const response = await axios.get(`${API_URL}/api/pedidos/comprador/${ID_COMPRADOR}`);
       const data = await response.data;
       setPedidos(data);
       console.log("aaa: ", data);

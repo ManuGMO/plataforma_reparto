@@ -9,6 +9,8 @@ export default function FinanzasTab({ idUsuario }) {
 
   const [selectedOrder, setSelectedOrder] = useState(null);
 
+  const API_URL = import.meta.env.VITE_API_URL;
+
   // 🔹 Obtener datos financieros
   useEffect(() => {
     const fetchFinanzas = async () => {
@@ -16,7 +18,7 @@ export default function FinanzasTab({ idUsuario }) {
         setLoading(true);
         console.log("Obteniendo finanzas para vendedor ID:", idUsuario);
 
-        const response = await axios.get(`http://localhost:3001/api/finanzas/${idUsuario}`);
+        const response = await axios.get(`${API_URL}/api/finanzas/${idUsuario}`);
         setHistorial(response.data.historial || []);
         setEstadisticas(response.data.estadisticas || {});
         console.log("Finanzas obtenidas:", response.data);
@@ -113,8 +115,8 @@ export default function FinanzasTab({ idUsuario }) {
         <button
           onClick={() => setFiltro('todos')}
           className={`px-3 py-1 rounded text-sm ${filtro === 'todos'
-              ? 'bg-blue-600 text-white'
-              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+            ? 'bg-blue-600 text-white'
+            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
             }`}
         >
           Todos ({estadisticas.totalPedidos || 0})
@@ -122,8 +124,8 @@ export default function FinanzasTab({ idUsuario }) {
         <button
           onClick={() => setFiltro('pagado')}
           className={`px-3 py-1 rounded text-sm ${filtro === 'pagado'
-              ? 'bg-green-600 text-white'
-              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+            ? 'bg-green-600 text-white'
+            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
             }`}
         >
           Pagados ({estadisticas.pedidosPagados || 0})
@@ -131,8 +133,8 @@ export default function FinanzasTab({ idUsuario }) {
         <button
           onClick={() => setFiltro('pendiente')}
           className={`px-3 py-1 rounded text-sm ${filtro === 'pendiente'
-              ? 'bg-yellow-600 text-white'
-              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+            ? 'bg-yellow-600 text-white'
+            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
             }`}
         >
           Pendientes ({estadisticas.pedidosPendientes || 0})
@@ -151,8 +153,8 @@ export default function FinanzasTab({ idUsuario }) {
               key={pedido.id_pedido}
               onClick={() => setSelectedOrder(pedido)}
               className={`border rounded-lg p-4 shadow-sm cursor-pointer hover:shadow-md transition-shadow ${pedido.estado_pago === 'pagado'
-                  ? 'bg-green-50 border-green-200'
-                  : 'bg-yellow-50 border-yellow-200'
+                ? 'bg-green-50 border-green-200'
+                : 'bg-yellow-50 border-yellow-200'
                 }`}
             >
               <div className="flex justify-between items-start">
@@ -162,8 +164,8 @@ export default function FinanzasTab({ idUsuario }) {
                       Pedido #{pedido.id_pedido}
                     </h3>
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${pedido.estado_pago === 'pagado'
-                        ? 'bg-green-100 text-green-800'
-                        : 'bg-yellow-100 text-yellow-800'
+                      ? 'bg-green-100 text-green-800'
+                      : 'bg-yellow-100 text-yellow-800'
                       }`}>
                       {pedido.estado_pago === 'pagado' ? '✅ Pagado' : '⏳ Pendiente'}
                     </span>
@@ -217,8 +219,8 @@ export default function FinanzasTab({ idUsuario }) {
                 <p className="text-sm text-gray-500">Estado del pago</p>
                 <div className="flex items-center gap-2 mt-1">
                   <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${selectedOrder.estado_pago === 'pagado'
-                      ? 'bg-green-100 text-green-800'
-                      : 'bg-yellow-100 text-yellow-800'
+                    ? 'bg-green-100 text-green-800'
+                    : 'bg-yellow-100 text-yellow-800'
                     }`}>
                     {selectedOrder.estado_pago === 'pagado' ? '✅ Pagado' : '⏳ Pendiente'}
                   </span>

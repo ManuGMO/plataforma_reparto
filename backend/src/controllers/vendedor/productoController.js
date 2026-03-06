@@ -1,12 +1,14 @@
 import db from "../../models/indexModels.js";
-import { Op} from "sequelize";
+import { Op } from "sequelize";
 const { Producto, Categoria } = db;
 
 export const getProductos = async (req, res) => {
   try {
     const { id } = req.params;
     const id_usuario = req.user?.id || id;
-    
+
+    console.log("id_usuario", id_usuario);
+
     // Obtener productos con sus categorías
     const productos = await Producto.findAll({
       where: { id_usuario },
@@ -14,13 +16,13 @@ export const getProductos = async (req, res) => {
         model: Categoria,
         attributes: ['id_categoria', 'nombre']
       }],
-      attributes: ["id_producto", "nombre", "stock", "precio", "id_categoria", "imagen","descripcion"],
+      attributes: ["id_producto", "nombre", "stock", "precio", "id_categoria", "imagen", "descripcion"],
     });
 
     // Mapear para agregar URL completa de la imagen
     const productosConImagen = productos.map(prod => ({
       ...prod.toJSON(),
-      imagen: prod.imagen 
+      imagen: prod.imagen
         ? `${req.protocol}://${req.get("host")}/uploads/products/${prod.imagen}`
         : null
     }));
@@ -46,7 +48,7 @@ export const createProduct = async (req, res) => {
     const { nombre, descripcion, precio, stock, id_categoria } = req.body;
     const imagen = req.file ? req.file.filename : null;
     const id_usuario = req.user?.id || id;
-    
+
     // Verificar si ya existe un producto con el mismo nombre para este usuario
     const productoExistente = await Producto.findOne({
       where: {
@@ -54,7 +56,7 @@ export const createProduct = async (req, res) => {
         id_usuario: id_usuario
       }
     });
-    
+
     if (productoExistente) {
       return res.status(400).json({
         message: "Ya tienes un producto con este nombre. Elige un nombre diferente.",
@@ -64,7 +66,7 @@ export const createProduct = async (req, res) => {
         }
       });
     }
-   
+
     const nuevoProducto = await Producto.create({
       nombre: nombre.trim(), // Asegurar que se guarde sin espacios extra
       descripcion: descripcion ? descripcion.trim() : null, // Manejar descripción opcional
@@ -74,7 +76,7 @@ export const createProduct = async (req, res) => {
       id_categoria,
       imagen
     });
-   
+
     // Obtener el producto creado con su categoría
     const productoCompleto = await Producto.findByPk(nuevoProducto.id_producto, {
       include: [{
@@ -82,7 +84,7 @@ export const createProduct = async (req, res) => {
         attributes: ['id_categoria', 'nombre']
       }]
     });
-   
+
     res.status(201).json(productoCompleto);
   } catch (error) {
     console.error("Error al crear producto:", error);
@@ -97,8 +99,8 @@ export const createCategoria = async (req, res) => {
 
     // Validaciones
     if (!nombre || !nombre.trim()) {
-      return res.status(400).json({ 
-        message: "El nombre de la categoría es obligatorio" 
+      return res.status(400).json({
+        message: "El nombre de la categoría es obligatorio"
       });
     }
 
@@ -112,8 +114,8 @@ export const createCategoria = async (req, res) => {
     });
 
     if (categoriaExistente) {
-      return res.status(400).json({ 
-        message: "Ya existe una categoría con este nombre" 
+      return res.status(400).json({
+        message: "Ya existe una categoría con este nombre"
       });
     }
 
@@ -130,15 +132,15 @@ export const createCategoria = async (req, res) => {
 
   } catch (error) {
     console.error("Error al crear categoría:", error);
-    
+
     // Manejar errores de duplicación de unique constraint
     if (error.name === 'SequelizeUniqueConstraintError') {
-      return res.status(400).json({ 
-        message: "Ya existe una categoría con este nombre" 
+      return res.status(400).json({
+        message: "Ya existe una categoría con este nombre"
       });
     }
 
-    res.status(500).json({ 
+    res.status(500).json({
       message: "Error interno del servidor al crear la categoría",
       details: error.message
     });
@@ -156,9 +158,9 @@ export const getCategorias = async (req, res) => {
     res.json(categorias);
   } catch (error) {
     console.error("Error al obtener categorías:", error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: "Error al obtener categorías",
-      details: error.message 
+      details: error.message
     });
   }
 };
@@ -170,23 +172,23 @@ export const eliminarProducto = async (req, res) => {
   try {
     const { id } = req.params;
     console.log(id);
-    
+
     const userId = req.user?.id;
     const [updatedRows] = await Producto.update(
       { activo: false },
-      { 
-        where: { 
+      {
+        where: {
           id_producto: id,
           activo: true,
           ...(userId ? { id_usuario: userId } : {})
         }
       }
     );
-    
+
     if (updatedRows === 0) {
       return res.status(404).json({ message: "Producto no encontrado o ya eliminado" });
     }
-    
+
     res.json({ message: "Producto eliminado correctamente" });
   } catch (error) {
     console.error("Error al eliminar producto:", error);
@@ -200,7 +202,7 @@ export const actualizarProducto = async (req, res) => {
     const { id } = req.params;
     const { nombre, descripcion, stock, precio, id_categoria } = req.body;
     const imagen = req.file ? req.file.filename : undefined;
-   
+
     const producto = await Producto.findByPk(id);
     if (!producto) {
       return res.status(404).json({ error: "Producto no encontrado" });
@@ -210,7 +212,7 @@ export const actualizarProducto = async (req, res) => {
     if (userId && producto.id_usuario !== userId) {
       return res.status(403).json({ message: 'No autorizado para actualizar este producto' });
     }
-    
+
     // Si se está actualizando el nombre, verificar duplicados
     if (nombre !== undefined && nombre.trim() !== producto.nombre) {
       const productoExistente = await Producto.findOne({
@@ -230,7 +232,7 @@ export const actualizarProducto = async (req, res) => {
         });
       }
     }
-   
+
     // Solo actualizar campos que se envían
     if (nombre !== undefined) producto.nombre = nombre.trim();
     if (descripcion !== undefined) producto.descripcion = descripcion.trim() || null; // Guardar como null si está vacío
@@ -238,9 +240,9 @@ export const actualizarProducto = async (req, res) => {
     if (precio !== undefined) producto.precio = precio;
     if (id_categoria !== undefined) producto.id_categoria = id_categoria;
     if (imagen !== undefined) producto.imagen = imagen;
-   
+
     await producto.save();
-   
+
     // Obtener el producto actualizado con su categoría
     const productoCompleto = await Producto.findByPk(id, {
       include: [{
@@ -248,7 +250,7 @@ export const actualizarProducto = async (req, res) => {
         attributes: ['id_categoria', 'nombre']
       }]
     });
-   
+
     res.json({ message: "Producto actualizado correctamente", producto: productoCompleto });
   } catch (error) {
     console.error("Error al actualizar producto:", error);

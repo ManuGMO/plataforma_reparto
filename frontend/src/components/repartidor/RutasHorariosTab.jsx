@@ -11,6 +11,8 @@ export default function RutasHorariosTab({ repartidorId }) {
   const [showPreview, setShowPreview] = useState(false);
   const [previewRuta, setPreviewRuta] = useState(null);
 
+  const API_URL = import.meta.env.VITE_API_URL;
+
   // Cargar rutas al montar el componente
   useEffect(() => {
     cargarRutas();
@@ -19,7 +21,7 @@ export default function RutasHorariosTab({ repartidorId }) {
   const cargarRutas = async () => {
     try {
       setCargando(true);
-      const response = await axios.get(`http://localhost:3001/api/rutas/${repartidorId}`);
+      const response = await axios.get(`${API_URL}/rutas/${repartidorId}`);
       setRutas(response.data);
     } catch (error) {
       console.error('Error cargando rutas:', error);
@@ -40,9 +42,9 @@ export default function RutasHorariosTab({ repartidorId }) {
 
   const handleEliminarRuta = async (idRuta) => {
     if (!confirm('¿Estás seguro de eliminar esta ruta?')) return;
-    
+
     try {
-      await axios.delete(`http://localhost:3001/api/rutas/${idRuta}`);
+      await axios.delete(`${API_URL}/rutas/${idRuta}`);
       cargarRutas(); // Recargar lista
     } catch (error) {
       console.error('Error eliminando ruta:', error);
@@ -54,10 +56,10 @@ export default function RutasHorariosTab({ repartidorId }) {
     try {
       if (rutaEditar) {
         // Actualizar ruta existente
-        await axios.put(`http://localhost:3001/api/rutas/${rutaEditar.id_ruta}`, datosRuta);
+        await axios.put(`${API_URL}/rutas/${rutaEditar.id_ruta}`, datosRuta);
       } else {
         // Crear nueva ruta
-        await axios.post('http://localhost:3001/api/rutas', {
+        await axios.post(`${API_URL}/rutas`, {
           ...datosRuta,
           id_usuario: repartidorId
         });
@@ -81,7 +83,7 @@ export default function RutasHorariosTab({ repartidorId }) {
   const diasOrdenados = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo'];
   const diasNombres = {
     'lunes': 'Lunes',
-    'martes': 'Martes', 
+    'martes': 'Martes',
     'miercoles': 'Miércoles',
     'jueves': 'Jueves',
     'viernes': 'Viernes',
@@ -100,7 +102,7 @@ export default function RutasHorariosTab({ repartidorId }) {
   return (
     <div className="p-4 bg-gray-50 min-h-screen">
       <div className="max-w-4xl mx-auto">
-        
+
         {/* Header */}
         <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200 mb-6">
           <div className="flex items-center justify-between">
@@ -145,7 +147,7 @@ export default function RutasHorariosTab({ repartidorId }) {
             {diasOrdenados.map(dia => {
               const rutasDia = rutasPorDia[dia] || [];
               if (rutasDia.length === 0) return null;
-              
+
               return (
                 <div key={dia} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
                   {/* Header del día */}
@@ -197,11 +199,11 @@ export default function RutasHorariosTab({ repartidorId }) {
                                   </p>
                                 </div>
                               </div>
-                              
+
                               <div className="ml-6 border-l-2 border-dashed border-blue-300 h-8 flex items-center">
                                 <span className="ml-4 text-blue-500 text-sm">🚗 Ruta habitual</span>
                               </div>
-                              
+
                               <div className="flex items-start">
                                 <span className="text-red-500 text-xl mr-3 mt-0.5">📍</span>
                                 <div>
@@ -255,7 +257,7 @@ export default function RutasHorariosTab({ repartidorId }) {
                 ¿Para qué sirven las rutas frecuentes?
               </h4>
               <p className="text-sm text-blue-800">
-                Define tus rutas habituales y horarios para que el sistema te asigne pedidos 
+                Define tus rutas habituales y horarios para que el sistema te asigne pedidos
                 que coincidan con tu recorrido diario, optimizando tu tiempo y ganancias.
               </p>
             </div>

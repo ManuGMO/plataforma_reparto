@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 
-export default function EditProductModal({ isOpen, onClose, onProductUpdated, producto }) {
+export default function EditProductModal({ isOpen, onClose, onProductUpdated, producto, idUsuario }) {
   const [nombre, setNombre] = useState("");
   const [precio, setPrecio] = useState("");
   const [stock, setStock] = useState("");
@@ -26,6 +26,8 @@ export default function EditProductModal({ isOpen, onClose, onProductUpdated, pr
   const [nuevaCategoria, setNuevaCategoria] = useState("");
   const [isCreatingCategory, setIsCreatingCategory] = useState(false);
 
+  const API_URL = import.meta.env.VITE_API_URL;
+
   // Cargar datos del producto cuando se abre el modal
   useEffect(() => {
     if (isOpen && producto) {
@@ -49,7 +51,7 @@ export default function EditProductModal({ isOpen, onClose, onProductUpdated, pr
       // Cargar categorías
       const fetchCategorias = async () => {
         try {
-          const res = await axios.get("http://localhost:3001/api/productos/obtener/1");
+          const res = await axios.get(`${API_URL}/api/productos/obtener/${idUsuario}`);
           setCategorias(res.data.categorias);
         } catch (error) {
           console.error("Error cargando categorías:", error);
@@ -87,7 +89,7 @@ export default function EditProductModal({ isOpen, onClose, onProductUpdated, pr
     setImagenFile(null);
     setRemoveImage(false);
     if (producto.imagen) {
-      setPreviewUrl(`http://localhost:3001/uploads/products/${producto.imagen}`);
+      setPreviewUrl(`${API_URL}/uploads/products/${producto.imagen}`);
     } else {
       setPreviewUrl("");
     }
@@ -106,7 +108,7 @@ export default function EditProductModal({ isOpen, onClose, onProductUpdated, pr
 
     setIsValidatingName(true);
     try {
-      const response = await axios.post(`http://localhost:3001/api/productos/validar-nombre/1`, {
+      const response = await axios.post(`${API_URL}/api/productos/validar-nombre/${idUsuario}`, {
         nombre: newName.trim(),
         exclude_id: producto.id_producto
       });
@@ -235,7 +237,7 @@ export default function EditProductModal({ isOpen, onClose, onProductUpdated, pr
       }
 
       const res = await axios.put(
-        `http://localhost:3001/api/productos/actualizar/${producto.id_producto}`,
+        `${API_URL}/api/productos/actualizar/${producto.id_producto}`,
         formData,
         {
           headers: {
@@ -367,8 +369,8 @@ export default function EditProductModal({ isOpen, onClose, onProductUpdated, pr
                 value={nombre}
                 onChange={(e) => setNombre(e.target.value)}
                 className={`w-full border px-3 py-2 rounded-lg focus:ring-2 focus:border-blue-500 pr-10 ${nameValidation.isValid
-                    ? 'border-gray-300 focus:ring-blue-500'
-                    : 'border-red-300 focus:ring-red-500'
+                  ? 'border-gray-300 focus:ring-blue-500'
+                  : 'border-red-300 focus:ring-red-500'
                   }`}
                 maxLength={100}
               />

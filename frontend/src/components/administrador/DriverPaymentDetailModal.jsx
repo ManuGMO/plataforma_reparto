@@ -7,14 +7,16 @@ export default function DriverPaymentDetailModal({ payment, onClose, onMarkAsPai
   const [detalle, setDetalle] = useState({ entregados: [], pendientes: [] });
   const [selectedWeek, setSelectedWeek] = useState(payment.defaultWeek || null);
   const [loadingDetalle, setLoadingDetalle] = useState(false);
+  const API_URL = import.meta.env.VITE_API_URL;
+
 
   const fetchDetalle = async (week) => {
     try {
       setLoadingDetalle(true);
       const weekStart = week?.weekStart;
       const url = weekStart
-        ? `http://localhost:3001/api/admin/pagos-repartidores/${payment.id}/detalle?weekStart=${weekStart}`
-        : `http://localhost:3001/api/admin/pagos-repartidores/${payment.id}/detalle`;
+        ? `${API_URL}/api/admin/pagos-repartidores/${payment.id}/detalle?weekStart=${weekStart}`
+        : `${API_URL}/api/admin/pagos-repartidores/${payment.id}/detalle`;
       const res = await axios.get(url);
       const data = res.data;
       // Compatibilidad: el backend puede devolver un array (legacy) o { entregados, pendientes }
@@ -65,7 +67,7 @@ export default function DriverPaymentDetailModal({ payment, onClose, onMarkAsPai
                   className="border rounded px-3 py-2 text-sm bg-gray-50 text-gray-900"
                 >
                   {payment.weeks && payment.weeks.length > 0 ? (
-                    payment.weeks.slice().sort((a,b) => b.weekStart.localeCompare(a.weekStart)).map(w => (
+                    payment.weeks.slice().sort((a, b) => b.weekStart.localeCompare(a.weekStart)).map(w => (
                       <option key={w.weekStart} value={w.weekStart}>{w.period}</option>
                     ))
                   ) : (
@@ -161,7 +163,7 @@ export default function DriverPaymentDetailModal({ payment, onClose, onMarkAsPai
             <h4 className="font-medium text-gray-900 mb-3">Información Tributaria</h4>
             <div className="bg-blue-50 p-3 rounded-lg">
               <p className="text-sm text-blue-800">
-                Retención del 14.5% aplicada según normativa chilena<br/>
+                Retención del 14.5% aplicada según normativa chilena<br />
               </p>
             </div>
           </div>

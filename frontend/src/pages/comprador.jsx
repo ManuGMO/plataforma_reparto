@@ -21,6 +21,8 @@ export default function Comprador() {
   const ID_COMPRADOR = user?.id;
   const [showLocationModal, setShowLocationModal] = useState(false);
 
+  const API_URL = import.meta.env.VITE_API_URL;
+
   useEffect(() => {
     if (!user) return;
     const noLoc = user.latitud == null || user.longitud == null;
@@ -32,7 +34,7 @@ export default function Comprador() {
     const checkNotifications = async () => {
       try {
         if (!ID_COMPRADOR) return; // aún no hay usuario
-        const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/notificaciones/usuario/${ID_COMPRADOR}/no-leidas`);
+        const response = await fetch(`${API_URL}/api/notificaciones/usuario/${ID_COMPRADOR}/no-leidas`);
         const notificaciones = await response.json();
 
         if (notificaciones.length > 0) {
@@ -41,7 +43,7 @@ export default function Comprador() {
 
           // Marcar como leída después de mostrarla
           setTimeout(async () => {
-            await fetch(`http://localhost:3001/api/notificaciones/${ultimaNotificacion.id_notificacion}/leer`, {
+            await fetch(`${API_URL}/api/notificaciones/${ultimaNotificacion.id_notificacion}/leer`, {
               method: 'PUT'
             });
           }, 5000); // Esperar 5 segundos antes de marcar como leída
@@ -82,7 +84,7 @@ export default function Comprador() {
           onClose={() => setShowLocationModal(false)}
           onSave={async (loc) => {
             try {
-              await axios.put(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/usuarios/${ID_COMPRADOR}/ubicacion`, { latitud: loc.lat, longitud: loc.lng });
+              await axios.put(`${API_URL}/api/usuarios/${ID_COMPRADOR}/ubicacion`, { latitud: loc.lat, longitud: loc.lng });
               updateUser({ latitud: loc.lat, longitud: loc.lng });
               setShowLocationModal(false);
               setNotification('Ubicación guardada');

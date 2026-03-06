@@ -10,6 +10,7 @@ export default function CalificacionModal({ pedido, showModal, onClose, id_compr
   });
   const [enviando, setEnviando] = useState(false);
   const [hoveredStar, setHoveredStar] = useState({ vendedor: 0, repartidor: 0 });
+  const API_URL = import.meta.env.VITE_API_URL;
 
   // Intentar extraer nombres desde el objeto `pedido` con varios fallbacks
   const vendedorNombre = typeof pedido?.vendedor === 'string'
@@ -54,7 +55,7 @@ export default function CalificacionModal({ pedido, showModal, onClose, id_compr
         repartidor: tieneRepartidor ? calificaciones.repartidor : null
       };
 
-      await axios.post('http://localhost:3001/api/pedidos/comprador/calificar', {
+      await axios.post(`${API_URL}/api/pedidos/comprador/calificar`, {
         id_pedido: pedido.id,
         id_comprador: id_comprador,
         calificaciones: calificacionesAEnviar

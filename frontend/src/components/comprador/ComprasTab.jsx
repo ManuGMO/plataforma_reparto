@@ -7,6 +7,7 @@ export default function ComprasTab({ CompradorID }) {
     const [loading, setLoading] = useState(true);
     const [selectedPedido, setSelectedPedido] = useState(null);
     const [showModal, setShowModal] = useState(false);
+    const API_URL = import.meta.env.VITE_API_URL;
 
     useEffect(() => {
         const fetchCompras = async () => {
@@ -14,7 +15,7 @@ export default function ComprasTab({ CompradorID }) {
                 setLoading(true);
                 // Usamos el mismo endpoint que Pedidos pero filtramos en el cliente
                 // Idealmente el backend tendría un filtro, pero esto funciona por ahora
-                const response = await fetch(`http://localhost:3001/api/pedidos/comprador/${CompradorID}`);
+                const response = await fetch(`${API_URL}/api/pedidos/comprador/${CompradorID}`);
                 if (!response.ok) throw new Error('Error al cargar historial');
 
                 const data = await response.json();

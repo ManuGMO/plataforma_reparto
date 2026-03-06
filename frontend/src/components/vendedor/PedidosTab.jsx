@@ -8,6 +8,8 @@ export default function PedidosTab({ setNotification, vendorId }) {
   const [filtroEstado, setFiltroEstado] = useState('todos');
   const [loadingDetalle, setLoadingDetalle] = useState(false);
 
+  const API_URL = import.meta.env.VITE_API_URL;
+
   useEffect(() => {
     cargarPedidos();
   }, [setNotification]);
@@ -15,7 +17,7 @@ export default function PedidosTab({ setNotification, vendorId }) {
   const cargarPedidos = async () => {
     try {
       console.log('Cargando pedidos para vendedor:', vendorId);
-      const res = await axios.get(`http://localhost:3001/api/pedidos/vendedor/${vendorId}`);
+      const res = await axios.get(`${API_URL}/api/pedidos/vendedor/${vendorId}`);
       // Filtrar pedidos entregados para que se vayan eliminando de la vista
       const visibles = (res.data || []).filter(p => p.estado !== 'entregado');
       // Ordenar del más nuevo al más viejo por fecha_creacion
@@ -31,7 +33,7 @@ export default function PedidosTab({ setNotification, vendorId }) {
   const cargarDetallePedido = async (id_pedido) => {
     try {
       setLoadingDetalle(true);
-      const res = await axios.get(`http://localhost:3001/api/pedidos/detalle/${id_pedido}?vendedorId=${vendorId}`);
+      const res = await axios.get(`${API_URL}/api/pedidos/detalle/${id_pedido}?vendedorId=${vendorId}`);
 
       const estadoKey = `pedido_${id_pedido}_fecha_estado`;
       const fechaGuardada = localStorage.getItem(estadoKey);
@@ -57,7 +59,7 @@ export default function PedidosTab({ setNotification, vendorId }) {
     try {
       console.log("Id del vendedor: ", vendorId);
 
-      await axios.patch(`http://localhost:3001/api/pedidos/${id_pedido}/estado`, {
+      await axios.patch(`${API_URL}/api/pedidos/${id_pedido}/estado`, {
         estado: nuevoEstado,
         id_vendedor: vendorId
       });

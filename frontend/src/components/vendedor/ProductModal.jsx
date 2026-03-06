@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 
-export default function ProductModal({ isOpen, onClose, onProductAdded }) {
+export default function ProductModal({ idUsuario, isOpen, onClose, onProductAdded }) {
   const [nombre, setNombre] = useState("");
   const [precio, setPrecio] = useState("");
   const [stock, setStock] = useState("");
@@ -11,12 +11,15 @@ export default function ProductModal({ isOpen, onClose, onProductAdded }) {
   const [isLoading, setIsLoading] = useState(false);
   const [imagen, setImagen] = useState(null);
   const [descripcion, setDescripcion] = useState("");
-  
+
+
+  const API_URL = import.meta.env.VITE_API_URL;
+
   // Estados para validación de nombre
   const [nameValidation, setNameValidation] = useState({ isValid: true, message: "" });
   const [isValidatingName, setIsValidatingName] = useState(false);
   const [nameSuggestions, setNameSuggestions] = useState([]);
-  
+
   // Estados para crear nueva categoría
   const [showNewCategoryInput, setShowNewCategoryInput] = useState(false);
   const [nuevaCategoria, setNuevaCategoria] = useState("");
@@ -27,7 +30,7 @@ export default function ProductModal({ isOpen, onClose, onProductAdded }) {
     if (isOpen) {
       const fetchCategorias = async () => {
         try {
-          const res = await axios.get("http://localhost:3001/api/productos/recuperar_categoria");
+          const res = await axios.get(`${API_URL}/productos/recuperar_categoria`);
           setCategorias(res.data);
           console.log("Categoriassss: ", res.data);
         } catch (error) {
@@ -48,17 +51,17 @@ export default function ProductModal({ isOpen, onClose, onProductAdded }) {
 
     setIsValidatingName(true);
     try {
-      const response = await axios.post(`http://localhost:3001/api/productos/validar-nombre/1`, {
+      const response = await axios.post(`${API_URL}/productos/validar-nombre/${idUsuario}`, {
         nombre: newName.trim()
       });
-      
+
       setNameValidation({ isValid: true, message: "✓ Nombre disponible" });
       setNameSuggestions([]);
     } catch (error) {
       if (error.response && error.response.status === 400) {
-        setNameValidation({ 
-          isValid: false, 
-          message: error.response.data.message 
+        setNameValidation({
+          isValid: false,
+          message: error.response.data.message
         });
       } else {
         setNameValidation({ isValid: true, message: "" });
@@ -76,7 +79,7 @@ export default function ProductModal({ isOpen, onClose, onProductAdded }) {
       setNameSuggestions([]);
       return;
     }
-    
+
     const timeoutId = setTimeout(() => {
       validateName(nombre);
     }, 500);
@@ -94,7 +97,7 @@ export default function ProductModal({ isOpen, onClose, onProductAdded }) {
     const categoriaExistente = categorias.find(
       cat => cat.nombre.toLowerCase() === nuevaCategoria.trim().toLowerCase()
     );
-    
+
     if (categoriaExistente) {
       setNotification("Esta categoría ya existe");
       return;
@@ -104,23 +107,23 @@ export default function ProductModal({ isOpen, onClose, onProductAdded }) {
     setNotification("");
 
     try {
-      const res = await axios.post("http://localhost:3001/api/productos/crear_categoria", {
+      const res = await axios.post(`${API_URL}/productos/crear_categoria`, {
         nombre: nuevaCategoria.trim()
       });
 
       // Agregar la nueva categoría a la lista
       const nuevaCat = res.data;
       setCategorias(prev => [...prev, nuevaCat]);
-      
+
       // Seleccionar automáticamente la nueva categoría
       setIdCategoria(nuevaCat.id_categoria);
-      
+
       // Limpiar y ocultar el input
       setNuevaCategoria("");
       setShowNewCategoryInput(false);
-      
+
       setNotification(""); // Limpiar notificación de éxito
-      
+
     } catch (error) {
       console.error("Error creando categoría:", error);
       setNotification(error.response?.data?.message || "Error al crear la categoría");
@@ -171,6 +174,8 @@ export default function ProductModal({ isOpen, onClose, onProductAdded }) {
     }
     setIsLoading(true);
     setNotification("");
+
+
     try {
       const formData = new FormData();
       formData.append("nombre", nombre.trim());
@@ -181,21 +186,24 @@ export default function ProductModal({ isOpen, onClose, onProductAdded }) {
       if (imagen) {
         formData.append("imagen", imagen);
       }
-      await axios.post("http://localhost:3001/api/productos/publicar/1", formData, {
+      await axios.post(`${API_URL}/productos/publicar/${idUsuario}`, formData, {
         headers: { "Content-Type": "multipart/form-data" }
       });
+
+
+
       // Limpiar formulario
       handleClose();
       onProductAdded();
-    
+
     } catch (error) {
       console.error("Error agregando producto:", error);
-    
+
       // Manejar error específico de producto duplicado
       if (error.response && error.response.status === 400) {
         const errorData = error.response.data;
         setNotification(errorData.message);
-      
+
         // Si hay información del producto duplicado, generar sugerencias
         if (errorData.duplicateProduct) {
           const suggestions = [
@@ -255,11 +263,10 @@ export default function ProductModal({ isOpen, onClose, onProductAdded }) {
                 placeholder="Ej: Hamburguesa clásica"
                 value={nombre}
                 onChange={(e) => setNombre(e.target.value)}
-                className={`w-full border px-3 py-2 rounded-lg focus:ring-2 focus:border-blue-500 pr-10 ${
-                  nameValidation.isValid 
-                    ? 'border-gray-300 focus:ring-blue-500' 
-                    : 'border-red-300 focus:ring-red-500'
-                }`}
+                className={`w-full border px-3 py-2 rounded-lg focus:ring-2 focus:border-blue-500 pr-10 ${nameValidation.isValid
+                  ? 'border-gray-300 focus:ring-blue-500'
+                  : 'border-red-300 focus:ring-red-500'
+                  }`}
                 maxLength={100}
               />
               {isValidatingName && (
@@ -271,12 +278,11 @@ export default function ProductModal({ isOpen, onClose, onProductAdded }) {
                 </div>
               )}
             </div>
-            
+
             {/* Mensaje de validación */}
             {nameValidation.message && (
-              <p className={`text-xs mt-1 ${
-                nameValidation.isValid ? 'text-green-600' : 'text-red-600'
-              }`}>
+              <p className={`text-xs mt-1 ${nameValidation.isValid ? 'text-green-600' : 'text-red-600'
+                }`}>
                 {nameValidation.message}
               </p>
             )}
@@ -287,7 +293,7 @@ export default function ProductModal({ isOpen, onClose, onProductAdded }) {
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Categoría *
             </label>
-            
+
             {!showNewCategoryInput ? (
               <select
                 value={idCategoria}

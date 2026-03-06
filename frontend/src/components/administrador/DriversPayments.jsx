@@ -6,11 +6,11 @@ import axios from 'axios';
 export default function DriversPayments({ setNotification }) {
   const [payments, setPayments] = useState([]);
   const [selectedPayment, setSelectedPayment] = useState(null);
-  const API = import.meta.env.VITE_API_URL || '';
+  const API_URL = import.meta.env.VITE_API_URL || '';
 
   const fetchPayments = async () => {
     try {
-      const res = await axios.get(`http://localhost:3001/api/admin/pagos-repartidores`);
+      const res = await axios.get(`${API_URL}/api/admin/pagos-repartidores`);
       // Agrupar por repartidor: convertir array de semanas a estructura por driver
       const data = res.data || [];
       const map = new Map();
@@ -41,7 +41,7 @@ export default function DriversPayments({ setNotification }) {
         }, { deliveries: 0, gross: 0, retentions: 0, net: 0 });
 
         // defaultWeek: preferir la semana no pagada más reciente; si no hay, la más reciente en general
-        const defaultWeek = (pendingWeeks.slice().sort((a,b) => b.weekStart.localeCompare(a.weekStart))[0]) || d.weeks.slice().sort((a,b) => b.weekStart.localeCompare(a.weekStart))[0];
+        const defaultWeek = (pendingWeeks.slice().sort((a, b) => b.weekStart.localeCompare(a.weekStart))[0]) || d.weeks.slice().sort((a, b) => b.weekStart.localeCompare(a.weekStart))[0];
 
         return {
           ...d,
@@ -65,7 +65,7 @@ export default function DriversPayments({ setNotification }) {
   const handleMarkAsPaid = async (repartidorId, weekStart) => {
     try {
       const payload = weekStart ? { weekStart } : {};
-      const res = await axios.post(`http://localhost:3001/api/admin/pagos-repartidores/${repartidorId}/marcar-pagado`, payload);
+      const res = await axios.post(`${API_URL}/api/admin/pagos-repartidores/${repartidorId}/marcar-pagado`, payload);
       setNotification && setNotification('Pago marcado como realizado y liquidación creada');
       // refrescar lista
       await fetchPayments();
@@ -84,7 +84,7 @@ export default function DriversPayments({ setNotification }) {
         <p className="text-gray-600">Gestionar liquidaciones y boletas de honorarios</p>
       </div>
 
-      
+
 
       <div className="bg-white rounded-lg shadow-sm overflow-hidden">
         <table className="w-full">
@@ -113,7 +113,7 @@ export default function DriversPayments({ setNotification }) {
                   <span className={`px-2 py-1 text-xs font-medium rounded-full ${
                     // Si todas sus semanas están pagadas, marcar pagado
                     driver.weeks.every(w => w.status === 'paid') ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-                  }`}>
+                    }`}>
                     {driver.weeks.every(w => w.status === 'paid') ? 'Pagado' : 'Pendiente'}
                   </span>
                 </td>

@@ -1,7 +1,9 @@
 import { useState } from 'react';
+import axios from 'axios';
 
 export default function ActiveDelivery({ order, onComplete, setNotification }) {
   const [currentStep, setCurrentStep] = useState(2); // 1: Aceptado, 2: Recoger, 3: Entregar
+  const API_URL = import.meta.env.VITE_API_URL;
 
   if (!order) return null;
 
@@ -39,13 +41,12 @@ export default function ActiveDelivery({ order, onComplete, setNotification }) {
 
   const handleCompleteStep = async () => {
     if (currentStep === 2) {
-      // Confirmar recogida
+      // confirmar recogida
       try {
-        await fetch(`http://localhost:3001/api/pedidos/${order.id_pedido}/estado`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ estado: 'en_reparto' })
-        });
+        await axios.put(`${API_URL}/api/pedidos/${order.id_pedido}/estado`,
+          { estado: 'en_reparto' },
+          { headers: { 'Content-Type': 'application/json' } }
+        );
         setCurrentStep(3);
         setNotification('Pedido recogido. Dirígete a la entrega');
       } catch (error) {
@@ -53,15 +54,16 @@ export default function ActiveDelivery({ order, onComplete, setNotification }) {
         setNotification('Error al confirmar recogida');
       }
     } else if (currentStep === 3) {
-      // Confirmar entrega
+      // confirmar entrega
       try {
-        await fetch(`http://localhost:3001/api/pedidos/${order.id_pedido}/estado`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ estado: 'entregado' })
-        });
+        await axios.put(`${API_URL}/api/pedidos/${order.id_pedido}/estado`,
+          { estado: 'entregado' },
+          { headers: { 'Content-Type': 'application/json' } }
+        );
         onComplete();
-      } catch (error) {
+      }
+
+      catch (error) {
         console.error('Error al completar entrega:', error);
         setNotification('Error al confirmar entrega');
       }
@@ -98,7 +100,7 @@ export default function ActiveDelivery({ order, onComplete, setNotification }) {
           </div>
         </div>
       </header>
-      
+
       <div className="p-4 space-y-6">
         {/* Progress Steps */}
         <div className="bg-white border rounded-lg p-4">
@@ -106,31 +108,29 @@ export default function ActiveDelivery({ order, onComplete, setNotification }) {
             {steps.map((step, index) => (
               <div key={step.id}>
                 <div className="step-item flex flex-col items-center">
-                  <div 
-                    className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
-                      step.id <= currentStep 
-                        ? step.id === 1 
-                          ? 'bg-green-600 text-white' 
-                          : step.id === currentStep 
-                            ? 'bg-blue-600 text-white' 
-                            : 'bg-green-600 text-white'
-                        : 'bg-gray-300 text-gray-600'
-                    }`}
+                  <div
+                    className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${step.id <= currentStep
+                      ? step.id === 1
+                        ? 'bg-green-600 text-white'
+                        : step.id === currentStep
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-green-600 text-white'
+                      : 'bg-gray-300 text-gray-600'
+                      }`}
                   >
                     {step.id <= currentStep && step.id !== currentStep ? '✓' : step.icon}
                   </div>
                   <span className="text-xs text-gray-600 mt-1">{step.label}</span>
                 </div>
                 {index < steps.length - 1 && (
-                  <div className={`flex-1 h-1 mx-2 ${
-                    step.id < currentStep ? 'bg-green-600' : 'bg-gray-300'
-                  }`} style={{width: '50px'}}></div>
+                  <div className={`flex-1 h-1 mx-2 ${step.id < currentStep ? 'bg-green-600' : 'bg-gray-300'
+                    }`} style={{ width: '50px' }}></div>
                 )}
               </div>
             ))}
           </div>
         </div>
-        
+
         {/* Current Action */}
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
           <h3 className="font-semibold text-blue-900 mb-2">Siguiente paso:</h3>
@@ -139,17 +139,17 @@ export default function ActiveDelivery({ order, onComplete, setNotification }) {
             <p className="text-sm text-blue-600 mt-1">📍 {currentAction.address}</p>
           )}
         </div>
-        
+
         {/* Contact Buttons */}
         <div className="grid grid-cols-2 gap-3">
-          <button 
+          <button
             onClick={contactSeller}
             className="bg-white border border-gray-300 rounded-lg p-3 flex items-center justify-center space-x-2 hover:bg-gray-50 transition-colors"
           >
             <span>📞</span>
             <span className="font-medium">Llamar Vendedor</span>
           </button>
-          <button 
+          <button
             onClick={contactCustomer}
             className="bg-white border border-gray-300 rounded-lg p-3 flex items-center justify-center space-x-2 hover:bg-gray-50 transition-colors"
           >
@@ -157,17 +157,17 @@ export default function ActiveDelivery({ order, onComplete, setNotification }) {
             <span className="font-medium">Llamar Cliente</span>
           </button>
         </div>
-        
+
         {/* Action Button */}
-        <button 
+        <button
           onClick={handleCompleteStep}
           className="w-full bg-blue-600 text-white py-4 rounded-lg font-semibold text-lg hover:bg-blue-700 transition-colors"
         >
           {currentAction.button}
         </button>
-        
+
         {/* Emergency Button */}
-        <button 
+        <button
           onClick={reportProblem}
           className="w-full bg-red-100 text-red-700 py-3 rounded-lg font-medium border border-red-200 hover:bg-red-200 transition-colors"
         >

@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 
 
-const MAPBOX_TOKEN = 'pk.eyJ1IjoibWFudWdtbyIsImEiOiJjbWZocHBobnkwZTFzMmpteTBqejdjM2NyIn0.szPCGrt15ZmioZVcXyGycA';
+const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
 
 export default function RutaPreviewModal({ isOpen, onClose, ruta }) {
   const mapRef = useRef(null);

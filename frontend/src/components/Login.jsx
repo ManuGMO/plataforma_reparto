@@ -68,8 +68,8 @@ export default function Login({ onGoRegister, showNotification, onLogin }) {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col font-sans">
       <div className="bg-gradient-to-b from-blue-500 to-purple-600 h-[40vh] min-h-[300px] flex flex-col items-center justify-center text-white p-6 pb-20 rounded-b-[3rem]">
-        <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center mb-6 shadow-xl relative z-10">
-          <span className="text-4xl select-none">🛒</span>
+        <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center mb-2 shadow-xl relative z-5">
+          <span className="text-3xl select-none">🛒</span>
         </div>
         <h1 className="text-4xl font-bold mb-2 tracking-tight">MercadoLocal</h1>
       </div>

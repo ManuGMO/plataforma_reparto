@@ -3,11 +3,11 @@ import axios from "axios";
 import EditProductModal from "./EditarModal"; // Modal de edición
 import ProductViewModal from "./ProductViewModal"; // Nuevo modal de vista
 
-export default function ProductosTab({ openModal, refreshTrigger }) {
+export default function ProductosTab({ idUsuario, openModal, refreshTrigger }) {
   const [productos, setProductos] = useState([]);
   const [categorias, setCategorias] = useState([]);
   const [categoriaSeleccionada, setCategoriaSeleccionada] = useState('todas');
-  
+
   // Estados para el modal de edición
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [productoAEditar, setProductoAEditar] = useState(null);
@@ -16,10 +16,12 @@ export default function ProductosTab({ openModal, refreshTrigger }) {
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [productoAVer, setProductoAVer] = useState(null);
 
+  const API_URL = import.meta.env.VITE_API_URL;
+
   useEffect(() => {
     const fetchProductos = async () => {
       try {
-        const res = await axios.get("http://localhost:3001/api/productos/obtener/1");
+        const res = await axios.get(`${API_URL}/api/productos/obtener/${idUsuario}`);
         setProductos(res.data.productos);
         setCategorias(res.data.categorias);
 
@@ -34,8 +36,8 @@ export default function ProductosTab({ openModal, refreshTrigger }) {
   }, [refreshTrigger]);
 
   // Filtrar productos por categoría
-  const productosFiltrados = categoriaSeleccionada === 'todas' 
-    ? productos 
+  const productosFiltrados = categoriaSeleccionada === 'todas'
+    ? productos
     : productos.filter(p => p.id_categoria === parseInt(categoriaSeleccionada));
 
   // Agrupar productos por categoría para la vista por categorías
@@ -51,12 +53,12 @@ export default function ProductosTab({ openModal, refreshTrigger }) {
   // Eliminar producto
   const handleEliminar = async (e, id) => {
     e.stopPropagation(); // Prevenir que se abra el modal de vista
-    
+
     const confirmacion = window.confirm("¿Estás seguro de que quieres eliminar este producto?");
     if (!confirmacion) return;
 
     try {
-      await axios.delete(`http://localhost:3001/api/productos/eliminar/${id}`);
+      await axios.delete(`${API_URL}/api/productos/eliminar/${id}`);
       setProductos(productos.filter((p) => p.id_producto !== id));
     } catch (err) {
       console.error("Error eliminando producto:", err);
@@ -79,9 +81,9 @@ export default function ProductosTab({ openModal, refreshTrigger }) {
 
   // Actualizar producto después de la edición
   const handleProductUpdated = (productoActualizado) => {
-    setProductos(productos.map((p) => 
-      p.id_producto === productoActualizado.id_producto 
-        ? { ...p, ...productoActualizado } 
+    setProductos(productos.map((p) =>
+      p.id_producto === productoActualizado.id_producto
+        ? { ...p, ...productoActualizado }
         : p
     ));
   };
@@ -99,7 +101,7 @@ export default function ProductosTab({ openModal, refreshTrigger }) {
   };
 
   const ProductCard = ({ producto }) => (
-    <div 
+    <div
       className="product-card bg-white border rounded-lg p-4 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer hover:border-blue-300"
       onClick={() => handleVerProducto(producto)}
       title="Ver detalles del producto"
@@ -125,16 +127,16 @@ export default function ProductosTab({ openModal, refreshTrigger }) {
           </p>
         </div>
         <div className="flex flex-col space-y-2">
-          <button 
-            onClick={(e) => handleEditar(e, producto)} 
+          <button
+            onClick={(e) => handleEditar(e, producto)}
             className="text-blue-600 text-sm bg-white border border-blue-300 px-3 py-1 rounded hover:bg-blue-50 transition-colors duration-200 flex items-center justify-center z-10 relative"
             title="Editar producto"
           >
             <span className="mr-1">✏️</span>
             Editar
           </button>
-          <button 
-            onClick={(e) => handleEliminar(e, producto.id_producto)} 
+          <button
+            onClick={(e) => handleEliminar(e, producto.id_producto)}
             className="text-red-600 text-sm bg-white border border-red-300 px-3 py-1 rounded hover:bg-red-50 transition-colors duration-200 flex items-center justify-center z-10 relative"
             title="Eliminar producto"
           >
@@ -227,11 +229,11 @@ export default function ProductosTab({ openModal, refreshTrigger }) {
               </span>
             </div>
           </div>
-          
+
           {productosFiltrados.map((producto) => (
             <ProductCard key={producto.id_producto} producto={producto} />
           ))}
-          
+
           {productosFiltrados.length === 0 && (
             <div className="text-center py-8 text-gray-500">
               <p className="text-lg">No hay productos en esta categoría</p>
@@ -243,6 +245,7 @@ export default function ProductosTab({ openModal, refreshTrigger }) {
 
       {/* Modal de edición */}
       <EditProductModal
+        idUsuario={idUsuario}
         isOpen={isEditModalOpen}
         onClose={handleCloseEditModal}
         onProductUpdated={handleProductUpdated}

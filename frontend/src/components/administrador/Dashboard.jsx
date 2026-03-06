@@ -10,6 +10,8 @@ export default function Dashboard() {
   });
   const [loading, setLoading] = useState(true);
   const [actividadReciente, setActividadReciente] = useState([]);
+  const API_URL = import.meta.env.VITE_API_URL;
+
 
   useEffect(() => {
     fetchDashboardData();
@@ -20,9 +22,9 @@ export default function Dashboard() {
       setLoading(true);
       // Consultamos resumen diario y actividad reciente
       const [diarioResponse, estadisticasResponse, actividadResponse] = await Promise.all([
-        axios.get('http://localhost:3001/api/admin/dashboard/diario'),
-        axios.get('http://localhost:3001/api/admin/dashboard/estadisticas'),
-        axios.get('http://localhost:3001/api/admin/dashboard/actividad-reciente')
+        axios.get(`${API_URL}/api/admin/dashboard/diario`),
+        axios.get(`${API_URL}/api/admin/dashboard/estadisticas`),
+        axios.get(`${API_URL}/api/admin/dashboard/actividad-reciente`)
       ]);
 
       const diario = diarioResponse.data;
@@ -57,29 +59,29 @@ export default function Dashboard() {
   };
 
   const statsConfig = [
-    { 
-      label: 'Usuarios Activos', 
-      value: loading ? '...' : stats.usuariosActivos.toLocaleString(), 
-      icon: '👥', 
-      gradient: 'from-purple-500 to-purple-700' 
+    {
+      label: 'Usuarios Activos',
+      value: loading ? '...' : stats.usuariosActivos.toLocaleString(),
+      icon: '👥',
+      gradient: 'from-purple-500 to-purple-700'
     },
-    { 
-      label: 'Pagos Totales', 
-      value: loading ? '...' : formatCurrency(stats.ingresosTotales), 
-      icon: '💰', 
-      gradient: 'from-pink-500 to-red-500' 
+    {
+      label: 'Pagos Totales',
+      value: loading ? '...' : formatCurrency(stats.ingresosTotales),
+      icon: '💰',
+      gradient: 'from-pink-500 to-red-500'
     },
-    { 
-      label: 'Pedidos Hoy', 
-      value: loading ? '...' : stats.pedidosHoy, 
-      icon: '📦', 
-      gradient: 'from-blue-400 to-cyan-400' 
+    {
+      label: 'Pedidos Hoy',
+      value: loading ? '...' : stats.pedidosHoy,
+      icon: '📦',
+      gradient: 'from-blue-400 to-cyan-400'
     },
-    { 
-      label: 'Comisiones', 
-      value: loading ? '...' : formatCurrency(stats.comisionesTotales), 
-      icon: '📈', 
-      gradient: 'from-green-400 to-teal-400' 
+    {
+      label: 'Comisiones',
+      value: loading ? '...' : formatCurrency(stats.comisionesTotales),
+      icon: '📈',
+      gradient: 'from-green-400 to-teal-400'
     }
   ];
 
@@ -100,7 +102,7 @@ export default function Dashboard() {
           </button>
         </div>
       </div>
-     
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         {statsConfig.map((stat, idx) => (
           <div key={idx} className={`bg-gradient-to-br ${stat.gradient} rounded-xl p-6 text-white shadow-lg hover:shadow-xl transition-shadow`}>
@@ -114,7 +116,7 @@ export default function Dashboard() {
           </div>
         ))}
       </div>
-     
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Actividad Reciente */}
         <div className="bg-white rounded-lg shadow-sm p-6">
@@ -139,7 +141,7 @@ export default function Dashboard() {
             </div>
           )}
         </div>
-        
+
         {/* Estadísticas Adicionales */}
         <div className="bg-white rounded-lg shadow-sm p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Resumen del Sistema</h3>

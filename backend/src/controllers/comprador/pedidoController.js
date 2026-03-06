@@ -367,7 +367,7 @@ export const obtenerPedidosDelComprador = async (req, res) => {
         tiene_repartidor: pedido.tiene_repartidor,
         items: items,
         repartidor: pedido.Repartidor && pedido.Repartidor[0] ? { id: pedido.Repartidor[0].id_usuario, nombre: pedido.Repartidor[0].nombre } : null,
-        direccion: pedido.direccion,
+        direccion: pedido.direccion.split(',').slice(0, 2).join(','),
         ya_calificado: pedido.Valoracions && pedido.Valoracions.length > 0
       };
     });

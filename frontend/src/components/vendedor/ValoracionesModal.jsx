@@ -1,15 +1,17 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 
-export default function ValoracionesModal({ 
-  isOpen, 
-  onClose, 
-  repartidor, 
-  idVendedor 
+export default function ValoracionesModal({
+  isOpen,
+  onClose,
+  repartidor,
+  idVendedor
 }) {
   const [valoraciones, setValoraciones] = useState([]);
   const [estadisticas, setEstadisticas] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  const API_URL = import.meta.env.VITE_API_URL;
 
   useEffect(() => {
     if (isOpen && repartidor) {
@@ -21,7 +23,7 @@ export default function ValoracionesModal({
     try {
       setLoading(true);
       const response = await axios.get(
-        `http://localhost:3001/api/repartidores/valoraciones/${repartidor.id_usuario}/vendedor/${idVendedor}`
+        `${API_URL}/api/repartidores/valoraciones/${repartidor.id_usuario}/vendedor/${idVendedor}`
       );
       setValoraciones(response.data.valoraciones);
       setEstadisticas(response.data.estadisticas);
@@ -38,8 +40,8 @@ export default function ValoracionesModal({
 
   const renderStars = (rating) => {
     return Array.from({ length: 5 }, (_, i) => (
-      <span 
-        key={i} 
+      <span
+        key={i}
         className={`text-lg ${i < rating ? 'text-yellow-400' : 'text-gray-300'}`}
       >
         ★
@@ -90,7 +92,7 @@ export default function ValoracionesModal({
               {estadisticas && estadisticas.totalValoraciones > 0 && (
                 <div className="mb-6 bg-gray-50 rounded-lg p-4">
                   <h3 className="font-semibold text-gray-900 mb-3">Resumen de Valoraciones</h3>
-                  
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {/* Promedio */}
                     <div className="text-center">
@@ -104,7 +106,7 @@ export default function ValoracionesModal({
                         {estadisticas.totalValoraciones} valoraciones
                       </p>
                     </div>
-                    
+
                     {/* Distribución */}
                     <div className="space-y-1">
                       {[5, 4, 3, 2, 1].map(rating => (
@@ -112,12 +114,12 @@ export default function ValoracionesModal({
                           <span className="w-3 text-center">{rating}</span>
                           <span className="text-yellow-400 mx-1">★</span>
                           <div className="flex-1 bg-gray-200 rounded-full h-2 mx-2">
-                            <div 
+                            <div
                               className="bg-yellow-400 h-2 rounded-full"
-                              style={{ 
-                                width: `${estadisticas.totalValoraciones > 0 
-                                  ? (estadisticas.distribucionCalificaciones[rating] / estadisticas.totalValoraciones) * 100 
-                                  : 0}%` 
+                              style={{
+                                width: `${estadisticas.totalValoraciones > 0
+                                  ? (estadisticas.distribucionCalificaciones[rating] / estadisticas.totalValoraciones) * 100
+                                  : 0}%`
                               }}
                             />
                           </div>
@@ -145,9 +147,9 @@ export default function ValoracionesModal({
                   <h3 className="font-semibold text-gray-900 mb-3">
                     Valoraciones Recientes ({valoraciones.length})
                   </h3>
-                  
+
                   {valoraciones.map((valoracion) => (
-                    <div 
+                    <div
                       key={valoracion.id_valoracion}
                       className="border rounded-lg p-4 hover:bg-gray-50 transition-colors"
                     >
@@ -167,7 +169,7 @@ export default function ValoracionesModal({
                           </p>
                         </div>
                       </div>
-                      
+
                       {/* Comentario */}
                       {valoracion.comentario && (
                         <div className="mt-3">

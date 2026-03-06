@@ -25,7 +25,7 @@ export default function PaymentModal({ isOpen, onClose, carritoData, onConfirmOr
 
   const [showReceiptModal, setShowReceiptModal] = useState(false);
   const [pedidoCreado, setPedidoCreado] = useState(null);
-
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
 
   const mapContainer = useRef(null);
   const map = useRef(null);
@@ -324,20 +324,26 @@ export default function PaymentModal({ isOpen, onClose, carritoData, onConfirmOr
         comprobante: file // Pasar el archivo también
       });
 
-      // Cerrar ambos modales
+      // Cerrar modal de recibo
       setShowReceiptModal(false);
-      onClose();
 
-      // Limpiar estado
-      setDireccion("");
-      setDireccionCompleta("");
-      setUbicacion(null);
-      setSugerencias([]);
-      setMostrarMapa(false);
-      setMostrarSugerencias(false);
-      setPedidoCreado(null);
+      // Mostrar modal de éxito
+      setShowSuccessMessage(true);
 
-      alert("✅ ¡Pedido creado y comprobante enviado exitosamente!");
+      // Esperar unos segundos antes de cerrar el modal principal
+      setTimeout(() => {
+        setShowSuccessMessage(false);
+        onClose();
+
+        // Limpiar estado
+        setDireccion("");
+        setDireccionCompleta("");
+        setUbicacion(null);
+        setSugerencias([]);
+        setMostrarMapa(false);
+        setMostrarSugerencias(false);
+        setPedidoCreado(null);
+      }, 2500);
 
     } catch (error) {
       console.error('Error creando pedido con comprobante:', error);
@@ -586,6 +592,40 @@ export default function PaymentModal({ isOpen, onClose, carritoData, onConfirmOr
             />
           </div>
         </div>
+
+        {/* Notificación de Éxito */}
+        {showSuccessMessage && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm px-4 transition-opacity">
+            <div className="bg-white rounded-3xl p-8 flex flex-col items-center justify-center shadow-2xl max-w-sm w-full transform scale-100 transition-transform">
+              <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mb-6 shadow-inner">
+                <svg className="w-10 h-10 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
+                </svg>
+              </div>
+              <h2 className="text-2xl font-black text-gray-800 text-center mb-2">¡Pedido Exitoso!</h2>
+              <p className="text-gray-600 text-center font-medium mb-6">
+                Tu pedido y comprobante han sido enviados correctamente.
+              </p>
+
+              {/* Barra de progreso */}
+              <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
+                <div
+                  className="bg-green-500 h-1.5 rounded-full"
+                  style={{
+                    animation: 'progress 2.5s ease-in-out forwards'
+                  }}
+                ></div>
+              </div>
+              <style dangerouslySetInnerHTML={{
+                __html: `
+                @keyframes progress {
+                  0% { width: 0%; }
+                  100% { width: 100%; }
+                }
+              `}} />
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

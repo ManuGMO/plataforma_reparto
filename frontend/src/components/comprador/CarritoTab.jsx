@@ -2,6 +2,9 @@ import { useState, useEffect } from "react";
 import axios from "axios";
 import CheckoutModal from "./PaymentModal";
 
+
+const API_URL = import.meta.env.VITE_API_URL;
+
 export default function CarritoTab({ setNotification, CompradorID }) {
   const [carritoData, setCarritoData] = useState({
     items: [],
@@ -36,9 +39,9 @@ export default function CarritoTab({ setNotification, CompradorID }) {
   const cargarCarrito = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`http://localhost:3001/api/carrito/comprador/${ID_COMPRADOR}`);
+      const response = await axios.get(`${API_URL}/api/carrito/comprador/${ID_COMPRADOR}`);
       console.log("Carrito", response.data);
-      
+
       // Calcular totales correctos en el frontend
       const { subtotal, comision, precio_reparto, total } = calcularTotales(response.data.items);
 
@@ -63,7 +66,7 @@ export default function CarritoTab({ setNotification, CompradorID }) {
 
   const handleRemove = async (producto) => {
     try {
-      await axios.delete(`http://localhost:3001/api/carrito/comprador/${ID_COMPRADOR}/producto/${producto.id}`);
+      await axios.delete(`${API_URL}/api/carrito/comprador/${ID_COMPRADOR}/producto/${producto.id}`);
       await cargarCarrito(); // Recargar carrito
       setNotification("Producto eliminado del carrito");
     } catch (error) {
@@ -80,7 +83,7 @@ export default function CarritoTab({ setNotification, CompradorID }) {
     }
 
     try {
-      await axios.put(`http://localhost:3001/api/carrito/comprador/${ID_COMPRADOR}/producto/${producto.id}`, {
+      await axios.put(`${API_URL}/api/carrito/comprador/${ID_COMPRADOR}/producto/${producto.id}`, {
         cantidad: nuevaCantidad
       });
       await cargarCarrito(); // Recargar carrito
@@ -103,26 +106,23 @@ export default function CarritoTab({ setNotification, CompradorID }) {
     });
 
     try {
-      // Crear FormData para enviar archivo + datos
+      // crea FormData para enviar archivo + datos
       const formData = new FormData();
       formData.append('id_comprador', ID_COMPRADOR);
       formData.append('direccion', direccion);
       formData.append('metodo_pago', metodoPago);
       formData.append('latitud', latitud);
       formData.append('longitud', longitud);
-  // Añadir desglose de montos para que el backend lo guarde en el modelo Pedido
-  formData.append('precio_bruto', carritoData.subtotal);
-  formData.append('comision_servicio', carritoData.comision);
-  formData.append('pago_reparto', carritoData.precio_reparto);
-  formData.append('total', carritoData.total);
-      
-      // Agregar el comprobante si existe
+      formData.append('precio_bruto', carritoData.subtotal);
+      formData.append('comision_servicio', carritoData.comision);
+      formData.append('pago_reparto', carritoData.precio_reparto);
+      formData.append('total', carritoData.total);
+
       if (comprobante) {
         formData.append('comprobante', comprobante);
       }
-
       const response = await axios.post(
-        'http://localhost:3001/api/pedidos/comprador/desde-carrito', 
+        `${API_URL}/api/pedidos/comprador/desde-carrito`,
         formData,
         {
           headers: {
@@ -132,9 +132,9 @@ export default function CarritoTab({ setNotification, CompradorID }) {
       );
 
       console.log("Pedido creado exitosamente:", response.data);
-      
+
       setNotification("¡Pedido creado exitosamente con comprobante!");
-      
+
       // Limpiar carrito
       setCarritoData({
         items: [],
@@ -143,21 +143,21 @@ export default function CarritoTab({ setNotification, CompradorID }) {
         precio_reparto: 0,
         total: 0
       });
-      
+
       return response.data;
-      
+
     } catch (error) {
       console.error("Error al crear pedido:", error);
       console.error("Response data:", error.response?.data);
-      
+
       let mensaje = "Error al procesar pedido";
-      
+
       if (error.response?.data?.message) {
         mensaje = error.response.data.message;
       } else if (error.response?.data?.error) {
         mensaje = error.response.data.error;
       }
-      
+
       setNotification(mensaje);
       throw error;
     }
@@ -168,7 +168,7 @@ export default function CarritoTab({ setNotification, CompradorID }) {
       <div className="p-4">
         <h2 className="text-xl font-bold text-gray-900 mb-4">Mi Carrito</h2>
         <div className="space-y-4">
-          {[1,2,3].map(i => (
+          {[1, 2, 3].map(i => (
             <div key={i} className="bg-gray-200 rounded-lg h-24 animate-pulse"></div>
           ))}
         </div>
@@ -192,38 +192,44 @@ export default function CarritoTab({ setNotification, CompradorID }) {
   return (
     <div className="p-4 pb-24">
       <h2 className="text-xl font-bold text-gray-900 mb-4">Mi Carrito</h2>
-      
+
       <div className="space-y-4 mb-6">
         {carritoData.items.map((item) => (
           <div key={item.id} className="bg-white rounded-lg p-4 shadow-sm">
-            <div className="flex items-center space-x-3">
-              <div className="aspect-square bg-gradient-to-br flex w-24 h-24 items-center justify-center">
-                <img src={item.imagen} alt={item.nombre} className="w-full h-full object-cover" />
-              </div>
-              <div className="flex-1">
-                <h3 className="font-semibold text-gray-900">{item.nombre}</h3>
-                <p className="text-sm text-gray-600">{item.vendedor}</p>
-                <p className="text-sm text-gray-500">Stock disponible: {item.stock}</p>
-                <div className="flex items-center space-x-2 mt-2">
-                  <span className="text-lg font-bold text-green-600">${item.precio}</span>
-                  <span className="text-sm text-gray-500 whitespace-nowrap">x {item.cantidad}</span>
-                  <span className="text-sm font-semibold">= ${(item.precio * item.cantidad)}</span>
+            <div className="flex flex-col space-y-4">
+              {/* 1. Información del producto */}
+              <div className="flex items-center space-x-4">
+                <div className="aspect-square bg-gradient-to-br flex w-24 h-24 items-center justify-center shrink-0 rounded-md overflow-hidden bg-gray-50">
+                  <img src={item.imagen} alt={item.nombre} className="w-full h-full object-cover" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-semibold text-gray-900 leading-tight">{item.nombre}</h3>
+                  <p className="text-sm text-gray-600 mt-1">{item.vendedor}</p>
+                  <p className="text-sm text-gray-500">Stockk disponible: {item.stock}</p>
                 </div>
               </div>
-              <div className="flex flex-col items-center space-y-2">
-                {/* Controles de cantidad */}
-                <div className="flex items-center space-x-2">
+
+              {/* 2. Precio, cantidad y valor */}
+              <div className="flex items-center justify-center space-x-3 bg-gray-50 py-3 px-4 rounded-lg">
+                <span className="text-xl font-bold text-green-600">${item.precio}</span>
+                <span className="text-sm text-gray-500 font-medium whitespace-nowrap">x {item.cantidad}</span>
+                <span className="text-base font-semibold text-gray-800 ml-2">= ${(item.precio * item.cantidad)}</span>
+              </div>
+
+              {/* 3. Controles de cantidad */}
+              <div className="flex items-center justify-between border-t border-gray-100 pt-3">
+                <div className="flex items-center space-x-3">
                   <button
                     onClick={() => handleUpdateQuantity(item, item.cantidad - 1)}
-                    className="w-8 h-8 bg-gray-400 rounded-full flex items-center justify-center hover:bg-gray-500"
+                    className="w-10 h-10 bg-gray-100 text-gray-700 rounded-full flex items-center justify-center hover:bg-gray-200 transition-colors font-bold text-lg active:scale-95"
                     disabled={item.cantidad <= 1}
                   >
                     -
                   </button>
-                  <span className="w-8 text-center font-semibold">{item.cantidad}</span>
+                  <span className="w-8 text-center font-semibold text-lg">{item.cantidad}</span>
                   <button
                     onClick={() => handleUpdateQuantity(item, item.cantidad + 1)}
-                    className="w-8 h-8 bg-blue-400 rounded-full flex items-center justify-center hover:bg-blue-500"
+                    className="w-10 h-10 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center hover:bg-blue-200 transition-colors font-bold text-lg active:scale-95"
                     disabled={item.cantidad >= item.stock}
                   >
                     +
@@ -232,9 +238,10 @@ export default function CarritoTab({ setNotification, CompradorID }) {
                 {/* Botón eliminar */}
                 <button
                   onClick={() => handleRemove(item)}
-                  className="bg-gray-100 text-red-600 hover:text-red-800 p-1"
+                  className="text-red-500 hover:text-red-700 p-2 flex items-center justify-center rounded-lg hover:bg-red-50 transition-colors active:scale-95"
+                  title="Eliminar producto"
                 >
-                  🗑️
+                  <span className="text-xl">🗑️</span>
                 </button>
               </div>
             </div>
@@ -270,11 +277,10 @@ export default function CarritoTab({ setNotification, CompradorID }) {
           setShowCheckout(true);
         }}
         disabled={carritoData.items.length === 0}
-        className={`w-full py-4 rounded-lg font-semibold text-lg transition-colors ${
-          carritoData.items.length === 0
-            ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
-            : 'bg-blue-600 text-white hover:bg-blue-700'
-        }`}
+        className={`w-full py-4 rounded-lg font-semibold text-lg transition-colors ${carritoData.items.length === 0
+          ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
+          : 'bg-blue-600 text-white hover:bg-blue-700'
+          }`}
       >
         Proceder al Pago
       </button>

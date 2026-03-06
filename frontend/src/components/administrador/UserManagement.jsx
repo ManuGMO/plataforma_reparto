@@ -10,6 +10,8 @@ export default function UsersManagement({ setNotification }) {
   const [statusFilter, setStatusFilter] = useState('all');
   const [blockModalUser, setBlockModalUser] = useState(null);
 
+  const API_URL = import.meta.env.VITE_API_URL;
+
   useEffect(() => {
     fetchUsers();
   }, []);
@@ -17,7 +19,7 @@ export default function UsersManagement({ setNotification }) {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('http://localhost:3001/api/admin/usuarios');
+      const response = await axios.get(`${API_URL}/api/admin/usuarios`);
       setUsers(response.data);
     } catch (error) {
       console.error('Error al cargar usuarios:', error);
@@ -29,7 +31,7 @@ export default function UsersManagement({ setNotification }) {
 
   const filteredUsers = users.filter(user => {
     const matchesSearch = user.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         user.correo.toLowerCase().includes(searchTerm.toLowerCase());
+      user.correo.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesType = typeFilter === 'all' || user.roles.includes(typeFilter);
     const matchesStatus = statusFilter === 'all' || user.estado === statusFilter;
     return matchesSearch && matchesType && matchesStatus;
@@ -37,7 +39,7 @@ export default function UsersManagement({ setNotification }) {
 
   const handleBlock = async (userId, reason) => {
     try {
-      await axios.put(`http://localhost:3001/api/admin/usuarios/${userId}/bloquear`, {
+      await axios.put(`${API_URL}/api/admin/usuarios/${userId}/bloquear`, {
         motivo: reason
       });
       setNotification('Usuario bloqueado correctamente');
@@ -51,7 +53,7 @@ export default function UsersManagement({ setNotification }) {
 
   const handleUnblock = async (userId) => {
     try {
-      await axios.put(`http://localhost:3001/api/admin/usuarios/${userId}/desbloquear`);
+      await axios.put(`${API_URL}/api/admin/usuarios/${userId}/desbloquear`);
       setNotification('Usuario desbloqueado correctamente');
       fetchUsers();
     } catch (error) {
@@ -97,7 +99,7 @@ export default function UsersManagement({ setNotification }) {
         <h2 className="text-2xl font-bold text-gray-900">Gestión de Usuarios</h2>
         <p className="text-gray-600">Administrar usuarios, bloqueos y permisos</p>
       </div>
-      
+
       <div className="bg-white rounded-lg shadow-sm p-4 mb-6">
         <div className="flex flex-col md:flex-row gap-4">
           <input
@@ -128,7 +130,7 @@ export default function UsersManagement({ setNotification }) {
           </select>
         </div>
       </div>
-      
+
       {filteredUsers.length === 0 ? (
         <div className="bg-white rounded-lg shadow-sm p-8 text-center">
           <span className="text-6xl">👥</span>
@@ -167,9 +169,8 @@ export default function UsersManagement({ setNotification }) {
                       </span>
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                        user.estado === 'activo' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                      }`}>
+                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${user.estado === 'activo' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                        }`}>
                         {user.estado === 'activo' ? 'Activo' : 'Bloqueado'}
                       </span>
                     </td>

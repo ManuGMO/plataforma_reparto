@@ -11,6 +11,8 @@ function Categories({ activeCategory, setActiveCategory, categorias }) {
     }))
   ] : [];
 
+  const API_URL = import.meta.env.VITE_API_URL;
+
   return (
     <div className="bg-white border-b">
       <div className="w-full px-4 py-3">
@@ -19,11 +21,10 @@ function Categories({ activeCategory, setActiveCategory, categorias }) {
             <button
               key={category.id}
               onClick={() => setActiveCategory(category.id)}
-              className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium ${
-                activeCategory === category.id 
-                  ? 'bg-blue-100 text-blue-600' 
-                  : 'bg-gray-100 text-gray-600'
-              }`}
+              className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium ${activeCategory === category.id
+                ? 'bg-blue-100 text-blue-600'
+                : 'bg-gray-100 text-gray-600'
+                }`}
             >
               {category.emoji} {category.name}
             </button>
@@ -105,7 +106,7 @@ function ProductModal({ producto, isOpen, onClose, onAddToCart }) {
         {/* Content */}
         <div className="p-6">
           <h2 className="text-2xl font-bold text-gray-900 mb-2">{producto.nombre}</h2>
-          
+
           {/* Vendor Info */}
           <div className="flex items-center space-x-2 text-gray-600 mb-2">
             <User className="h-4 w-4" />
@@ -136,7 +137,7 @@ function ProductModal({ producto, isOpen, onClose, onAddToCart }) {
             <span className="text-sm">Stock disponible: {producto.stock} unidades</span>
           </div>
 
-          {/* Description */} 
+          {/* Description */}
           {producto.descripcion && (
             <div className="mt-4">
               <span className="font-medium text-gray-700 block mb-2">Descripción:</span>
@@ -184,11 +185,10 @@ function ProductModal({ producto, isOpen, onClose, onAddToCart }) {
           <button
             onClick={handleAddToCart}
             disabled={producto.stock === 0}
-            className={`w-full py-3 rounded-lg text-lg font-medium transition-colors ${
-              producto.stock === 0
-                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                : 'bg-blue-600 text-white hover:bg-blue-700'
-            }`}
+            className={`w-full py-3 rounded-lg text-lg font-medium transition-colors ${producto.stock === 0
+              ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+              : 'bg-blue-600 text-white hover:bg-blue-700'
+              }`}
           >
             {producto.stock === 0 ? 'Sin Stock' : 'Agregar al Carrito'}
           </button>
@@ -210,11 +210,13 @@ export default function ProductosTabComprador({ setNotification, CompradorID }) 
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
+  const API_URL = import.meta.env.VITE_API_URL;
+
   // ID del comprador (actualmente hardcodeado)
   const ID_COMPRADOR = CompradorID;
 
   // Token de Mapbox - REEMPLAZA CON TU TOKEN REAL
-  const MAPBOX_TOKEN = 'pk.eyJ1IjoibWFudWdtbyIsImEiOiJjbWZocHBobnkwZTFzMmpteTBqejdjM2NyIn0.szPCGrt15ZmioZVcXyGycA';
+  const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
 
   // Función para convertir coordenadas a dirección usando Mapbox
   const geocodeReverse = async (lat, lng) => {
@@ -222,13 +224,13 @@ export default function ProductosTabComprador({ setNotification, CompradorID }) 
       const response = await fetch(
         `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${MAPBOX_TOKEN}&types=address,poi,place&language=es&limit=1`
       );
-      
+
       if (!response.ok) {
         throw new Error('Error en geocoding');
       }
-      
+
       const data = await response.json();
-      
+
       if (data.features && data.features.length > 0) {
         const place = data.features[0];
         // Obtener una dirección más limpia
@@ -237,7 +239,7 @@ export default function ProductosTabComprador({ setNotification, CompradorID }) 
         const shortAddress = placeName.split(',').slice(0, 2).join(',') || placeName;
         return shortAddress;
       }
-      
+
       return 'Dirección no encontrada';
     } catch (error) {
       console.error('Error en geocoding:', error);
@@ -259,19 +261,18 @@ export default function ProductosTabComprador({ setNotification, CompradorID }) 
         if (producto.ubicacion && (!producto.latitud || !producto.longitud)) {
           return producto;
         }
-        
+
         // Si tiene coordenadas válidas, convertir a dirección
-        if (producto.latitud && producto.longitud && 
-            !isNaN(producto.latitud) && !isNaN(producto.longitud) &&
-            MAPBOX_TOKEN && MAPBOX_TOKEN !== 'TU_MAPBOX_ACCESS_TOKEN') {
-          
+        if (producto.latitud && producto.longitud &&
+          !isNaN(producto.latitud) && !isNaN(producto.longitud)) {
+
           const direccion = await geocodeReverse(producto.latitud, producto.longitud);
           return {
             ...producto,
             ubicacion: direccion
           };
         }
-        
+
         // Si no tiene ni ubicación ni coordenadas válidas
         return {
           ...producto,
@@ -298,7 +299,7 @@ export default function ProductosTabComprador({ setNotification, CompradorID }) 
     const cargarProductos = async () => {
       try {
         setLoading(true);
-        const response = await fetch("http://localhost:3001/api/productos/comprador");
+        const response = await fetch(`${API_URL}/api/productos/comprador`);
         const data = await response.json();
         setProductos(data);
 
@@ -311,7 +312,7 @@ export default function ProductosTabComprador({ setNotification, CompradorID }) 
         // Extraer categorías únicas de los productos
         const categoriasUnicas = [...new Set(data.map(p => p.categoria))];
         setCategorias(categoriasUnicas.map(nombre => ({ nombre })));
-        
+
         setError(null);
       } catch (err) {
         console.error("Error al cargar productos:", err);
@@ -327,14 +328,18 @@ export default function ProductosTabComprador({ setNotification, CompradorID }) 
 
   // Filtrar productos por categoría y término de búsqueda
   const productosFiltrados = productosConDireccion.filter(producto => {
+    // 1. Filtrado por Categoría
     const matchesCategory = activeCategory === 'all' || producto.categoria === activeCategory;
+
+    // 2. Filtrado por Búsqueda
     const matchesSearch = producto.nombre.toLowerCase().includes(searchTerm.toLowerCase());
+
     return matchesCategory && matchesSearch;
   });
 
   const handleAddToCart = async (producto, cantidad = 1) => {
     try {
-      const response = await fetch(`http://localhost:3001/api/carrito/comprador/${ID_COMPRADOR}/agregar`, {
+      const response = await fetch(`${API_URL}/api/carrito/comprador/${ID_COMPRADOR}/agregar`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -342,15 +347,15 @@ export default function ProductosTabComprador({ setNotification, CompradorID }) 
         body: JSON.stringify({
           id_producto: producto.id,
           cantidad: cantidad
-        })
+        }) // 2. Filtrado por Búsqueda (nombre)
       });
 
       const data = await response.json();
-      
+
       if (!response.ok) {
         throw new Error(data.message || 'Error al agregar producto');
       }
-      
+
       setNotification(`${cantidad} ${producto.nombre}${cantidad > 1 ? 's' : ''} agregado${cantidad > 1 ? 's' : ''} al carrito`);
     } catch (error) {
       console.error("Error al agregar al carrito:", error);
@@ -374,7 +379,7 @@ export default function ProductosTabComprador({ setNotification, CompradorID }) 
         <div className="bg-white border-b">
           <div className="w-full px-4 py-3">
             <div className="flex space-x-4">
-              {[1,2,3,4].map(i => (
+              {[1, 2, 3, 4].map(i => (
                 <div key={i} className="flex-shrink-0 px-4 py-2 bg-gray-200 rounded-full animate-pulse h-8 w-20"></div>
               ))}
             </div>
@@ -385,7 +390,7 @@ export default function ProductosTabComprador({ setNotification, CompradorID }) 
         </div>
         <div className="p-4">
           <div className="grid grid-cols-2 gap-3">
-            {[1,2,3,4,5,6].map(i => (
+            {[1, 2, 3, 4, 5, 6].map(i => (
               <div key={i} className="bg-gray-200 rounded-lg h-48 animate-pulse"></div>
             ))}
           </div>
@@ -400,7 +405,7 @@ export default function ProductosTabComprador({ setNotification, CompradorID }) 
         <div className="text-center py-8">
           <span className="text-6xl">😞</span>
           <p className="text-gray-600 mt-4">{error}</p>
-          <button 
+          <button
             onClick={() => window.location.reload()}
             className="mt-4 bg-blue-600 text-white px-4 py-2 rounded-lg"
           >
@@ -427,13 +432,13 @@ export default function ProductosTabComprador({ setNotification, CompradorID }) 
 
   return (
     <div className="h-full flex flex-col">
-      <Categories 
-        activeCategory={activeCategory} 
-        setActiveCategory={setActiveCategory} 
+      <Categories
+        activeCategory={activeCategory}
+        setActiveCategory={setActiveCategory}
         categorias={categorias}
       />
       <SearchBar searchTerm={searchTerm} setSearchTerm={setSearchTerm} />
-      
+
       <div className="flex-1 overflow-y-auto p-4">
         {loadingAddresses && (
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
@@ -443,12 +448,12 @@ export default function ProductosTabComprador({ setNotification, CompradorID }) 
             </div>
           </div>
         )}
-        
+
         {productosFiltrados.length === 0 ? (
           <div className="text-center py-8">
             <span className="text-6xl">🔍</span>
             <p className="text-gray-600 mt-4">
-              {searchTerm 
+              {searchTerm
                 ? `No se encontraron productos con "${searchTerm}"`
                 : "No hay productos en esta categoría"
               }
@@ -465,8 +470,8 @@ export default function ProductosTabComprador({ setNotification, CompradorID }) 
         ) : (
           <div className="grid grid-cols-2 gap-3">
             {productosFiltrados.map(producto => (
-              <div 
-                key={producto.id} 
+              <div
+                key={producto.id}
                 className="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
                 onClick={() => openProductModal(producto)}
               >
@@ -495,11 +500,10 @@ export default function ProductosTabComprador({ setNotification, CompradorID }) 
                       handleAddToCart(producto);
                     }}
                     disabled={producto.stock === 0}
-                    className={`w-full py-2 rounded-lg text-sm font-medium transition-colors ${
-                      producto.stock === 0
-                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                        : 'bg-blue-600 text-white hover:bg-blue-700'
-                    }`}
+                    className={`w-full py-2 rounded-lg text-sm font-medium transition-colors ${producto.stock === 0
+                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      : 'bg-blue-600 text-white hover:bg-blue-700'
+                      }`}
                   >
                     {producto.stock === 0 ? 'Sin Stock' : 'Agregar'}
                   </button>

@@ -8,6 +8,8 @@ export default function PaymentDetailModal({ payment, onClose, onMarkAsPaid }) {
   const [loading, setLoading] = useState(true);
   const [weeks, setWeeks] = useState([]);
   const [selectedWeek, setSelectedWeek] = useState(null);
+  const API_URL = import.meta.env.VITE_API_URL;
+
 
   useEffect(() => {
     if (payment?.id_vendedor) fetchAllPedidos();
@@ -32,7 +34,7 @@ export default function PaymentDetailModal({ payment, onClose, onMarkAsPaid }) {
   const fetchAllPedidos = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`http://localhost:3001/api/admin/pagos-vendedores/${payment.id_vendedor}/detalle`);
+      const response = await axios.get(`${API_URL}/api/admin/pagos-vendedores/${payment.id_vendedor}/detalle`);
       const pedidos = response.data || [];
 
       // Agrupar por semana (Lunes-Domingo)
@@ -43,10 +45,10 @@ export default function PaymentDetailModal({ payment, onClose, onMarkAsPaid }) {
         const diffToMonday = (day + 6) % 7;
         const monday = new Date(fecha);
         monday.setDate(fecha.getDate() - diffToMonday);
-        monday.setHours(0,0,0,0);
+        monday.setHours(0, 0, 0, 0);
         const sunday = new Date(monday);
         sunday.setDate(monday.getDate() + 6);
-        sunday.setHours(23,59,59,999);
+        sunday.setHours(23, 59, 59, 999);
 
         const key = formatISO(monday);
         if (!weeksMap.has(key)) weeksMap.set(key, { monday, sunday, pedidos: [] });
@@ -64,7 +66,7 @@ export default function PaymentDetailModal({ payment, onClose, onMarkAsPaid }) {
         return {
           weekStart: weekStart,
           weekEnd: formatISO(sunday),
-          periodLabel: `(${String(monday.getDate()).padStart(2,'0')} / ${String(monday.getMonth()+1).padStart(2,'0')}) - (${String(sunday.getDate()).padStart(2,'0')} / ${String(sunday.getMonth()+1).padStart(2,'0')})`,
+          periodLabel: `(${String(monday.getDate()).padStart(2, '0')} / ${String(monday.getMonth() + 1).padStart(2, '0')}) - (${String(sunday.getDate()).padStart(2, '0')} / ${String(sunday.getMonth() + 1).padStart(2, '0')})`,
           pedidos,
           bruto: Math.round(bruto),
           comision: Math.round(comision),
@@ -72,7 +74,7 @@ export default function PaymentDetailModal({ payment, onClose, onMarkAsPaid }) {
           ivaComision: Math.round(ivaComision),
           neto: Math.round(neto)
         };
-      }).sort((a,b) => (a.weekStart < b.weekStart ? 1 : -1));
+      }).sort((a, b) => (a.weekStart < b.weekStart ? 1 : -1));
 
       setWeeks(weeksArr);
       // seleccionar la semana más reciente por defecto
@@ -86,7 +88,7 @@ export default function PaymentDetailModal({ payment, onClose, onMarkAsPaid }) {
   };
 
   const weekObj = weeks.find(w => w.weekStart === selectedWeek) || null;
-    const [paying, setPaying] = useState(false);
+  const [paying, setPaying] = useState(false);
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">

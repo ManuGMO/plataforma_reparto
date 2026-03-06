@@ -8,6 +8,8 @@ export default function Receipts({ setNotification }) {
   const [selectedReceipt, setSelectedReceipt] = useState(null);
   const [statusFilter, setStatusFilter] = useState('pending');
 
+  const API_URL = import.meta.env.VITE_API_URL;
+
   useEffect(() => {
     fetchReceipts();
   }, [statusFilter]);
@@ -15,7 +17,7 @@ export default function Receipts({ setNotification }) {
   const fetchReceipts = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`http://localhost:3001/api/admin/comprobantes`, {
+      const response = await axios.get(`${API_URL}/api/admin/comprobantes`, {
         params: { estado: statusFilter }
       });
       setReceipts(response.data);
@@ -29,7 +31,7 @@ export default function Receipts({ setNotification }) {
 
   const handleApprove = async (pedidoId) => {
     try {
-      await axios.put(`http://localhost:3001/api/admin/comprobantes/${pedidoId}/validar`, {
+      await axios.put(`${API_URL}/api/admin/comprobantes/${pedidoId}/validar`, {
         accion: 'aprobar'
       });
       setNotification('Comprobante aprobado correctamente');
@@ -43,7 +45,7 @@ export default function Receipts({ setNotification }) {
 
   const handleReject = async (pedidoId) => {
     try {
-      await axios.put(`http://localhost:3001/api/admin/comprobantes/${pedidoId}/validar`, {
+      await axios.put(`${API_URL}/api/admin/comprobantes/${pedidoId}/validar`, {
         accion: 'rechazar'
       });
       setNotification('Comprobante rechazado');
@@ -69,7 +71,7 @@ export default function Receipts({ setNotification }) {
         <h2 className="text-2xl font-bold text-gray-900">Comprobantes de Pago</h2>
         <p className="text-gray-600">Validar comprobantes enviados por clientes</p>
       </div>
-      
+
       <div className="bg-white rounded-lg shadow-sm p-4 mb-6">
         <div className="flex flex-col md:flex-row gap-4">
           <select
@@ -84,7 +86,7 @@ export default function Receipts({ setNotification }) {
           </select>
         </div>
       </div>
-      
+
       {receipts.length === 0 ? (
         <div className="bg-white rounded-lg shadow-sm p-8 text-center">
           <span className="text-6xl">🧾</span>
@@ -102,20 +104,19 @@ export default function Receipts({ setNotification }) {
               className="bg-white rounded-lg shadow-sm p-4 hover:shadow-md transition-shadow cursor-pointer"
             >
               <div className="flex items-center justify-between mb-3">
-                <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                  !receipt.pago_confirmado && receipt.comprobante_pago ? 'bg-yellow-100 text-yellow-800' :
+                <span className={`px-2 py-1 text-xs font-medium rounded-full ${!receipt.pago_confirmado && receipt.comprobante_pago ? 'bg-yellow-100 text-yellow-800' :
                   receipt.pago_confirmado ? 'bg-green-100 text-green-800' :
-                  'bg-red-100 text-red-800'
-                }`}>
+                    'bg-red-100 text-red-800'
+                  }`}>
                   {!receipt.pago_confirmado && receipt.comprobante_pago ? 'Pendiente' :
-                   receipt.pago_confirmado ? 'Aprobado' : 'Sin comprobante'}
+                    receipt.pago_confirmado ? 'Aprobado' : 'Sin comprobante'}
                 </span>
                 <span className="text-sm text-gray-500">Pedido #{receipt.id_pedido}</span>
               </div>
-              
+
               {receipt.comprobante_pago ? (
                 <img
-                  src={`http://localhost:3001/${receipt.comprobante_pago}`}
+                  src={`${API_URL}/${receipt.comprobante_pago}`}
                   alt="Comprobante"
                   className="w-full h-32 object-cover rounded border mb-3"
                   onError={(e) => {
@@ -127,7 +128,7 @@ export default function Receipts({ setNotification }) {
                   <span className="text-gray-400">Sin comprobante</span>
                 </div>
               )}
-              
+
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-600">Cliente:</span>
@@ -144,7 +145,7 @@ export default function Receipts({ setNotification }) {
                   </span>
                 </div>
               </div>
-              
+
               {!receipt.pago_confirmado && receipt.comprobante_pago && (
                 <button
                   onClick={(e) => { e.stopPropagation(); setSelectedReceipt(receipt); }}

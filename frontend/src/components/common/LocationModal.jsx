@@ -6,7 +6,7 @@ export default function LocationModal({ initial, onClose, onSave }) {
   const [marker, setMarker] = useState(initial || null);
   const mapRef = useRef(null);
   const containerRef = useRef(null);
-  const MAPBOX_TOKEN = 'pk.eyJ1IjoibWFudWdtbyIsImEiOiJjbWZocHBobnkwZTFzMmpteTBqejdjM2NyIn0.szPCGrt15ZmioZVcXyGycA';
+  const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
 
   useEffect(() => {
     const ensureCss = () => {

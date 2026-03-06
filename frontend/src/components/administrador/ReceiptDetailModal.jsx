@@ -1,6 +1,8 @@
 import { useEffect } from 'react';
 
 export default function ReceiptDetailModal({ receipt, onClose, onApprove, onReject }) {
+  const API_URL = import.meta.env.VITE_API_URL;
+
   // Cerrar con Escape
   useEffect(() => {
     const handleKey = (e) => {
@@ -22,11 +24,11 @@ export default function ReceiptDetailModal({ receipt, onClose, onApprove, onReje
         <div className="p-6 border-b">
           <h3 className="text-lg font-bold text-gray-900">Validar Comprobante</h3>
         </div>
-        
+
         <div className="p-6 space-y-4">
-            <div className="text-center">
+          <div className="text-center">
             <img
-              src={`http://localhost:3001/${receipt.comprobante_pago}`}
+              src={`${API_URL}/${receipt.comprobante_pago}`}
               alt="Comprobante"
               className="w-full max-w-2xl mx-auto rounded border"
               onError={(e) => {
@@ -34,7 +36,7 @@ export default function ReceiptDetailModal({ receipt, onClose, onApprove, onReje
               }}
             />
           </div>
-          
+
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700">Pedido</label>
@@ -63,7 +65,7 @@ export default function ReceiptDetailModal({ receipt, onClose, onApprove, onReje
               <p className="text-gray-900">{receipt.direccion || 'N/A'}</p>
             </div>
           </div>
-          
+
           <div className="flex items-center justify-between pt-6 border-t">
             <button
               onClick={onClose}
