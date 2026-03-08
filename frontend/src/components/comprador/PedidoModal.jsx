@@ -97,10 +97,10 @@ export default function PedidoModal({ pedido, showModal, onClose }) {
                 return (
                   <div key={step} className="flex items-center flex-1">
                     <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${isCompleted
-                        ? 'bg-green-500 text-white'
-                        : isActive
-                          ? 'bg-blue-500 text-white'
-                          : 'bg-gray-300 text-gray-600'
+                      ? 'bg-green-500 text-white'
+                      : isActive
+                        ? 'bg-blue-500 text-white'
+                        : 'bg-gray-300 text-gray-600'
                       }`}>
                       {step}
                     </div>
@@ -166,7 +166,14 @@ export default function PedidoModal({ pedido, showModal, onClose }) {
                       {item.cantidad}x ${item.precio} c/u
                     </p>
                     {item.vendedor && (
-                      <p className="text-xs text-gray-500">Vendedor: {item.vendedor}</p>
+                      <p className="text-xs text-gray-500 flex items-center mt-1">
+                        <span>Vendedor: {item.vendedor}</span>
+                        {item.estado_vendedor && (
+                          <span className={`ml-2 px-2 py-0.5 rounded-full text-[10px] ${getStatusColor(item.estado_vendedor)}`}>
+                            {getStatusText(item.estado_vendedor)}
+                          </span>
+                        )}
+                      </p>
                     )}
                   </div>
                   <span className="font-semibold text-green-600">${item.subtotal}</span>

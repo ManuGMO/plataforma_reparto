@@ -25,7 +25,7 @@ export const getPedidos = async (req, res) => {
                 model: db.Producto_Pedido,
                 attributes: ['cantidad', 'precio_unitario']
               },
-              attributes: ["id_producto", "nombre", "activo"]
+              attributes: ["id_producto", "nombre", "activo", "id_usuario"]
             }
           ]
         }
@@ -40,12 +40,21 @@ export const getPedidos = async (req, res) => {
         return null;
       }
 
+      const itemsFiltrados = pedido.Productos
+        .filter((producto) => producto.id_usuario == id) // Filtrar solo los productos del vendedor
+        .map((producto) => ({
+          nombre: producto.nombre,
+          cantidad: producto.Producto_Pedido.cantidad,
+          precio_unitario: producto.Producto_Pedido.precio_unitario,
+          producto_eliminado: !producto.activo
+        }));
+
       return {
         id_pedido: pedido.id_pedido,
         cliente: pedido.Comprador?.[0]?.nombre || "Cliente no disponible",
-        estado: pedido.estado,
+        estado: pedidoVendedor.estado_pedido || pedido.estado, // Usar estado del vendedor
         fecha_creacion: pedido.fecha_creacion,
-        total: pedido.total,
+        total: itemsFiltrados.reduce((sum, item) => sum + (item.cantidad * item.precio_unitario), 0),
         direccion: pedido.direccion,
         latitud: pedido.latitud,
         longitud: pedido.longitud,
@@ -54,12 +63,7 @@ export const getPedidos = async (req, res) => {
         comprobante_pago: pedido.comprobante_pago,
         pago_confirmado: pedido.pago_confirmado,
         fecha_confirmacion_pago: pedido.fecha_confirmacion_pago,
-        items: pedido.Productos.map((producto) => ({
-          nombre: producto.nombre,
-          cantidad: producto.Producto_Pedido.cantidad,
-          precio_unitario: producto.Producto_Pedido.precio_unitario,
-          producto_eliminado: !producto.activo
-        })),
+        items: itemsFiltrados,
       };
     }).filter(pedido => pedido !== null);
 
@@ -106,7 +110,7 @@ export const getPedidoDetalle = async (req, res) => {
             model: db.Producto_Pedido,
             attributes: ['cantidad', 'precio_unitario']
           },
-          attributes: ["id_producto", "nombre", "precio", "activo"]
+          attributes: ["id_producto", "nombre", "precio", "activo", "id_usuario"]
         }
       ]
     });
@@ -154,18 +158,29 @@ export const getPedidoDetalle = async (req, res) => {
         nombre: pedido.Repartidor[0].nombre
       } : null,
 
-      // Productos
-      productos: pedido.Productos.map(producto => ({
-        id: producto.id_producto,
-        nombre: producto.nombre,
-        precio: producto.precio,
-        cantidad: producto.Producto_Pedido.cantidad,
-        precio_unitario: producto.Producto_Pedido.precio_unitario,
-        subtotal: producto.Producto_Pedido.cantidad * producto.Producto_Pedido.precio_unitario,
-        activo: producto.activo,
-        eliminado: !producto.activo
-      }))
+      // Productos del vendedor específico (si aplica)
+      productos: pedido.Productos
+        .filter(producto => !vendedorId || producto.id_usuario == vendedorId)
+        .map(producto => ({
+          id: producto.id_producto,
+          nombre: producto.nombre,
+          precio: producto.precio,
+          cantidad: producto.Producto_Pedido.cantidad,
+          precio_unitario: producto.Producto_Pedido.precio_unitario,
+          subtotal: producto.Producto_Pedido.cantidad * producto.Producto_Pedido.precio_unitario,
+          activo: producto.activo,
+          eliminado: !producto.activo
+        }))
     };
+
+    // Si se consulta para un vendedor, reemplazar estado por estado del vendedor y recalcular total
+    if (vendedorId) {
+      const vendedorInfo = pedido.Vendedor.find(v => v.id_usuario == vendedorId);
+      if (vendedorInfo && vendedorInfo.pedido_vendedor) {
+        pedidoDetallado.estado = vendedorInfo.pedido_vendedor.estado_pedido || pedido.estado;
+      }
+      pedidoDetallado.total = pedidoDetallado.productos.reduce((acc, curr) => acc + curr.subtotal, 0);
+    }
 
     res.json(pedidoDetallado);
 
@@ -223,15 +238,48 @@ export const estadoPedido = async (req, res) => {
       'rechazado': []
     };
 
-    if (!transicionesValidasVendedor[pedido.estado]?.includes(estado)) {
+    const estadoActualVendedor = vendedorAsignado?.pedido_vendedor?.estado_pedido || 'pendiente';
+
+    if (!transicionesValidasVendedor[estadoActualVendedor]?.includes(estado)) {
       await transaction.rollback();
       return res.status(400).json({
-        error: `No se puede cambiar de estado ${pedido.estado} a ${estado}`,
-        transiciones_permitidas: transicionesValidasVendedor[pedido.estado] || []
+        error: `No se puede cambiar de estado ${estadoActualVendedor} a ${estado}`,
+        transiciones_permitidas: transicionesValidasVendedor[estadoActualVendedor] || []
       });
     }
 
-    await pedido.update({ estado }, { transaction });
+    // Actualizar el estado del vendedor específico
+    await db.pedido_vendedor.update(
+      { estado_pedido: estado },
+      { where: { id_pedido: id, id_usuario: id_vendedor }, transaction }
+    );
+
+    // Verificar si todos los vendedores han avanzado a este mismo estado (o posterior)
+    const todosVendedores = await db.pedido_vendedor.findAll({
+      where: { id_pedido: id },
+      transaction
+    });
+
+    const estadosRanking = ['pendiente', 'aceptado', 'listo_para_recoger', 'en_reparto', 'entregado'];
+    const indexNuevoEstado = estadosRanking.indexOf(estado);
+
+    // Si todos los vendedores están en un estado >= al nuevo estado, actualizar el global
+    let todosAvanzaron = true;
+    for (const pv of todosVendedores) {
+      const estadoPv = (pv.id_usuario == id_vendedor) ? estado : (pv.estado_pedido || 'pendiente');
+
+      if (estadosRanking.indexOf(estadoPv) < indexNuevoEstado && estadoPv !== 'rechazado' && estadoPv !== 'cancelado') {
+        todosAvanzaron = false;
+        break;
+      }
+    }
+
+    if (todosAvanzaron && indexNuevoEstado > -1) {
+      await pedido.update({ estado }, { transaction });
+    } else if (estado === 'rechazado' || estado === 'cancelado') {
+      // Si alguno rechaza/cancela, el global podría dejarse pendiente, pero por ahora no tocamos el global
+      // a menos de que implementen lógica de cancelación parcial.
+    }
 
     await transaction.commit();
 
@@ -240,7 +288,7 @@ export const estadoPedido = async (req, res) => {
       message: "Estado actualizado correctamente",
       pedido: {
         id_pedido: pedido.id_pedido,
-        estado: estado
+        estado: estado // Se devuelve el estado del vendedor para que la UI se actualice
       }
     });
 
@@ -289,18 +337,41 @@ export const marcarListoParaRecoger = async (req, res) => {
       });
     }
 
-    // Verificar que el pedido está en estado aceptado
-    if (pedido.estado !== 'aceptado') {
+    const estadoActualVendedor = vendedorAsignado?.pedido_vendedor?.estado_pedido || 'pendiente';
+
+    // Verificar que el estado del vendedor está en estado aceptado
+    if (estadoActualVendedor !== 'aceptado') {
       await transaction.rollback();
       return res.status(400).json({
-        error: `No se puede marcar como listo. Estado actual: ${pedido.estado}`
+        error: `No se puede marcar como listo. Estado actual: ${estadoActualVendedor}`
       });
     }
 
-    // Actualizar estado
-    await pedido.update({
-      estado: 'listo_para_recoger'
-    }, { transaction });
+    // Actualizar estado del vendedor
+    await db.pedido_vendedor.update(
+      { estado_pedido: 'listo_para_recoger' },
+      { where: { id_pedido: pedidoId, id_usuario: id_vendedor }, transaction }
+    );
+
+    // Verificar si todos los vendedores están listos
+    const todosVendedores = await db.pedido_vendedor.findAll({
+      where: { id_pedido: pedidoId },
+      transaction
+    });
+
+    let todosListos = true;
+    for (const pv of todosVendedores) {
+      const estadoPv = (pv.id_usuario == id_vendedor) ? 'listo_para_recoger' : (pv.estado_pedido || 'pendiente');
+
+      if (estadoPv !== 'listo_para_recoger' && estadoPv !== 'en_reparto' && estadoPv !== 'entregado' && estadoPv !== 'rechazado' && estadoPv !== 'cancelado') {
+        todosListos = false;
+        break;
+      }
+    }
+
+    if (todosListos) {
+      await pedido.update({ estado: 'listo_para_recoger' }, { transaction });
+    }
 
     await transaction.commit();
 

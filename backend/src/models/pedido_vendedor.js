@@ -22,6 +22,18 @@ export default (sequelize) => {
       type: DataTypes.ENUM('pendiente', 'pagado'),
       defaultValue: 'pendiente',
       allowNull: false
+    },
+    estado_pedido: {
+      type: DataTypes.ENUM(
+        'pendiente',
+        'aceptado',
+        'listo_para_recoger',
+        'en_reparto',
+        'entregado',
+        'rechazado',
+        'cancelado'
+      ),
+      defaultValue: 'pendiente'
     }
   }, {
     tableName: 'pedido_vendedor',

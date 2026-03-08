@@ -159,7 +159,7 @@ export const getPedidosDisponibles = async (req, res) => {
           as: 'Vendedor',
           attributes: ['id_usuario', 'nombre', 'correo', 'latitud', 'longitud'],
           through: {
-            attributes: []
+            attributes: ['estado_pedido']
           }
         },
         {
@@ -287,13 +287,14 @@ export const getPedidosDisponibles = async (req, res) => {
         latitud: pedido.Comprador[0].latitud,
         longitud: pedido.Comprador[0].longitud
       } : null,
-      vendedor: pedido.Vendedor && pedido.Vendedor.length > 0 ? {
-        id_usuario: pedido.Vendedor[0].id_usuario,
-        nombre: pedido.Vendedor[0].nombre,
-        correo: pedido.Vendedor[0].correo,
-        latitud: pedido.Vendedor[0].latitud,
-        longitud: pedido.Vendedor[0].longitud
-      } : null,
+      vendedores: pedido.Vendedor ? pedido.Vendedor.map(v => ({
+        id_usuario: v.id_usuario,
+        nombre: v.nombre,
+        correo: v.correo,
+        latitud: v.latitud,
+        longitud: v.longitud,
+        estado_pedido: v.pedido_vendedor?.estado_pedido || 'pendiente'
+      })) : [],
       productos: pedido.Productos ? pedido.Productos.map(producto => ({
         id_producto: producto.id_producto,
         nombre: producto.nombre,
@@ -437,7 +438,7 @@ export const getPedidosDisponiblesOptimized = async (req, res) => {
           model: Usuario,
           as: 'Vendedor',
           attributes: ['id_usuario', 'nombre', 'correo', 'latitud', 'longitud'],
-          through: { attributes: [] }
+          through: { attributes: ['estado_pedido'] }
         },
         {
           model: Producto,
@@ -467,7 +468,14 @@ export const getPedidosDisponiblesOptimized = async (req, res) => {
       latitud: pedido.latitud,
       longitud: pedido.longitud,
       comprador: pedido.Comprador?.[0] || null,
-      vendedor: pedido.Vendedor?.[0] || null,
+      vendedores: pedido.Vendedor?.map(v => ({
+        id_usuario: v.id_usuario,
+        nombre: v.nombre,
+        correo: v.correo,
+        latitud: v.latitud,
+        longitud: v.longitud,
+        estado_pedido: v.pedido_vendedor?.estado_pedido || 'pendiente'
+      })) || [],
       productos: pedido.Productos?.map(producto => ({
         id_producto: producto.id_producto,
         nombre: producto.nombre,
@@ -536,7 +544,7 @@ export const aceptarPedido = async (req, res) => {
     const pedidoActualizado = await Pedido.findByPk(pedidoId, {
       include: [
         { model: Usuario, as: 'Comprador', attributes: ['id_usuario', 'nombre', 'correo', 'latitud', 'longitud'] },
-        { model: Usuario, as: 'Vendedor', attributes: ['id_usuario', 'nombre', 'correo', 'latitud', 'longitud'] },
+        { model: Usuario, as: 'Vendedor', attributes: ['id_usuario', 'nombre', 'correo', 'latitud', 'longitud'], through: { attributes: ['estado_pedido'] } },
         { model: Usuario, as: 'Repartidor', attributes: ['id_usuario', 'nombre', 'correo'] },
         {
           model: Producto,
@@ -559,7 +567,14 @@ export const aceptarPedido = async (req, res) => {
       comision_servicio: p.comision_servicio || 0,
       pago_reparto: p.pago_reparto || 0,
       Comprador: p.Comprador,
-      Vendedor: p.Vendedor,
+      vendedores: p.Vendedor?.map(v => ({
+        id_usuario: v.id_usuario,
+        nombre: v.nombre,
+        correo: v.correo,
+        latitud: v.latitud,
+        longitud: v.longitud,
+        estado_pedido: v.pedido_vendedor?.estado_pedido || 'pendiente'
+      })) || [],
       Repartidor: p.Repartidor,
       Productos: p.Productos
     };
@@ -589,7 +604,7 @@ export const confirmarRecogida = async (req, res) => {
 
   try {
     const { pedidoId } = req.params;
-    const { id_repartidor } = req.body;
+    const { id_repartidor, vendorId } = req.body;
 
     const pedido = await Pedido.findByPk(pedidoId, {
       include: [
@@ -614,16 +629,50 @@ export const confirmarRecogida = async (req, res) => {
       throw new Error('No tienes permisos para actualizar este pedido');
     }
 
-    // Verificar que el pedido está listo 
-    if (pedido.estado !== 'listo_para_recoger') {
-      throw new Error(`El pedido no está disponible para ser recogido (estado actual: ${pedido.estado})`);
-    }
+    // Si viene un vendorId, estamos confirmando solo ese vendor
+    if (vendorId) {
+      // verificar estado_pedido individual
+      const pv = await pedido_vendedor.findOne({
+        where: { id_pedido: pedidoId, id_usuario: vendorId },
+        transaction
+      });
+      if (!pv) throw new Error('Vendedor no encontrado en el pedido');
+      if (pv.estado_pedido !== 'listo_para_recoger') {
+        throw new Error(`El pedido del vendedor no está listo para recoger (estado: ${pv.estado_pedido})`);
+      }
 
-    // Actualizar estado a en_reparto
-    await pedido.update(
-      { estado: 'en_reparto' },
-      { transaction }
-    );
+      // actualizar estado individual
+      await pv.update({ estado_pedido: 'en_reparto' }, { transaction });
+
+      // evaluar si todos han recogido
+      const allPv = await pedido_vendedor.findAll({
+        where: { id_pedido: pedidoId },
+        transaction
+      });
+
+      const allRecogidos = allPv.every(p => ['en_reparto', 'entregado', 'rechazado', 'cancelado'].includes(p.estado_pedido));
+
+      if (allRecogidos) {
+        // Actualizar estado global a en_reparto
+        await pedido.update({ estado: 'en_reparto' }, { transaction });
+      }
+
+    } else {
+      // Fallback a lógica anterior (legacy o no multi-vendor)
+      if (pedido.estado !== 'listo_para_recoger') {
+        throw new Error(`El pedido no está disponible para ser recogido (estado actual: ${pedido.estado})`);
+      }
+      await pedido.update({ estado: 'en_reparto' }, { transaction });
+
+      // Tratar de avanzar todos a en_reparto
+      await pedido_vendedor.update(
+        { estado_pedido: 'en_reparto' },
+        {
+          where: { id_pedido: pedidoId, estado_pedido: 'listo_para_recoger' },
+          transaction
+        }
+      );
+    }
 
     await transaction.commit();
 

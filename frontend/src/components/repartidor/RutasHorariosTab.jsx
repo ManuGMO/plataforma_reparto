@@ -44,7 +44,7 @@ export default function RutasHorariosTab({ repartidorId }) {
     if (!confirm('¿Estás seguro de eliminar esta ruta?')) return;
 
     try {
-      await axios.delete(`${API_URL}/rutas/${idRuta}`);
+      await axios.delete(`${API_URL}/api/rutas/${idRuta}`);
       cargarRutas(); // Recargar lista
     } catch (error) {
       console.error('Error eliminando ruta:', error);

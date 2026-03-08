@@ -98,10 +98,10 @@ export default function PedidosTabRepartidor({ repartidorId, isOnline, setNewOrd
   const handleAcceptOrder = async (orderId) => {
     setLoading(true);
     try {
-      const res = await axios.post(`/api/repartidor/${orderId}/aceptar`, { id_repartidor: repartidorId });
+      const res = await axios.post(`${API_URL}/api/repartidor/${orderId}/aceptar`, { id_repartidor: repartidorId });
       const data = res.data;
       if (data.success) {
-        updateOrderInState(orderId, { tiene_repartidor: true, id_repartidor: repartidorId, estado: 'listo_para_recoger' });
+        updateOrderInState(orderId, { tiene_repartidor: true, id_repartidor: repartidorId, ...data.pedido });
         setNotification('Pedido aceptado');
         setCurrentView('active_delivery');
         return true;
@@ -114,13 +114,29 @@ export default function PedidosTabRepartidor({ repartidorId, isOnline, setNewOrd
     } finally { setLoading(false); }
   };
 
-  const handleConfirmPickup = async (orderId) => {
+  const handleConfirmPickup = async (orderId, vendorId) => {
     setLoading(true);
     try {
-      const res = await axios.patch(`/api/repartidor/${orderId}/recoger`, { id_repartidor: repartidorId });
+      const payload = { id_repartidor: repartidorId };
+      if (vendorId) payload.vendorId = vendorId;
+
+      const res = await axios.patch(`${API_URL}/api/repartidor/${orderId}/recoger`, payload);
       const data = res.data;
       if (data.success) {
-        updateOrderInState(orderId, { estado: 'en_reparto' });
+        if (selectedOrder && selectedOrder.vendedores) {
+          const nuevosVendedores = selectedOrder.vendedores.map(v =>
+            v.id_usuario === vendorId ? { ...v, estado_pedido: 'en_reparto' } : v
+          );
+          const todosRecogidos = nuevosVendedores.every(v => ['en_reparto', 'entregado', 'rechazado', 'cancelado'].includes(v.estado_pedido));
+
+          if (todosRecogidos || !vendorId) {
+            updateOrderInState(orderId, { estado: 'en_reparto', vendedores: nuevosVendedores });
+          } else {
+            updateOrderInState(orderId, { vendedores: nuevosVendedores });
+          }
+        } else {
+          updateOrderInState(orderId, { estado: 'en_reparto' });
+        }
         setNotification('Recogida confirmada');
         return true;
       }
@@ -131,7 +147,7 @@ export default function PedidosTabRepartidor({ repartidorId, isOnline, setNewOrd
   const handleConfirmDelivery = async (orderId) => {
     setLoading(true);
     try {
-      const res = await axios.patch(`/api/repartidor/${orderId}/entregar`, { id_repartidor: repartidorId });
+      const res = await axios.patch(`${API_URL}/api/repartidor/${orderId}/entregar`, { id_repartidor: repartidorId });
       const data = res.data;
       if (data.success) {
         updateOrderInState(orderId, { estado: 'entregado' });

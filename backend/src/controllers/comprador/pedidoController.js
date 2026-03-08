@@ -288,7 +288,7 @@ export const obtenerPedidosDelComprador = async (req, res) => {
             {
               model: db.Usuario,
               as: 'Vendedor',
-              attributes: ['nombre']
+              attributes: ['id_usuario', 'nombre']
             }
           ],
           through: { attributes: ["cantidad", "precio_unitario"] }
@@ -304,7 +304,7 @@ export const obtenerPedidosDelComprador = async (req, res) => {
         {
           model: db.Usuario,
           as: "Vendedor",
-          through: { attributes: [] },
+          through: { attributes: ["estado_pedido"] },
           required: false
         }
         ,
@@ -333,6 +333,24 @@ export const obtenerPedidosDelComprador = async (req, res) => {
         const cantidad = producto.Producto_Pedido.cantidad;
         const precio_unitario = producto.Producto_Pedido.precio_unitario
 
+        let estado_vendedor = 'pendiente';
+        if (producto.Vendedor && pedido.Vendedor) {
+          const vendedorAsociado = pedido.Vendedor.find(v => v.id_usuario === producto.Vendedor.id_usuario);
+          if (vendedorAsociado && vendedorAsociado.pedido_vendedor) {
+            estado_vendedor = vendedorAsociado.pedido_vendedor.estado_pedido || 'pendiente';
+          }
+        }
+
+        const estadoMapItem = {
+          'pendiente': 'en-espera',
+          'aceptado': 'preparando',
+          'listo_para_recoger': 'esperando-repartidor',
+          'en_reparto': 'en-camino',
+          'entregado': 'entregado',
+          'rechazado': 'cancelado',
+          'cancelado': 'cancelado'
+        };
+
         return {
           nombre: producto.nombre,
           cantidad: cantidad,
@@ -340,7 +358,8 @@ export const obtenerPedidosDelComprador = async (req, res) => {
           subtotal: precio_unitario * cantidad,
           vendedor: producto.Vendedor ?
             `${producto.Vendedor.nombre}` :
-            'Vendedor'
+            'Vendedor',
+          estado_vendedor: estadoMapItem[estado_vendedor] || estado_vendedor
         };
       });
 
