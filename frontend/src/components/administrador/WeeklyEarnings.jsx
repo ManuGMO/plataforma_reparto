@@ -12,7 +12,7 @@ export default function WeeklyEarnings({ setNotification }) {
   const fetchWeeks = async () => {
     try {
       setLoading(true);
-      const res = await axios.get(`${API}/api/admin/ganancias-semanales`);
+      const res = await axios.get(`${API_URL}/api/admin/ganancias-semanales`);
       setWeeks(res.data || []);
 
       console.log('Ganancias semanales cargadas:', res.data);

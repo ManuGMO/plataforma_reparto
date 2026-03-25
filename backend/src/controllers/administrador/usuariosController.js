@@ -33,16 +33,16 @@ export const obtenerTodosLosUsuarios = async (req, res) => {
     res.json(usuariosFormateados);
   } catch (error) {
     console.error('Error al obtener usuarios:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       message: "Error al obtener usuarios",
-      error: error.message 
+      error: error.message
     });
   }
 };
 
 export const bloquearUsuario = async (req, res) => {
   const t = await db.sequelize.transaction();
-  
+
   try {
     const { id_usuario } = req.params;
     const { motivo } = req.body;
@@ -134,9 +134,64 @@ export const desbloquearUsuario = async (req, res) => {
   } catch (error) {
     await t.rollback();
     console.error('Error al desbloquear usuario:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       message: "Error al desbloquear usuario",
-      error: error.message 
+      error: error.message
+    });
+  }
+};
+
+export const obtenerValoracionesUsuario = async (req, res) => {
+  try {
+    const { id_usuario } = req.params;
+
+    const valoraciones = await db.Valoracion.findAll({
+      where: {
+        id_usuario_evaluado: id_usuario
+      },
+      include: [
+        {
+          model: db.Usuario,
+          as: 'Comprador',
+          attributes: ['nombre', 'correo']
+        }
+      ],
+      order: [['fecha', 'DESC']]
+    });
+
+    const totalValoraciones = valoraciones.length;
+    const sumaCalificaciones = valoraciones.reduce((sum, v) => sum + v.calificacion, 0);
+    const promedioCalificacion = totalValoraciones > 0 ? (sumaCalificaciones / totalValoraciones).toFixed(1) : 0;
+
+    const distribucionCalificaciones = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+    valoraciones.forEach(v => {
+      if (distribucionCalificaciones[v.calificacion] !== undefined) {
+        distribucionCalificaciones[v.calificacion]++;
+      }
+    });
+
+    const valoracionesFormateadas = valoraciones.map(v => ({
+      id_valoracion: v.id_valoracion,
+      calificacion: v.calificacion,
+      comentario: v.comentario,
+      fecha: v.fecha,
+      nombreEvaluador: v.Comprador ? v.Comprador.nombre : 'Usuario desconocido'
+    }));
+
+    res.json({
+      valoraciones: valoracionesFormateadas,
+      estadisticas: {
+        totalValoraciones,
+        promedioCalificacion: parseFloat(promedioCalificacion),
+        distribucionCalificaciones
+      }
+    });
+
+  } catch (error) {
+    console.error('Error al obtener valoraciones:', error);
+    res.status(500).json({
+      message: "Error al obtener valoraciones",
+      error: error.message
     });
   }
 };

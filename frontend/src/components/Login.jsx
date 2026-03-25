@@ -144,7 +144,7 @@ export default function Login({ onGoRegister, showNotification, onLogin }) {
                 </div>
                 <div className="mt-5 flex justify-end">
                   <button
-                    className="px-4 py-2 rounded-lg bg-gray-100 hover:bg-gray-200"
+                    className="px-4 py-2 rounded-lg bg-red-700 hover:bg-red-800 text-white font-bold rounded-xl transition-colors"
                     onClick={() => setRoleModalOpen(false)}
                   >
                     Cancelar

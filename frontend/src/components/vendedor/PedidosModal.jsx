@@ -155,7 +155,7 @@ export default function PedidosModal({
                       Dirección de Entrega
                     </h4>
                     <p className="text-sm text-gray-700">
-                      {pedido.direccion || 'No especificada'}
+                      {pedido.direccion.split(',').slice(0, 2).join(',') || 'No especificada'}
                     </p>
                   </div>
 

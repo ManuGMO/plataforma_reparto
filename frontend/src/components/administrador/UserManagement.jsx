@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import BlockUserModal from './BlockUserModal';
+import UserRatingsModal from './UserRatingsModal';
 
 export default function UsersManagement({ setNotification }) {
   const [users, setUsers] = useState([]);
@@ -9,6 +10,7 @@ export default function UsersManagement({ setNotification }) {
   const [typeFilter, setTypeFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [blockModalUser, setBlockModalUser] = useState(null);
+  const [selectedUser, setSelectedUser] = useState(null);
 
   const API_URL = import.meta.env.VITE_API_URL;
 
@@ -69,19 +71,17 @@ export default function UsersManagement({ setNotification }) {
     return '👤';
   };
 
-  const getRoleLabel = (roles) => {
-    return roles.map(rol => {
-      if (rol === 'comprador') return 'Comprador';
-      if (rol === 'vendedor') return 'Vendedor';
-      if (rol === 'repartidor') return 'Repartidor';
-      return rol;
-    }).join(', ');
+  const getRoleLabel = (rol) => {
+    if (rol === 'comprador') return 'Comprador';
+    if (rol === 'vendedor') return 'Vendedor';
+    if (rol === 'repartidor') return 'Repartidor';
+    return rol;
   };
 
-  const getRoleColor = (roles) => {
-    if (roles.includes('vendedor')) return 'bg-green-100 text-green-800';
-    if (roles.includes('repartidor')) return 'bg-purple-100 text-purple-800';
-    if (roles.includes('comprador')) return 'bg-blue-100 text-blue-800';
+  const getRoleColor = (rol) => {
+    if (rol === 'vendedor') return 'bg-green-100 text-green-800';
+    if (rol === 'repartidor') return 'bg-purple-100 text-purple-800';
+    if (rol === 'comprador') return 'bg-blue-100 text-blue-800';
     return 'bg-gray-100 text-gray-800';
   };
 
@@ -151,7 +151,11 @@ export default function UsersManagement({ setNotification }) {
               </thead>
               <tbody className="divide-y divide-gray-200">
                 {filteredUsers.map(user => (
-                  <tr key={user.id_usuario} className="hover:bg-gray-50">
+                  <tr
+                    key={user.id_usuario}
+                    className="hover:bg-gray-50 cursor-pointer"
+                    onClick={() => setSelectedUser(user)}
+                  >
                     <td className="px-6 py-4">
                       <div className="flex items-center">
                         <div className="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center bg-white border border-gray-500">
@@ -164,9 +168,13 @@ export default function UsersManagement({ setNotification }) {
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${getRoleColor(user.roles)}`}>
-                        {getRoleLabel(user.roles)}
-                      </span>
+                      <div className="flex flex-wrap gap-1">
+                        {user.roles.map(rol => (
+                          <span key={rol} className={`px-2 py-1 text-xs font-medium rounded-full ${getRoleColor(rol)}`}>
+                            {getRoleLabel(rol)}
+                          </span>
+                        ))}
+                      </div>
                     </td>
                     <td className="px-6 py-4">
                       <span className={`px-2 py-1 text-xs font-medium rounded-full ${user.estado === 'activo' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
@@ -180,14 +188,20 @@ export default function UsersManagement({ setNotification }) {
                     <td className="px-6 py-4 text-sm font-medium">
                       {user.estado === 'activo' ? (
                         <button
-                          onClick={() => setBlockModalUser(user)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setBlockModalUser(user);
+                          }}
                           className="text-red-600 border-red-600 hover:border-red-900 hover:text-red-900 bg-white"
                         >
                           Bloquear
                         </button>
                       ) : (
                         <button
-                          onClick={() => handleUnblock(user.id_usuario)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleUnblock(user.id_usuario);
+                          }}
                           className="text-green-600 border-green-600 hover:text-green-800 hover:text-green-800 bg-white"
                         >
                           Desbloquear
@@ -207,6 +221,21 @@ export default function UsersManagement({ setNotification }) {
           user={blockModalUser}
           onClose={() => setBlockModalUser(null)}
           onConfirm={handleBlock}
+        />
+      )}
+
+      {selectedUser && (
+        <UserRatingsModal
+          user={selectedUser}
+          onClose={() => setSelectedUser(null)}
+          onBlock={(u) => {
+            setSelectedUser(null);
+            setBlockModalUser(u);
+          }}
+          onUnblock={(userId) => {
+            handleUnblock(userId);
+            setSelectedUser(null);
+          }}
         />
       )}
     </div>

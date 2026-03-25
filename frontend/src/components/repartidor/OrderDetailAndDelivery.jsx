@@ -437,7 +437,7 @@ export default function OrderDetailAndDelivery({ order, currentView, onBack, onA
         <div className="bg-white border rounded-lg p-4"><h3 className="font-semibold text-gray-900 mb-3">Detalles del Pedido</h3><div className="space-y-3">
           <div><p className="text-sm text-gray-600">Recoger en:</p><p className="font-medium text-gray-500">{vendorName}</p><p className="text-sm text-gray-500"> 📍{loadingAddress ? (<span className="inline-flex items-center">
             <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-gray-400 mr-2"></div>Obteniendo dirección...</span>) : vendorAddress}</p></div>
-          <div><p className="text-sm text-gray-600">Entregar a:</p><p className="font-medium text-gray-500">{customerName}</p><p className="text-sm text-gray-500">📍 {order.direccion || 'Dirección del cliente'}</p></div>
+          <div><p className="text-sm text-gray-600">Entregar a:</p><p className="font-medium text-gray-500">{customerName}</p><p className="text-sm text-gray-500">📍 {order.direccion.split(',').slice(0, 2).join(',') || 'Dirección del cliente'}</p></div>
           <div><p className="text-sm text-gray-600">Productos y Vendedores:</p>
             <div className="space-y-3">
               {order.vendedores && order.vendedores.length > 0 ? (

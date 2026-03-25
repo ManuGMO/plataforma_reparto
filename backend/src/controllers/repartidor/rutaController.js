@@ -5,9 +5,9 @@ import { Op } from "sequelize";
 export const getRutasPorRepartidor = async (req, res) => {
   try {
     const { repartidorId } = req.params;
-    
+
     const rutas = await db.Ruta_frecuente.findAll({
-      where: { 
+      where: {
         id_usuario: repartidorId,
         activa: true // Solo rutas activas
       },
@@ -16,7 +16,7 @@ export const getRutasPorRepartidor = async (req, res) => {
         ["hora_inicio", "ASC"],
       ],
     });
-    
+
     res.json(rutas);
   } catch (error) {
     console.error("❌ Error obteniendo rutas:", error);
@@ -27,16 +27,16 @@ export const getRutasPorRepartidor = async (req, res) => {
 // Crear nueva ruta
 export const crearRuta = async (req, res) => {
   try {
-    const { 
-      id_usuario, 
+    const {
+      id_usuario,
       nombre_ruta,
-      origen, 
-      origen_lat, 
+      origen,
+      origen_lat,
       origen_lng,
-      destino, 
-      destino_lat, 
+      destino,
+      destino_lat,
       destino_lng,
-      hora_inicio, 
+      hora_inicio,
       hora_fin,
       dia,
       ruta_geojson
@@ -52,38 +52,52 @@ export const crearRuta = async (req, res) => {
       return res.status(400).json({ error: "Faltan coordenadas de origen o destino" });
     }
 
-    // Validar día
     const diasValidos = [
       "lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"
     ];
-    if (!diasValidos.includes(dia)) {
-      return res.status(400).json({ error: "Día inválido" });
+
+    // Soporte para multiples días
+    const arrayDias = req.body.dias && Array.isArray(req.body.dias) && req.body.dias.length > 0
+      ? req.body.dias
+      : (dia ? [dia] : []);
+
+    if (arrayDias.length === 0) {
+      return res.status(400).json({ error: "Debe especificar al menos un día" });
+    }
+
+    const invalidDays = arrayDias.filter(d => !diasValidos.includes(d));
+    if (invalidDays.length > 0) {
+      return res.status(400).json({ error: "Días inválidos proporcionados: " + invalidDays.join(', ') });
     }
 
     // Validar que hora_fin sea mayor que hora_inicio
     if (hora_fin <= hora_inicio) {
-      return res.status(400).json({ 
-        error: "La hora de fin debe ser posterior a la hora de inicio" 
+      return res.status(400).json({
+        error: "La hora de fin debe ser posterior a la hora de inicio"
       });
     }
 
-    const nuevaRuta = await db.Ruta_frecuente.create({
-      id_usuario,
-      nombre_ruta: nombre_ruta || `Ruta ${dia}`,
-      origen,
-      origen_lat,
-      origen_lng,
-      destino,
-      destino_lat,
-      destino_lng,
-      hora_inicio,
-      hora_fin,
-      dia,
-      ruta_geojson: ruta_geojson || null,
-      activa: true
-    });
+    const rutasCreadas = [];
+    for (const d of arrayDias) {
+      const nuevaRuta = await db.Ruta_frecuente.create({
+        id_usuario,
+        nombre_ruta: nombre_ruta ? (arrayDias.length > 1 ? `${nombre_ruta} (${d})` : nombre_ruta) : `Ruta ${d}`,
+        origen,
+        origen_lat,
+        origen_lng,
+        destino,
+        destino_lat,
+        destino_lng,
+        hora_inicio,
+        hora_fin,
+        dia: d,
+        ruta_geojson: ruta_geojson || null,
+        activa: true
+      });
+      rutasCreadas.push(nuevaRuta);
+    }
 
-    res.status(201).json(nuevaRuta);
+    res.status(201).json(rutasCreadas.length === 1 ? rutasCreadas[0] : rutasCreadas);
   } catch (error) {
     console.error("❌ Error creando ruta:", error);
     res.status(500).json({ error: "Error al crear la ruta" });
@@ -94,15 +108,15 @@ export const crearRuta = async (req, res) => {
 export const actualizarRuta = async (req, res) => {
   try {
     const { idRuta } = req.params;
-    const { 
+    const {
       nombre_ruta,
-      origen, 
-      origen_lat, 
+      origen,
+      origen_lat,
       origen_lng,
-      destino, 
-      destino_lat, 
+      destino,
+      destino_lat,
       destino_lng,
-      hora_inicio, 
+      hora_inicio,
       hora_fin,
       dia,
       ruta_geojson,
@@ -128,10 +142,10 @@ export const actualizarRuta = async (req, res) => {
     // Validar horarios si se proporcionan ambos
     const horaInicioFinal = hora_inicio || ruta.hora_inicio;
     const horaFinFinal = hora_fin || ruta.hora_fin;
-    
+
     if (horaFinFinal <= horaInicioFinal) {
-      return res.status(400).json({ 
-        error: "La hora de fin debe ser posterior a la hora de inicio" 
+      return res.status(400).json({
+        error: "La hora de fin debe ser posterior a la hora de inicio"
       });
     }
 
@@ -150,6 +164,28 @@ export const actualizarRuta = async (req, res) => {
       activa: activa !== undefined ? activa : ruta.activa
     });
 
+    // Si en la edición se proporcionaron días adicionales, crearlos como nuevas rutas
+    if (req.body.dias && Array.isArray(req.body.dias) && req.body.dias.length > 1) {
+      const diasExtra = req.body.dias.filter(d => d !== (dia || ruta.dia));
+      for (const d of diasExtra) {
+        await db.Ruta_frecuente.create({
+          id_usuario: ruta.id_usuario,
+          nombre_ruta: nombre_ruta ? `${nombre_ruta} (${d})` : `Ruta ${d}`,
+          origen: origen || ruta.origen,
+          origen_lat: origen_lat || ruta.origen_lat,
+          origen_lng: origen_lng || ruta.origen_lng,
+          destino: destino || ruta.destino,
+          destino_lat: destino_lat || ruta.destino_lat,
+          destino_lng: destino_lng || ruta.destino_lng,
+          hora_inicio: hora_inicio || ruta.hora_inicio,
+          hora_fin: hora_fin || ruta.hora_fin,
+          dia: d,
+          ruta_geojson: ruta_geojson !== undefined ? ruta_geojson : ruta.ruta_geojson,
+          activa: true
+        });
+      }
+    }
+
     res.json(ruta);
   } catch (error) {
     console.error("❌ Error actualizando ruta:", error);
@@ -161,7 +197,7 @@ export const actualizarRuta = async (req, res) => {
 export const eliminarRuta = async (req, res) => {
   try {
     const { idRuta } = req.params;
-    
+
     const ruta = await db.Ruta_frecuente.findByPk(idRuta);
 
     if (!ruta) {
@@ -212,7 +248,7 @@ export const getNegociosCercanosARuta = async (req, res) => {
     const { radioKm = 2 } = req.query; // Radio en kilómetros (default: 2km)
 
     const ruta = await db.Ruta_frecuente.findByPk(idRuta);
-    
+
     if (!ruta) {
       return res.status(404).json({ error: "Ruta no encontrada" });
     }

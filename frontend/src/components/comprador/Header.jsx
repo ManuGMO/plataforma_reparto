@@ -71,7 +71,7 @@ export default function Header({ onOpenProfile }) {
           <div className="bg-white rounded p-4 max-w-sm w-full">
             <p className="text-gray-800 mb-4">¿Deseas cerrar sesión?</p>
             <div className="flex justify-end space-x-2">
-              <button className="px-3 py-1" onClick={() => setConfirmOpen(false)}>Cancelar</button>
+              <button className="px-3 py-1 bg-gray-600 text-white rounded" onClick={() => setConfirmOpen(false)}>Cancelar</button>
               <button
                 className="px-3 py-1 bg-red-600 text-white rounded"
                 onClick={() => { setConfirmOpen(false); logout(); }}

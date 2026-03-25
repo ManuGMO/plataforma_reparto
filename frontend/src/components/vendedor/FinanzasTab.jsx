@@ -178,7 +178,7 @@ export default function FinanzasTab({ idUsuario }) {
                       <p>🚚 Entrega: {formatearFecha(pedido.fecha_entrega)}</p>
                     )}
                     {pedido.direccion && (
-                      <p className="text-xs">📍 {pedido.direccion}</p>
+                      <p className="text-xs">📍 {pedido.direccion.split(',').slice(0, 2).join(',')}</p>
                     )}
                   </div>
 

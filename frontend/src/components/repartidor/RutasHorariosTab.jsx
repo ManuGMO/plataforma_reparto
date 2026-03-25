@@ -21,7 +21,7 @@ export default function RutasHorariosTab({ repartidorId }) {
   const cargarRutas = async () => {
     try {
       setCargando(true);
-      const response = await axios.get(`${API_URL}/rutas/${repartidorId}`);
+      const response = await axios.get(`${API_URL}/api/rutas/${repartidorId}`);
       setRutas(response.data);
     } catch (error) {
       console.error('Error cargando rutas:', error);
@@ -56,10 +56,10 @@ export default function RutasHorariosTab({ repartidorId }) {
     try {
       if (rutaEditar) {
         // Actualizar ruta existente
-        await axios.put(`${API_URL}/rutas/${rutaEditar.id_ruta}`, datosRuta);
+        await axios.put(`${API_URL}/api/rutas/${rutaEditar.id_ruta}`, datosRuta);
       } else {
         // Crear nueva ruta
-        await axios.post(`${API_URL}/rutas`, {
+        await axios.post(`${API_URL}/api/rutas`, {
           ...datosRuta,
           id_usuario: repartidorId
         });

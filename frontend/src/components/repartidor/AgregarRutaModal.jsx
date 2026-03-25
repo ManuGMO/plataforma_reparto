@@ -15,7 +15,7 @@ export default function AgregarRutaModal({ isOpen, onClose, onGuardar, rutaEdita
     destino: '',
     hora_inicio: '',
     hora_fin: '',
-    dia: 'lunes'
+    dias: ['lunes']
   });
 
   const [coordenadas, setCoordenadas] = useState({
@@ -66,7 +66,7 @@ export default function AgregarRutaModal({ isOpen, onClose, onGuardar, rutaEdita
         destino: rutaEditar.destino,
         hora_inicio: rutaEditar.hora_inicio,
         hora_fin: rutaEditar.hora_fin,
-        dia: rutaEditar.dia
+        dias: [rutaEditar.dia]
       });
 
       setCoordenadas({
@@ -495,12 +495,33 @@ export default function AgregarRutaModal({ isOpen, onClose, onGuardar, rutaEdita
     }
   }, [coordenadas]);
 
+  const centrarEnUbicacion = () => {
+    if (userLocation && map.current) {
+      map.current.flyTo({ center: [userLocation.lng, userLocation.lat], zoom: 15 });
+    } else if (navigator.geolocation && map.current) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const lng = pos.coords.longitude;
+          const lat = pos.coords.latitude;
+          setUserLocation({ lng, lat });
+          map.current.flyTo({ center: [lng, lat], zoom: 15 });
+          if (markerCurrent.current) markerCurrent.current.remove();
+          markerCurrent.current = new mapboxgl.Marker({ color: '#2563eb' })
+            .setLngLat([lng, lat])
+            .setPopup(new mapboxgl.Popup({ offset: 25 }).setText('📍 Tu ubicación'))
+            .addTo(map.current);
+        },
+        (err) => console.log("No se pudo obtener la ubicación actual", err)
+      );
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     // Validaciones
-    if (!formData.origen || !formData.destino || !formData.hora_inicio || !formData.hora_fin || !formData.dia) {
-      alert('Por favor completa todos los campos');
+    if (!formData.origen || !formData.destino || !formData.hora_inicio || !formData.hora_fin || formData.dias.length === 0) {
+      alert('Por favor completa todos los campos (incluye al menos un día)');
       return;
     }
 
@@ -527,7 +548,8 @@ export default function AgregarRutaModal({ isOpen, onClose, onGuardar, rutaEdita
         destino_lng: coordenadas.destino.lng,
         hora_inicio: formData.hora_inicio,
         hora_fin: formData.hora_fin,
-        dia: formData.dia,
+        dia: formData.dias[0],
+        dias: formData.dias,
         ruta_geojson: rutaGeojson
       };
 
@@ -540,7 +562,7 @@ export default function AgregarRutaModal({ isOpen, onClose, onGuardar, rutaEdita
         destino: '',
         hora_inicio: '',
         hora_fin: '',
-        dia: 'lunes'
+        dias: ['lunes']
       });
       setCoordenadas({ origen: null, destino: null });
       setRutaGeojson(null);
@@ -608,11 +630,22 @@ export default function AgregarRutaModal({ isOpen, onClose, onGuardar, rutaEdita
                   Selecciona las direcciones exactas. La ruta se dibujará automáticamente.
                 </p>
               </div>
-              <div
-                ref={mapContainer}
-                className="w-full h-96"
-                style={{ minHeight: '384px' }}
-              />
+              <div className="relative w-full h-96" style={{ minHeight: '384px' }}>
+                <div
+                  ref={mapContainer}
+                  className="absolute inset-0 w-full h-full"
+                />
+                <button
+                  type="button"
+                  onClick={centrarEnUbicacion}
+                  className="absolute bottom-4 right-4 bg-white p-3 rounded-full shadow-lg border border-gray-200 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 z-10 transition-transform hover:scale-105"
+                  title="Ir a mi ubicación actual"
+                >
+                  <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 2v2m0 16v2m8-10h2M2 12h2m15.364 6.364l-1.414-1.414M6.05 6.05L4.636 4.636m14.728 0l-1.414 1.414M6.05 17.95l-1.414 1.414M12 8a4 4 0 100 8 4 4 0 000-8z" />
+                  </svg>
+                </button>
+              </div>
               {coordenadas.origen && coordenadas.destino && (
                 <div className="bg-white px-4 py-3 border-t-2 border-gray-200 flex items-center justify-between">
                   <div className="flex items-center space-x-4 text-sm">
@@ -762,25 +795,38 @@ export default function AgregarRutaModal({ isOpen, onClose, onGuardar, rutaEdita
               </p>
             </div>
 
-            {/* Día de la semana */}
+            {/* Días de la semana */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                📅 Día de la Semana *
+                📅 Días de la Semana *
               </label>
-              <select
-                value={formData.dia}
-                onChange={(e) => setFormData(prev => ({ ...prev, dia: e.target.value }))}
-                className="w-full border-2 border-gray-300 rounded-lg px-4 py-3 focus:ring-0 focus:border-blue-500"
-                required
-              >
-                <option value="lunes">Lunes</option>
-                <option value="martes">Martes</option>
-                <option value="miercoles">Miércoles</option>
-                <option value="jueves">Jueves</option>
-                <option value="viernes">Viernes</option>
-                <option value="sabado">Sábado</option>
-                <option value="domingo">Domingo</option>
-              </select>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                {[
+                  { value: 'lunes', label: 'Lunes' },
+                  { value: 'martes', label: 'Martes' },
+                  { value: 'miercoles', label: 'Miércoles' },
+                  { value: 'jueves', label: 'Jueves' },
+                  { value: 'viernes', label: 'Viernes' },
+                  { value: 'sabado', label: 'Sábado' },
+                  { value: 'domingo', label: 'Domingo' }
+                ].map(diaOption => (
+                  <label key={diaOption.value} className={`flex items-center justify-center px-3 py-2 border-2 rounded-lg cursor-pointer transition-colors ${formData.dias.includes(diaOption.value) ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'}`}>
+                    <input
+                      type="checkbox"
+                      className="hidden"
+                      checked={formData.dias.includes(diaOption.value)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setFormData(prev => ({ ...prev, dias: [...prev.dias, diaOption.value] }));
+                        } else {
+                          setFormData(prev => ({ ...prev, dias: prev.dias.filter(d => d !== diaOption.value) }));
+                        }
+                      }}
+                    />
+                    <span className="text-sm font-medium">{diaOption.label}</span>
+                  </label>
+                ))}
+              </div>
             </div>
 
             {/* Información de ayuda */}
