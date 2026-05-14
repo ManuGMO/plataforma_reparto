@@ -13,6 +13,14 @@ services:
     networks:
       - red
 
+  adminer:
+    image: adminer
+    restart: always
+    ports:
+      - "8080:8080"
+    networks:
+      - red
+
   backend:
     build: ./backend
     container_name: plataforma_backend

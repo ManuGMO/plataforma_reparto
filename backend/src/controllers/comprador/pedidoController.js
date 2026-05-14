@@ -43,14 +43,14 @@ export const crearPedidoDesdeCarrito = async (req, res) => {
     });
 
     if (!carrito || !carrito.Productos || carrito.Productos.length === 0) {
-      await t.rollback();
+      if (!t.finished) await t.rollback();
       return res.status(400).json({ message: "El carrito está vacío" });
     }
 
     // Verificar stock
     for (const producto of carrito.Productos) {
       if (producto.stock < producto.Carrito_Producto.cantidad) {
-        await t.rollback();
+        if (!t.finished) await t.rollback();
         return res.status(400).json({
           message: `Stock insuficiente para ${producto.nombre}`
         });
@@ -77,6 +77,9 @@ export const crearPedidoDesdeCarrito = async (req, res) => {
       };
     });
 
+    // Ordenar los items por id_producto previene interbloqueos (deadlocks) al acceder a múltiples productos
+    items.sort((a, b) => a.id_producto - b.id_producto);
+
     // Leer desglose de montos enviado desde el frontend (viene como string en FormData)
     let precio_bruto = req.body.precio_bruto ? Number(req.body.precio_bruto) : subtotal;
     if (!Number.isFinite(precio_bruto)) precio_bruto = subtotal;
@@ -102,7 +105,7 @@ export const crearPedidoDesdeCarrito = async (req, res) => {
     // Validación de consistencia: la suma de las partes debe coincidir con el total
     const sumaPartes = Math.round(precio_bruto + comision_servicio + pago_reparto);
     if (sumaPartes !== Math.round(total)) {
-      await t.rollback();
+      if (!t.finished) await t.rollback();
       return res.status(400).json({
         message: 'Inconsistencia en montos enviados',
         detalle: {
@@ -143,6 +146,16 @@ export const crearPedidoDesdeCarrito = async (req, res) => {
 
     console.log('✅ Pedido creado:', pedido.id_pedido);
 
+    // Actualizar stock PRIMERO para adquirir el Lock Exclusivo (X)
+    // Esto previene el interbloqueo (S to X) causado por la validación de Foreign Keys en la inserción de Producto_Pedido
+    for (const item of items) {
+      await db.Producto.decrement("stock", {
+        by: item.cantidad,
+        where: { id_producto: item.id_producto },
+        transaction: t
+      });
+    }
+
     // Insertar detalle de productos
     const detalleRows = items.map(it => ({
       id_pedido: pedido.id_pedido,
@@ -169,22 +182,13 @@ export const crearPedidoDesdeCarrito = async (req, res) => {
       await db.pedido_vendedor.bulkCreate(vendedorRows, { transaction: t });
     }
 
-    // Actualizar stock
-    for (const item of items) {
-      await db.Producto.decrement("stock", {
-        by: item.cantidad,
-        where: { id_producto: item.id_producto },
-        transaction: t
-      });
-    }
-
     // Vaciar carrito
     await db.Carrito_Producto.destroy({
       where: { id_carrito: carrito.id_carrito },
       transaction: t
     });
 
-    await t.commit();
+    if (!t.finished) await t.commit();
 
 
 
@@ -222,7 +226,7 @@ export const crearPedidoDesdeCarrito = async (req, res) => {
     });
 
   } catch (error) {
-    await t.rollback();
+    if (!t.finished) await t.rollback();
 
     // Eliminar archivo si se subió pero hubo error
     if (req.file) {
@@ -446,7 +450,7 @@ export const calificarPedido = async (req, res) => {
     const { id_pedido, id_comprador, calificaciones } = req.body;
 
     if (!id_pedido || !id_comprador || !calificaciones) {
-      await t.rollback();
+      if (!t.finished) await t.rollback();
       return res.status(400).json({ message: "Datos incompletos" });
     }
 
@@ -468,12 +472,12 @@ export const calificarPedido = async (req, res) => {
     });
 
     if (!pedido) {
-      await t.rollback();
+      if (!t.finished) await t.rollback();
       return res.status(404).json({ message: "Pedido no encontrado" });
     }
 
     if (pedido.estado !== 'entregado') {
-      await t.rollback();
+      if (!t.finished) await t.rollback();
       return res.status(400).json({ message: "Solo se pueden calificar pedidos entregados" });
     }
 
@@ -513,7 +517,7 @@ export const calificarPedido = async (req, res) => {
       valoracionesCreadas.push(valoracionRepartidor);
     }
 
-    await t.commit();
+    if (!t.finished) await t.commit();
 
     res.json({
       message: "Calificaciones guardadas exitosamente",
@@ -521,7 +525,7 @@ export const calificarPedido = async (req, res) => {
     });
 
   } catch (error) {
-    await t.rollback();
+    if (!t.finished) await t.rollback();
     console.error('Error al calificar pedido:', error);
     res.status(500).json({
       message: "Error al guardar calificaciones",

@@ -26,6 +26,7 @@ export const getRutasPorRepartidor = async (req, res) => {
 
 // Crear nueva ruta
 export const crearRuta = async (req, res) => {
+  console.log(req.body);
   try {
     const {
       id_usuario,
