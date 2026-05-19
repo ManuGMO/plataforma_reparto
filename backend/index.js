@@ -21,8 +21,14 @@ const HOST = process.env.HOST;
 await starServer();
 await db.sequelize.sync();
 
+const corsOptions = {
+  origin: process.env.FRONTEND_URL || "http://localhost:3000",
+  optionsSuccessStatus: 200
+};
+
+
 // Middlewares
-app.use(cors());
+app.use(cors(corsOptions));
 app.use(express.json());
 
 // Ruta básica
