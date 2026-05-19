@@ -10,7 +10,10 @@ export default defineConfig(({ mode }) => {
       strictPort: true,
       // Puerto de desarrollo fijo para que el frontend arranque en http://localhost:3000
       port: env.VITE_PORT,
-      host: true
+      host: true,
+      allowedHosts: [
+        'mercadolocal.inf.uach.cl'
+      ]
     }
   }
 })
