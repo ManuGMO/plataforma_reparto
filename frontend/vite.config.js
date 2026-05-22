@@ -8,12 +8,16 @@ export default defineConfig(({ mode }) => {
     plugins: [react()],
     server: {
       strictPort: true,
-      // Puerto de desarrollo fijo para que el frontend arranque en http://localhost:3000
-      port: env.VITE_PORT,
-      host: true,
+      port: env.VITE_PORT || 3000,
+      host: '0.0.0.0',
       allowedHosts: [
         'mercadolocal.inf.uach.cl'
-      ]
+      ],
+      hmr: {
+        host: 'mercadolocal.inf.uach.cl',
+        protocol: 'wss', // wss significa WebSocket Secure (HTTPS)
+        clientPort: 443 // El puerto por defecto de HTTPS
+      }
     }
   }
 })
