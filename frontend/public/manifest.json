@@ -12,14 +12,14 @@
   ],
   "icons": [
     {
-      "src": "/MercadoLocal.png",
+      "src": "/MercadoLocal_192.jpeg",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/jpeg"
     },
     {
-      "src": "/MercadoLocal.png",
+      "src": "/MercadoLocal_512.jpeg",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/jpeg"
     }
   ]
 }

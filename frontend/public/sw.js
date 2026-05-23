@@ -1,5 +1,5 @@
 const CACHE_NAME = 'plataforma-cache-v1';
-const URLS_TO_CACHE = ['/', '/index.html', '/MercadoLocal.png', '/manifest.json'];
+const URLS_TO_CACHE = ['/', '/index.html', '/MercadoLocal_512.jpeg', '/manifest.json'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
