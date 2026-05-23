@@ -12,6 +12,11 @@ services:
       - db_data:/var/lib/mysql
     networks:
       - red
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost", "-p${DB_ROOT_PASSWORD}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   adminer:
     image: adminer
@@ -41,7 +46,8 @@ services:
       - ORS_API_KEY=
       - MAPBOX_TOKEN=${MAPBOX_TOKEN}
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     networks:
       - red
 
@@ -66,7 +72,6 @@ services:
 
 volumes:
   db_data:
-
 
 networks:
   red:
