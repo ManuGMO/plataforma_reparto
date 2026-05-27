@@ -27,10 +27,11 @@ export default function ProductModal({ idUsuario, isOpen, onClose, onProductAdde
 
   // Cargar categorías cuando se abre el modal
   useEffect(() => {
+    console.log("AAAAA");
     if (isOpen) {
       const fetchCategorias = async () => {
         try {
-          const res = await axios.get(`${API_URL}/productos/recuperar_categoria`);
+          const res = await axios.get(`${API_URL}/api/productos/recuperar_categoria`);
           setCategorias(res.data);
           console.log("Categoriassss: ", res.data);
         } catch (error) {
