@@ -1,4 +1,4 @@
-const CACHE_NAME = 'plataforma-cache-v1';
+const CACHE_NAME = 'plataforma-cache-v2';
 const URLS_TO_CACHE = ['/', '/index.html', '/MercadoLocal_192.png', '/MercadoLocal_512.png', '/manifest.json'];
 
 self.addEventListener('install', (event) => {
