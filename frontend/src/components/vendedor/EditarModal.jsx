@@ -89,7 +89,7 @@ export default function EditProductModal({ isOpen, onClose, onProductUpdated, pr
     setImagenFile(null);
     setRemoveImage(false);
     if (producto.imagen) {
-      setPreviewUrl(`${API_URL}/uploads/products/${producto.imagen}`);
+      setPreviewUrl(`${API_URL}/api/uploads/products/${producto.imagen}`);
     } else {
       setPreviewUrl("");
     }

@@ -187,7 +187,7 @@ export default function ProductModal({ idUsuario, isOpen, onClose, onProductAdde
       if (imagen) {
         formData.append("imagen", imagen);
       }
-      await axios.post(`${API_URL}/productos/publicar/${idUsuario}`, formData, {
+      await axios.post(`${API_URL}/api/productos/publicar/${idUsuario}`, formData, {
         headers: { "Content-Type": "multipart/form-data" }
       });
 
