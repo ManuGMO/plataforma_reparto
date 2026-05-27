@@ -65,6 +65,7 @@ services:
       - /app/node_modules
     environment:
       - CHOKIDAR_USEPOLLING=true
+      - VITE_API_URL=${URL}
     depends_on:
       - backend
     networks:

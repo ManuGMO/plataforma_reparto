@@ -52,7 +52,7 @@ export default function ProductModal({ idUsuario, isOpen, onClose, onProductAdde
 
     setIsValidatingName(true);
     try {
-      const response = await axios.post(`${API_URL}/productos/validar-nombre/${idUsuario}`, {
+      const response = await axios.post(`${API_URL}/api/productos/validar-nombre/${idUsuario}`, {
         nombre: newName.trim()
       });
 
@@ -108,7 +108,7 @@ export default function ProductModal({ idUsuario, isOpen, onClose, onProductAdde
     setNotification("");
 
     try {
-      const res = await axios.post(`${API_URL}/productos/crear_categoria`, {
+      const res = await axios.post(`${API_URL}/api/productos/crear_categoria`, {
         nombre: nuevaCategoria.trim()
       });
 
