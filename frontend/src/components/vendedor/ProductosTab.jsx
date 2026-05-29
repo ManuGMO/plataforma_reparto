@@ -112,6 +112,10 @@ export default function ProductosTab({ idUsuario, openModal, refreshTrigger }) {
             src={producto.imagen}
             alt={producto.nombre}
             className="w-full h-full object-cover"
+            onError={(e) => {
+              e.target.src = '/placeholder-image.png'; // Imagen de fallback
+              e.target.className = 'w-full h-full object-contain bg-gray-100';
+            }}
           />
         </div>
         <div className="flex-1">
