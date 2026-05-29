@@ -14,6 +14,7 @@ const __dirname = path.dirname(__filename);
 // Configuración inicial
 dotenv.config();
 const app = express();
+app.set('trust proxy', true);
 const PORT = process.env.BACK_PORT;
 const HOST = process.env.HOST;
 
