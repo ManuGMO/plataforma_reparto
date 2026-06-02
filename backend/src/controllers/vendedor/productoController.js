@@ -23,7 +23,7 @@ export const getProductos = async (req, res) => {
     const productosConImagen = productos.map(prod => ({
       ...prod.toJSON(),
       imagen: prod.imagen
-        ? `${req.protocol}://${req.get("host")}/uploads/products/${prod.imagen}`
+        ? `${req.headers['x-forwarded-proto'] || (req.get("host").includes("localhost") || req.get("host").includes("127.0.0.1") ? "http" : "https")}://${req.get("host")}/uploads/products/${prod.imagen}`
         : null
     }));
 

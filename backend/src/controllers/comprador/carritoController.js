@@ -48,7 +48,7 @@ export const obtenerCarrito = async (req, res) => {
         precio: precioUnitario,
         cantidad: cantidad,
         subtotal: producto.precio,
-        imagen: producto.imagen ? `${req.protocol}://${req.get("host")}/uploads/products/${producto.imagen}`
+        imagen: producto.imagen ? `${req.headers['x-forwarded-proto'] || (req.get("host").includes("localhost") || req.get("host").includes("127.0.0.1") ? "http" : "https")}://${req.get("host")}/uploads/products/${producto.imagen}`
           : null,
         categoria: categoriaNombre,
         vendedor: producto.Vendedor ?
