@@ -2,6 +2,7 @@
 import db from "../../models/indexModels.js";
 import { Op } from "sequelize";
 import Pedido from "../../models/Pedido.js";
+import fs from "fs";
 
 
 export const crearPedidoDesdeCarrito = async (req, res) => {
@@ -18,6 +19,7 @@ export const crearPedidoDesdeCarrito = async (req, res) => {
     console.log('📁 Archivo comprobante:', req.file);
 
     if (!id_comprador) {
+      if (!t.finished) await t.rollback();
       return res.status(400).json({ message: "ID de comprador es requerido" });
     }
 

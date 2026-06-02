@@ -1,4 +1,4 @@
-const CACHE_NAME = 'plataforma-cache-v2';
+const CACHE_NAME = 'plataforma-cache-v3'; // <-- CAMBIO 1: Subimos la versión a v3
 const URLS_TO_CACHE = ['/', '/index.html', '/MercadoLocal_192.png', '/MercadoLocal_512.png', '/manifest.json'];
 
 self.addEventListener('install', (event) => {
@@ -26,6 +26,11 @@ self.addEventListener('fetch', (event) => {
     event.request.method !== 'GET' ||
     !event.request.url.startsWith(self.location.origin)
   ) {
+    return;
+  }
+
+  if (event.request.url.includes('/api/')) {
+    event.respondWith(fetch(event.request));
     return;
   }
 

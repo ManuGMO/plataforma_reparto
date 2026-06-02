@@ -89,16 +89,19 @@ export const agregarAlCarrito = async (req, res) => {
     const { id_producto, cantidad = 1 } = req.body;
 
     if (!id_producto || cantidad < 1) {
+      await t.rollback();
       return res.status(400).json({ message: "Datos inválidos" });
     }
 
     // Verificar que el producto existe y tiene stock
     const producto = await db.Producto.findByPk(id_producto, { transaction: t });
     if (!producto) {
+      await t.rollback();
       return res.status(404).json({ message: "Producto no encontrado" });
     }
 
     if (producto.stock < cantidad) {
+      await t.rollback();
       return res.status(400).json({ message: "Stock insuficiente" });
     }
 
@@ -125,6 +128,7 @@ export const agregarAlCarrito = async (req, res) => {
       const nuevaCantidad = itemExistente.cantidad + Number(cantidad);
 
       if (producto.stock < nuevaCantidad) {
+        await t.rollback();
         return res.status(400).json({ message: "Stock insuficiente para la cantidad solicitada" });
       }
 
@@ -161,6 +165,7 @@ export const eliminarDelCarrito = async (req, res) => {
     });
 
     if (!carrito) {
+      await t.rollback();
       return res.status(404).json({ message: "Carrito no encontrado" });
     }
 
@@ -173,6 +178,7 @@ export const eliminarDelCarrito = async (req, res) => {
     });
 
     if (resultado === 0) {
+      await t.rollback();
       return res.status(404).json({ message: "Producto no encontrado en el carrito" });
     }
 
@@ -196,16 +202,19 @@ export const actualizarCantidadCarrito = async (req, res) => {
     const { cantidad } = req.body;
 
     if (!cantidad || cantidad < 1) {
+      await t.rollback();
       return res.status(400).json({ message: "Cantidad inválida" });
     }
 
     // Verificar stock
     const producto = await db.Producto.findByPk(id_producto, { transaction: t });
     if (!producto) {
+      await t.rollback();
       return res.status(404).json({ message: "Producto no encontrado" });
     }
 
     if (producto.stock < cantidad) {
+      await t.rollback();
       return res.status(400).json({ message: "Stock insuficiente" });
     }
 
@@ -215,6 +224,7 @@ export const actualizarCantidadCarrito = async (req, res) => {
     });
 
     if (!carrito) {
+      await t.rollback();
       return res.status(404).json({ message: "Carrito no encontrado" });
     }
 
@@ -230,6 +240,7 @@ export const actualizarCantidadCarrito = async (req, res) => {
     );
 
     if (numActualizados === 0) {
+      await t.rollback();
       return res.status(404).json({ message: "Producto no encontrado en el carrito" });
     }
 
@@ -257,6 +268,7 @@ export const vaciarCarrito = async (req, res) => {
     });
 
     if (!carrito) {
+      await t.rollback();
       return res.status(404).json({ message: "Carrito no encontrado" });
     }
 

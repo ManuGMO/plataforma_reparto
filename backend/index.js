@@ -32,6 +32,15 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(express.json());
 
+// Evitar que el navegador o proxies cacheados guarden respuestas de la API
+app.use((req, res, next) => {
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.set('Pragma', 'no-cache');
+  res.set('Expires', '0');
+  res.set('Surrogate-Control', 'no-store');
+  next();
+});
+
 // Ruta básica
 app.get('/', (req, res) => {
   res.json({ message: 'API funcionando 🚀' });
