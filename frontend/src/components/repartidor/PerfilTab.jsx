@@ -35,7 +35,8 @@ export default function PerfilTab({ repartidorId }) {
     setLoadingDetalle(true);
     try {
       const res = await axios.get(`${API_URL}/api/admin/pagos-repartidores/${repartidorId}/detalle?weekStart=${weekStart}`);
-      setDetalle(res.data || []);
+      const data = res.data || {};
+      setDetalle([...(data.entregados || []), ...(data.pendientes || [])]);
       setSelectedWeek(weekStart);
     } catch (e) {
       console.error('Error cargando detalle de semana:', e);
@@ -112,7 +113,9 @@ export default function PerfilTab({ repartidorId }) {
                     <td className="py-2 text-xs text-gray-500">{new Date(d.fecha_pedido).toLocaleString()}</td>
                     <td className="py-2">{formatCurrency(d.pago_reparto)}</td>
                     <td className="py-2 text-xs">{d.estado_pedido}</td>
-                    <td className="py-2 text-xs text-gray-600">{d.direccion || '-'}</td>
+                    <td className="py-2 text-xs text-gray-600">
+                      {d.direccion ? d.direccion.split(', ').slice(0, 2).join(', ') : '-'}
+                    </td>
                   </tr>
                 ))}
               </tbody>

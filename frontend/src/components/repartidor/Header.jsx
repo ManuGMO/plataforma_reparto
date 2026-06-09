@@ -9,7 +9,14 @@ export default function Header() {
   return (
     <>
       <header className="bg-white shadow px-4 py-3 flex items-center justify-between">
-        <h2 className="text-lg font-bold text-gray-700">{firstName || 'Repartidor'}</h2>
+        <div className="flex items-center space-x-3">
+          <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
+            <span className="text-white font-bold text-sm">{firstName ? firstName.charAt(0).toUpperCase() : 'R'}</span>
+          </div>
+          <div>
+            <h2 className="font-bold text-gray-900">{firstName || 'Repartidor'}</h2>
+          </div>
+        </div>
         <button
           onClick={() => setConfirmOpen(true)}
           className="border border-red-600 text-sm text-red-600 bg-white  px-3 py-1 hover:bg-red-700 hover:text-white hover:border-red-700 transition-colors"

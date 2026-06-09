@@ -45,7 +45,7 @@ export default function Header({ onOpenProfile }) {
         <div className="max-w-md mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
-              <span className="text-white font-bold text-sm">V</span>
+              <span className="text-white font-bold text-sm">{firstName ? firstName.charAt(0).toUpperCase() : 'V'}</span>
             </div>
             <div>
               <h2 className="font-bold text-gray-900">{firstName || 'Vendedor'}</h2>

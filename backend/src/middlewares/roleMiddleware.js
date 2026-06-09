@@ -1,10 +1,14 @@
-export const requireRole = (roleName) => {
-
+export const requireRole = (rolesAllowed) => {
   return (req, res, next) => {
     const roles = req.user?.roles || [];
-    const normalizedRequired = String(roleName || '').toLowerCase().trim();
     const normalizedRoles = roles.map(r => String(r || '').toLowerCase().trim());
-    if (!normalizedRoles.includes(normalizedRequired)) {
+    
+    const allowed = Array.isArray(rolesAllowed) ? rolesAllowed : [rolesAllowed];
+    const normalizedAllowed = allowed.map(r => String(r || '').toLowerCase().trim());
+
+    const hasRole = normalizedRoles.some(r => normalizedAllowed.includes(r));
+
+    if (!hasRole) {
       return res.status(403).json({ message: 'Acceso denegado: rol insuficiente' });
     }
     next();

@@ -101,7 +101,7 @@ app.use("/api/usuarios", usuarioRoutes);
 app.use('/api/auth', authRoutes);
 
 
-app.use('/api/admin', authenticate, requireRole('admin'));
+
 
 // Comprador (registrar rutas específicas antes de rutas genéricas)
 app.use("/api/pedidos/comprador", authenticate, forceOwner(), requireRole('comprador'), pedidoRoutes);
@@ -123,7 +123,7 @@ app.use("/api/rutas", authenticate, forceOwner(), requireRole('repartidor'), rut
 //administrador
 app.use("/api/admin/comprobantes", authenticate, requireRole('admin'), comprobanteRoutes);
 app.use("/api/admin/pagos-vendedores", authenticate, requireRole('admin'), pagosVendedorRoutes);
-app.use("/api/admin/pagos-repartidores", authenticate, requireRole('admin'), pagosRepartidorRoutes);
+app.use("/api/admin/pagos-repartidores", authenticate, requireRole(['admin', 'repartidor']), pagosRepartidorRoutes);
 app.use("/api/admin/usuarios", authenticate, requireRole('admin'), usuariosRoutes);
 app.use("/api/admin/dashboard", authenticate, requireRole('admin'), dashboardRoutes);
 app.use("/api/admin/ganancias-semanales", authenticate, requireRole('admin'), gananciasRoutes);
