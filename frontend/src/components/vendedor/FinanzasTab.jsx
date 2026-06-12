@@ -16,12 +16,10 @@ export default function FinanzasTab({ idUsuario }) {
     const fetchFinanzas = async () => {
       try {
         setLoading(true);
-        console.log("Obteniendo finanzas para vendedor ID:", idUsuario);
 
         const response = await axios.get(`${API_URL}/api/finanzas/${idUsuario}`);
         setHistorial(response.data.historial || []);
         setEstadisticas(response.data.estadisticas || {});
-        console.log("Finanzas obtenidas:", response.data);
 
       } catch (error) {
         console.error("Error al obtener finanzas:", error);

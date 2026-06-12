@@ -55,7 +55,6 @@ export const getProgressStep = (estado) => {
 export default function PedidoModal({ pedido, showModal, onClose }) {
   const [showCalificacionModal, setShowCalificacionModal] = useState(false);
 
-  console.log("Informacion del pedido", pedido);
 
   if (!showModal || !pedido) return null;
 
@@ -64,8 +63,7 @@ export default function PedidoModal({ pedido, showModal, onClose }) {
   };
 
   const handleCalificacionEnviada = () => {
-    // Opcional: recargar pedidos o actualizar estado
-    console.log('Calificación enviada exitosamente');
+
   };
 
   return (

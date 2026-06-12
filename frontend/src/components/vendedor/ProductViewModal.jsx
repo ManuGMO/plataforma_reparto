@@ -3,8 +3,6 @@ import { useState } from "react";
 export default function ProductViewModal({ isOpen, onClose, producto }) {
   if (!isOpen || !producto) return null;
 
-  console.log("Producto en ProductViewModal:", producto);
-
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
@@ -44,7 +42,7 @@ export default function ProductViewModal({ isOpen, onClose, producto }) {
                 <h3 className="text-2xl font-bold text-gray-900 mb-2">
                   {producto.nombre}
                 </h3>
-                
+
                 {/* Precio */}
                 <div className="mb-4">
                   <span className="text-3xl font-bold text-green-600">
@@ -56,24 +54,22 @@ export default function ProductViewModal({ isOpen, onClose, producto }) {
                 <div className="mb-4">
                   <div className="flex items-center space-x-2">
                     <span className="text-sm font-medium text-gray-700">Stock:</span>
-                    <span className={`font-semibold ${
-                      producto.stock <= 5 ? 'text-red-600' : 
-                      producto.stock <= 10 ? 'text-yellow-600' : 'text-green-600'
-                    }`}>
+                    <span className={`font-semibold ${producto.stock <= 5 ? 'text-red-600' :
+                        producto.stock <= 10 ? 'text-yellow-600' : 'text-green-600'
+                      }`}>
                       {producto.stock} unidades
                     </span>
                     {producto.stock <= 5 && (
                       <span className="text-red-500" title="Stock bajo">⚠️</span>
                     )}
                   </div>
-                  
+
                   {/* Barra de stock visual */}
                   <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
-                    <div 
-                      className={`h-2 rounded-full ${
-                        producto.stock <= 5 ? 'bg-red-500' : 
-                        producto.stock <= 10 ? 'bg-yellow-500' : 'bg-green-500'
-                      }`}
+                    <div
+                      className={`h-2 rounded-full ${producto.stock <= 5 ? 'bg-red-500' :
+                          producto.stock <= 10 ? 'bg-yellow-500' : 'bg-green-500'
+                        }`}
                       style={{
                         width: `${Math.min((producto.stock / 50) * 100, 100)}%`
                       }}
@@ -88,11 +84,11 @@ export default function ProductViewModal({ isOpen, onClose, producto }) {
                     {producto.Categorium ? producto.Categorium.nombre : 'Sin categoría'}
                   </span>
                 </div>
-      
+
 
                 {/* Información adicional */}
                 <div className="space-y-3 text-sm text-gray-600">
-                  
+
                   {producto.descripcion && (
                     <div className="mt-4">
                       <span className="font-medium text-gray-700 block mb-2">Descripción:</span>

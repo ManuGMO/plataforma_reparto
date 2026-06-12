@@ -8,15 +8,15 @@ const DATOS_BANCARIOS = {
   tipo_cuenta: "Cuenta Corriente"
 };
 
-export default function PaymentReceiptModal({ 
-  isOpen, 
-  onClose, 
-  onUploadReceipt, 
+export default function PaymentReceiptModal({
+  isOpen,
+  onClose,
+  onUploadReceipt,
   pedidoData,
-  procesando = false 
+  procesando = false
 }) {
 
-console.log("🎯 PaymentReceiptModal props:", { isOpen, pedidoData });
+
 
   const [selectedFile, setSelectedFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
@@ -54,7 +54,7 @@ console.log("🎯 PaymentReceiptModal props:", { isOpen, pedidoData });
     if (!isValidFile(file)) return;
 
     setSelectedFile(file);
-    
+
     // Crear preview
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -75,7 +75,7 @@ console.log("🎯 PaymentReceiptModal props:", { isOpen, pedidoData });
   const handleDrop = (e) => {
     e.preventDefault();
     setDragActive(false);
-    
+
     const file = e.dataTransfer.files?.[0];
     if (file) {
       handleFileSelect(file);
@@ -104,7 +104,7 @@ console.log("🎯 PaymentReceiptModal props:", { isOpen, pedidoData });
   // Enviar comprobante
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!selectedFile) {
       alert('❌ Debes seleccionar un comprobante de pago');
       return;
@@ -124,11 +124,11 @@ console.log("🎯 PaymentReceiptModal props:", { isOpen, pedidoData });
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-xl w-full max-w-md max-h-[90vh] overflow-hidden shadow-2xl">
-        
+
         {/* Header */}
         <div className="bg-gradient-to-r from-green-500 to-blue-600 text-white">
           <div className="px-4 py-4 flex items-center">
-            <button 
+            <button
               onClick={handleClose}
               disabled={procesando}
               className="mr-3 text-2xl hover:bg-white hover:bg-opacity-20 rounded-full w-10 h-10 flex items-center justify-center transition-all disabled:opacity-50"
@@ -211,12 +211,11 @@ console.log("🎯 PaymentReceiptModal props:", { isOpen, pedidoData });
                 </h3>
 
                 {!selectedFile ? (
-                  <div 
-                    className={`border-2 border-dashed rounded-xl p-8 text-center transition-all cursor-pointer ${
-                      dragActive 
-                        ? 'border-green-400 bg-green-50' 
+                  <div
+                    className={`border-2 border-dashed rounded-xl p-8 text-center transition-all cursor-pointer ${dragActive
+                        ? 'border-green-400 bg-green-50'
                         : 'border-gray-300 hover:border-green-400 hover:bg-green-50'
-                    }`}
+                      }`}
                     onDrop={handleDrop}
                     onDragOver={handleDragOver}
                     onDragLeave={handleDragLeave}
@@ -226,7 +225,7 @@ console.log("🎯 PaymentReceiptModal props:", { isOpen, pedidoData });
                     <p className="text-lg font-medium text-gray-700 mb-2">
                       Sube tu comprobante de pago
                     </p>
-                
+
                     <div className="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg font-medium transition-all inline-flex items-center">
                       <span className="mr-2">📁</span>
                       Seleccionar archivo
@@ -239,7 +238,7 @@ console.log("🎯 PaymentReceiptModal props:", { isOpen, pedidoData });
                   <div className="bg-white rounded-xl p-4 border-2 border-green-200">
                     <div className="flex items-start space-x-4">
                       <div className="flex-shrink-0">
-                        <img 
+                        <img
                           src={previewUrl}
                           alt="Preview del comprobante"
                           className="w-20 h-20 object-cover rounded-lg border"
@@ -285,7 +284,7 @@ console.log("🎯 PaymentReceiptModal props:", { isOpen, pedidoData });
                     Vista previa
                   </h4>
                   <div className="bg-white rounded-lg p-2 border">
-                    <img 
+                    <img
                       src={previewUrl}
                       alt="Vista previa del comprobante"
                       className="w-full max-h-64 object-contain rounded"
@@ -297,11 +296,11 @@ console.log("🎯 PaymentReceiptModal props:", { isOpen, pedidoData });
                 </div>
               )}
 
-    
+
 
               {/* Botones */}
               <div className="flex space-x-3 pt-2">
-                <button 
+                <button
                   type="button"
                   onClick={handleClose}
                   disabled={procesando}
@@ -309,14 +308,13 @@ console.log("🎯 PaymentReceiptModal props:", { isOpen, pedidoData });
                 >
                   Cancelar
                 </button>
-                <button 
+                <button
                   type="submit"
                   disabled={procesando || !selectedFile}
-                  className={`flex-1 py-4 rounded-xl font-medium transition-all duration-200 ${
-                    procesando || !selectedFile
+                  className={`flex-1 py-4 rounded-xl font-medium transition-all duration-200 ${procesando || !selectedFile
                       ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
                       : 'bg-gradient-to-r from-green-500 to-green-600 text-white hover:from-green-600 hover:to-green-700 shadow-lg hover:shadow-xl'
-                  }`}
+                    }`}
                 >
                   {procesando ? (
                     <span className="flex items-center justify-center">
@@ -329,7 +327,7 @@ console.log("🎯 PaymentReceiptModal props:", { isOpen, pedidoData });
                 </button>
               </div>
 
-  
+
             </form>
           </div>
         </div>

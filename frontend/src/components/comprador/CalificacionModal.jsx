@@ -2,7 +2,6 @@ import { useState } from 'react';
 import axios from 'axios';
 
 export default function CalificacionModal({ pedido, showModal, onClose, id_comprador, onCalificacionEnviada }) {
-  console.log('Pedido para calificar:', pedido);
 
   const [calificaciones, setCalificaciones] = useState({
     vendedor: { calificacion: 0, comentario: '' },

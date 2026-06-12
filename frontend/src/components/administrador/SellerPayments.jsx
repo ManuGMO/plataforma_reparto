@@ -22,7 +22,6 @@ export default function SellersPayments({ setNotification }) {
         params: { estado: statusFilter }
       });
       setPayments(response.data);
-      console.log('Pagos de vendedores cargados:', response.data);
     } catch (error) {
       console.error('Error al cargar pagos:', error);
       setNotification('Error al cargar pagos de vendedores');

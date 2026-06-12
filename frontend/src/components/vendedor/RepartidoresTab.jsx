@@ -18,11 +18,9 @@ export default function RepartidoresTab({ idUsuario }) {
     const fetchRepartidores = async () => {
       try {
         setLoading(true);
-        console.log("Obteniendo repartidores para vendedor ID:", idUsuario);
 
         const response = await axios.get(`${API_URL}/api/repartidores/${idUsuario}`);
         setRepartidores(response.data);
-        console.log("Repartidores obtenidos:", response.data);
 
       } catch (error) {
         console.error("Error al obtener repartidores:", error);
@@ -37,33 +35,28 @@ export default function RepartidoresTab({ idUsuario }) {
 
   // Modal de bloqueo
   const openBlockModal = (repartidor) => {
-    console.log("Abriendo modal de bloqueo para repartidor:", repartidor);
     setSelectedRepartidor(repartidor);
     setIsBlockModalOpen(true);
   };
 
   const closeBlockModal = () => {
-    console.log("Cerrando modal de bloqueo");
     setSelectedRepartidor(null);
     setIsBlockModalOpen(false);
   };
 
   // Modal de valoraciones
   const openValoracionesModal = (repartidor) => {
-    console.log("Abriendo modal de valoraciones para repartidor:", repartidor);
     setSelectedRepartidorValoraciones(repartidor);
     setIsValoracionesModalOpen(true);
   };
 
   const closeValoracionesModal = () => {
-    console.log("Cerrando modal de valoraciones");
     setSelectedRepartidorValoraciones(null);
     setIsValoracionesModalOpen(false);
   };
 
   // Callback para actualizar la lista después del bloqueo
   const handleBlockSuccess = (repartidorId, motivoBloqueo) => {
-    console.log("Bloqueo exitoso, marcando como bloqueado:", repartidorId);
     setRepartidores(prev =>
       prev.map(r =>
         r.id_usuario === repartidorId

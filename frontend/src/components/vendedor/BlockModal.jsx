@@ -15,19 +15,13 @@ export default function BlockModal({ repartidor, onClose, idUsuario, onBlockSucc
     try {
       setLoading(true);
 
-      console.log("Enviando bloqueo:", {
-        id_repartidor: repartidor.id_usuario,
-        id_bloqueador: idUsuario,
-        motivo: motivo.trim()
-      });
-
       // Arreglé la URL - quitando el :id del endpoint
       const response = await axios.post(`${API_URL}/api/repartidores/bloquear/${repartidor.id_usuario}`, {
         id_bloqueador: idUsuario,
         motivo: motivo.trim(),
       });
 
-      console.log("Respuesta del bloqueo:", response.data);
+
 
       alert(`Se bloqueó exitosamente a ${repartidor.nombre}`);
 

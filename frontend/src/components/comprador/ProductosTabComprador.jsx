@@ -303,7 +303,6 @@ export default function ProductosTabComprador({ setNotification, CompradorID }) 
         const data = await response.json();
         setProductos(data);
 
-        console.log('Productos cargados:', data);
 
         // Procesar direcciones
         const productosConDir = await procesarDirecciones(data);

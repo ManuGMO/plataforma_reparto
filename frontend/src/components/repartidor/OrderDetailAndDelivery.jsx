@@ -14,7 +14,6 @@ export default function OrderDetailAndDelivery({ order, currentView, onBack, onA
   const driverMarkerRef = useRef(null);
   const API_URL = import.meta.env.VITE_API_URL;
 
-  console.log('OrderDetailAndDelivery order:', order, 'view:', currentView);
 
   const getOrderCoords = (o) => {
     if (!o) return null;

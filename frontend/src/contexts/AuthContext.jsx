@@ -44,8 +44,6 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(() => {
     const raw = localStorage.getItem('authUser');
 
-    console.log("Initial Auth User from localStorage:", raw);
-
     return raw ? JSON.parse(raw) : null;
   });
 
@@ -69,7 +67,6 @@ export const AuthProvider = ({ children }) => {
   //   Funcion para el login
   const login = async ({ correo, contraseña }) => {
     const res = await axios.post(`${API_URL}/api/auth/login`, { correo, contraseña });
-    console.log("LOGIN RESPONSE DATA:", res.data);
     // Set header immediately to ensure subsequent requests include it
     if (res.data?.token) axios.defaults.headers.common['Authorization'] = `Bearer ${res.data.token}`;
     setToken(res.data.token);

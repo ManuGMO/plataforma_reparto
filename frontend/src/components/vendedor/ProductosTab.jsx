@@ -25,9 +25,6 @@ export default function ProductosTab({ idUsuario, openModal, refreshTrigger }) {
         setProductos(res.data.productos);
         setCategorias(res.data.categorias);
 
-        console.log("Productos: ", res.data.productos);
-        console.log("Categorias: ", res.data.categorias);
-
       } catch (err) {
         console.error("Error cargando productos:", err);
       }

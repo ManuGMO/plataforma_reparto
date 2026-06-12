@@ -23,11 +23,9 @@ export default function PedidosTabComprador(CompradorID) {
   const cargarPedidos = async () => {
     try {
       setLoading(true);
-      console.log("ID_COMPRADOR: ", ID_COMPRADOR);
       const response = await axios.get(`${API_URL}/api/pedidos/comprador/${ID_COMPRADOR}`);
       const data = await response.data;
       setPedidos(data);
-      console.log("aaa: ", data);
       setError(null);
     } catch (err) {
       console.error("Error al cargar pedidos:", err);

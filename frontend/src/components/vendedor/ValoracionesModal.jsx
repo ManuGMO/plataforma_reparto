@@ -27,7 +27,6 @@ export default function ValoracionesModal({
       );
       setValoraciones(response.data.valoraciones);
       setEstadisticas(response.data.estadisticas);
-      console.log("Datos del modal: ", response.data);
 
     } catch (error) {
       console.error("Error cargando valoraciones:", error);

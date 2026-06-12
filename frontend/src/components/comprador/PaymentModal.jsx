@@ -33,7 +33,6 @@ export default function PaymentModal({ isOpen, onClose, carritoData, onConfirmOr
   const inputRef = useRef(null);
   const sugerenciasRef = useRef(null);
 
-  console.log("Carrito en Modal:", carritoData);
 
   // Cargar ubicación del perfil si existe
   // Cargar ubicación del perfil si existe al abrir
@@ -44,7 +43,6 @@ export default function PaymentModal({ isOpen, onClose, carritoData, onConfirmOr
       const lng = parseFloat(user.longitud);
 
       if (!isNaN(lat) && !isNaN(lng)) {
-        console.log("Auto-rellenando ubicación desde perfil:", { lat, lng });
         actualizarUbicacion(lng, lat);
         // Solo buscar dirección si no hay una escrita (aunque usualmente estará vacía al abrir)
         if (!direccion) {

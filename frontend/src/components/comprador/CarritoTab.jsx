@@ -40,7 +40,6 @@ export default function CarritoTab({ setNotification, CompradorID }) {
     try {
       setLoading(true);
       const response = await axios.get(`${API_URL}/api/carrito/comprador/${ID_COMPRADOR}`);
-      console.log("Carrito", response.data);
 
       // Calcular totales correctos en el frontend
       const { subtotal, comision, precio_reparto, total } = calcularTotales(response.data.items);
@@ -96,14 +95,6 @@ export default function CarritoTab({ setNotification, CompradorID }) {
 
   // FUNCIÓN MODIFICADA: Ahora recibe el archivo del comprobante también
   const handleConfirmOrder = async ({ direccion, direccionDisplay, metodoPago, latitud, longitud, comprobante }) => {
-    console.log("Creando pedido con datos:", {
-      id_comprador: ID_COMPRADOR,
-      direccion,
-      metodoPago,
-      latitud,
-      longitud,
-      tieneComprobante: !!comprobante
-    });
 
     try {
       // crea FormData para enviar archivo + datos
@@ -131,7 +122,6 @@ export default function CarritoTab({ setNotification, CompradorID }) {
         }
       );
 
-      console.log("Pedido creado exitosamente:", response.data);
 
       setNotification("¡Pedido creado exitosamente con comprobante!");
 

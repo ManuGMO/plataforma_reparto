@@ -26,7 +26,6 @@ export default function MapaUbicacion({ onUbicacionSeleccionada }) {
 
     // Esperar a que cargue el mapa
     map.current.on("load", () => {
-      console.log("Mapa cargado ✅");
       obtenerUbicacionUsuario();
     });
 
@@ -45,30 +44,30 @@ export default function MapaUbicacion({ onUbicacionSeleccionada }) {
 
   // Obtener ubicación del usuario
   const obtenerUbicacionUsuario = () => {
-  if (!map.current) return;
-  setCargando(true);
+    if (!map.current) return;
+    setCargando(true);
 
-  if (navigator.geolocation) {
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const { longitude, latitude } = pos.coords;
-        actualizarUbicacion(longitude, latitude);
-        map.current.flyTo({ center: [longitude, latitude], zoom: 15 });
-        setCargando(false);
-      },
-      (err) => {
-        console.error("Error al obtener ubicación:", err);
-        // fallback a Santiago
-        actualizarUbicacion(-70.6483, -33.4569);
-        setCargando(false);
-      },
-      { enableHighAccuracy: true, timeout: 30000, maximumAge: 0 }
-    );
-  } else {
-    actualizarUbicacion(-70.6483, -33.4569);
-    setCargando(false);
-  }
-};
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const { longitude, latitude } = pos.coords;
+          actualizarUbicacion(longitude, latitude);
+          map.current.flyTo({ center: [longitude, latitude], zoom: 15 });
+          setCargando(false);
+        },
+        (err) => {
+          console.error("Error al obtener ubicación:", err);
+          // fallback a Santiago
+          actualizarUbicacion(-70.6483, -33.4569);
+          setCargando(false);
+        },
+        { enableHighAccuracy: true, timeout: 30000, maximumAge: 0 }
+      );
+    } else {
+      actualizarUbicacion(-70.6483, -33.4569);
+      setCargando(false);
+    }
+  };
 
 
   // Crear o mover marcador
@@ -155,7 +154,7 @@ export default function MapaUbicacion({ onUbicacionSeleccionada }) {
       )}
 
       {/* Contenedor del mapa */}
-      <div 
+      <div
         ref={mapContainer}
         className="w-full h-80 rounded-lg overflow-hidden border-2 border-gray-200 shadow-md"
         style={{ height: '320px' }}

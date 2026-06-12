@@ -39,7 +39,6 @@ export default function Repartidor() {
 
         if (notificaciones && notificaciones.length > 0) {
           const ultima = notificaciones[0];
-          console.log("🔔 Nueva notificación repartidor:", ultima.titulo);
 
           // Mostrar notificación
           setNotification(ultima.mensaje);

@@ -48,7 +48,6 @@ export default function Vendedor() {
           // Mostrar la más reciente
           const ultima = notificaciones[0];
           setNotification(ultima.mensaje); // Usa el componente Notification existente
-          console.log("🔔 Nueva notificación recibida:", ultima.titulo);
 
           // Marcar como leídas para que no salgan de nuevo en el próximo poll
           // (Idealmente se hace una por una o un endpoint bulk, aquí usamos un truco simple mark-all o loop)

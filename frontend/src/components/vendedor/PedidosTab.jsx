@@ -16,14 +16,12 @@ export default function PedidosTab({ setNotification, vendorId }) {
 
   const cargarPedidos = async () => {
     try {
-      console.log('Cargando pedidos para vendedor:', vendorId);
       const res = await axios.get(`${API_URL}/api/pedidos/vendedor/${vendorId}`);
       // Filtrar pedidos entregados para que se vayan eliminando de la vista
       const visibles = (res.data || []).filter(p => p.estado !== 'entregado');
       // Ordenar del más nuevo al más viejo por fecha_creacion
       visibles.sort((a, b) => new Date(b.fecha_creacion) - new Date(a.fecha_creacion));
       setPedidos(visibles);
-      console.log('Pedidos cargados (filtrados y ordenados):', visibles);
     } catch (error) {
       console.error("Error cargando pedidos:", error);
     }
@@ -57,14 +55,12 @@ export default function PedidosTab({ setNotification, vendorId }) {
 
   const cambiarEstado = async (id_pedido, nuevoEstado, mensaje) => {
     try {
-      console.log("Id del vendedor: ", vendorId);
 
       await axios.patch(`${API_URL}/api/pedidos/${id_pedido}/estado`, {
         estado: nuevoEstado,
         id_vendedor: vendorId
       });
 
-      console.log("Id del vendedor: ", vendorId);
       setNotification(mensaje);
       // Si el pedido quedó como entregado, eliminarlo inmediatamente de la lista local
       if (nuevoEstado === 'entregado') {
