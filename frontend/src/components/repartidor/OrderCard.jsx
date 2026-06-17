@@ -1,18 +1,19 @@
 export default function OrderCard({ order, onViewOrder, timeAgo }) {
-  const vendorName = order.vendedor?.nombre || 
-                     order.Vendedor?.[0]?.nombre || 
-                     (Array.isArray(order.Vendedor) && order.Vendedor.length > 0 ? order.Vendedor[0].nombre : null) ||
-                     'Restaurante';
-  
-  const customerName = order.comprador?.nombre || 
-                       order.Comprador?.[0]?.nombre || 
-                       (Array.isArray(order.Comprador) && order.Comprador.length > 0 ? order.Comprador[0].nombre : null) ||
-                       'Cliente';
-  
-  const itemCount = order.productos?.length || 
-                    order.Productos?.length || 
-                    order.Producto?.length || 
-                    0;
+  console.log(" order:", order);
+
+  const vendorName =
+    order.vendedores?.[0]?.nombre ||
+    (Array.isArray(order.Vendedor) && order.Vendedor.length > 0 ? order.Vendedor[0].nombre : null);
+
+  const customerName = order.comprador?.nombre ||
+    order.Comprador?.[0]?.nombre ||
+    (Array.isArray(order.Comprador) && order.Comprador.length > 0 ? order.Comprador[0].nombre : null) ||
+    'Cliente';
+
+  const itemCount = order.productos?.length ||
+    order.Productos?.length ||
+    order.Producto?.length ||
+    0;
 
   const getStatusColor = (estado) => {
     switch (estado) {
@@ -33,7 +34,7 @@ export default function OrderCard({ order, onViewOrder, timeAgo }) {
   };
 
   return (
-    <div 
+    <div
       className="bg-white rounded-lg p-4 shadow-sm border border-gray-200 hover:shadow-md transition-shadow cursor-pointer"
       onClick={() => onViewOrder && onViewOrder(order)}
     >
@@ -46,11 +47,11 @@ export default function OrderCard({ order, onViewOrder, timeAgo }) {
           </span>
         </div>
         <div className="text-right">
-        <p className="text-lg font-bold text-green-600">${order.total || 0}</p>
-        <p className="text-sm text-gray-600">Ganancia: ${order.pago_reparto || order.precio_reparto || 0}</p>
+          <p className="text-lg font-bold text-green-600">${order.total || 0}</p>
+          <p className="text-sm text-gray-600">Ganancia: ${order.pago_reparto || order.precio_reparto || 0}</p>
         </div>
       </div>
-      
+
       <div className="space-y-2 mb-3">
         <div className="flex items-center space-x-2">
           <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
@@ -65,11 +66,11 @@ export default function OrderCard({ order, onViewOrder, timeAgo }) {
           {(
             order.buyer_distance_to_route_meters != null || order.buyer_distance_to_route_meters !== undefined
           ) && (
-            <span className="ml-2 text-xs text-gray-500">· A {order.buyer_distance_to_route_meters} m de tu ruta</span>
-          )}
+              <span className="ml-2 text-xs text-gray-500">· A {order.buyer_distance_to_route_meters} m de tu ruta</span>
+            )}
         </div>
       </div>
-      
+
       <div className="flex justify-between items-center text-sm">
         <span className="text-gray-600">{itemCount} productos</span>
         <span className="text-blue-600 font-medium">Ver detalles →</span>

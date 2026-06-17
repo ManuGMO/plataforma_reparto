@@ -49,7 +49,7 @@ export default function PedidosTabRepartidor({ repartidorId, isOnline, setNewOrd
       // opción: notificar nuevo pedido (solo demo)
       if (list.length > 0 && Math.random() < 0.2) {
         const newOrder = list[0];
-        setNewOrderNotification && setNewOrderNotification({ id: newOrder.id_pedido, pay: `$${newOrder.total}`, restaurant: newOrder.vendedor?.nombre || newOrder.Vendedor?.[0]?.nombre || 'Restaurante' });
+        setNewOrderNotification && setNewOrderNotification({ id: newOrder.id_pedido, pay: `$${newOrder.total}`, restaurant: newOrder.vendedor?.nombre || newOrder.Vendedor?.[0]?.nombre });
       }
     } catch (err) {
       console.error('Error loadOrders', err);
