@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
+import imageCompression from "browser-image-compression";
 
 export default function ProductModal({ idUsuario, isOpen, onClose, onProductAdded }) {
   const [nombre, setNombre] = useState("");
@@ -11,6 +12,7 @@ export default function ProductModal({ idUsuario, isOpen, onClose, onProductAdde
   const [isLoading, setIsLoading] = useState(false);
   const [imagen, setImagen] = useState(null);
   const [descripcion, setDescripcion] = useState("");
+  const [isCompressing, setIsCompressing] = useState(false);
 
 
   const API_URL = import.meta.env.VITE_API_URL;
@@ -214,6 +216,8 @@ export default function ProductModal({ idUsuario, isOpen, onClose, onProductAdde
           ];
           setNameSuggestions(suggestions.slice(0, 3));
         }
+      } else if (error.response?.status === 413) {
+        setNotification("La imagen es demasiado grande. El tamaño máximo es 10 MB.");
       } else {
         setNotification(error.response?.data?.message || "Error al agregar producto");
       }
@@ -408,10 +412,46 @@ export default function ProductModal({ idUsuario, isOpen, onClose, onProductAdde
             <input
               type="file"
               accept="image/*"
-              onChange={(e) => setImagen(e.target.files[0])}
-              className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+              disabled={isCompressing}
+              onChange={async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                if (file.size > 10 * 1024 * 1024) {
+                  setNotification("La imagen es demasiado grande. El tamaño máximo es 10 MB.");
+                  e.target.value = "";
+                  setImagen(null);
+                  return;
+                }
+
+                try {
+                  setIsCompressing(true);
+                  setNotification("");
+                  const compressed = await imageCompression(file, {
+                    maxSizeMB: 1,
+                    maxWidthOrHeight: 1200,
+                    useWebWorker: true,
+                    fileType: "image/jpeg"
+                  });
+                  setImagen(compressed);
+                } catch (err) {
+                  console.error("Error comprimiendo imagen:", err);
+                  setImagen(file);
+                } finally {
+                  setIsCompressing(false);
+                }
+              }}
+              className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 disabled:opacity-50"
             />
-            <p className="text-xs text-gray-500 mt-1">Opcional: Agrega una foto de tu producto</p>
+            {isCompressing && (
+              <p className="text-xs text-blue-500 mt-1 flex items-center gap-1">
+                <span className="inline-block w-3 h-3 border-2 border-blue-400 border-t-transparent rounded-full animate-spin"></span>
+                Optimizando imagen...
+              </p>
+            )}
+            {!isCompressing && (
+              <p className="text-xs text-gray-500 mt-1">Opcional: Agrega una foto de tu producto (se optimiza automáticamente)</p>
+            )}
           </div>
         </div>
 
