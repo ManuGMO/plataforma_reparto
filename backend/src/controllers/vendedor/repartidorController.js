@@ -292,10 +292,10 @@ export const getRepartidoresCercanos = async (req, res) => {
       try {
         const asignacion = await db.pedido_repartidor.findOne({ where: { id_pedido: pedidoIdQuery } });
         if (asignacion) {
-          const repartidorAsig = await Usuario.findByPk(asignacion.id_usuario, { attributes: ['id_usuario', 'nombre', 'latitud', 'longitud'] });
+          const repartidorAsig = await Usuario.findByPk(asignacion.id_usuario, { attributes: ['id_usuario', 'nombre', 'telefono', 'latitud', 'longitud'] });
           if (repartidorAsig) {
             // Respondemos indicando que ya hay repartidor asignado
-            return res.json({ success: true, count: 1, assigned: true, data: [{ id_usuario: repartidorAsig.id_usuario, nombre: repartidorAsig.nombre, latitud: repartidorAsig.latitud, longitud: repartidorAsig.longitud, distancia_m: null }] });
+            return res.json({ success: true, count: 1, assigned: true, data: [{ id_usuario: repartidorAsig.id_usuario, nombre: repartidorAsig.nombre, telefono: repartidorAsig.telefono || null, latitud: repartidorAsig.latitud, longitud: repartidorAsig.longitud, distancia_m: null }] });
           }
         }
         // Si no hay asignación, caemos al flujo normal (buscar repartidores cercanos)
@@ -334,7 +334,7 @@ export const getRepartidoresCercanos = async (req, res) => {
       where: {
         id_usuario: { [Op.in]: repartidorIds }
       },
-      attributes: ['id_usuario', 'nombre', 'latitud', 'longitud']
+      attributes: ['id_usuario', 'nombre', 'telefono', 'latitud', 'longitud']
     });
 
     console.log(`[vendedor][debug] posibles recuperados=${posibles.length} (filtrados por rol y coords)`);
@@ -389,7 +389,7 @@ export const getRepartidoresCercanos = async (req, res) => {
           if (d < minDist) minDist = d;
         }
         if (minDist <= threshold) {
-          cercanos.push({ id_usuario: p.id_usuario, nombre: p.nombre, latitud: p.latitud, longitud: p.longitud, distancia_m: Math.round(minDist) });
+          cercanos.push({ id_usuario: p.id_usuario, nombre: p.nombre, telefono: p.telefono || null, latitud: p.latitud, longitud: p.longitud, distancia_m: Math.round(minDist) });
         }
       } catch (e) {
         console.error('Error procesando repartidor', p.id_usuario, e);

@@ -13,6 +13,8 @@ export default function OrderDetailAndDelivery({ order, currentView, onBack, onA
   const vendorMarkersRef = useRef([]);
   const driverMarkerRef = useRef(null);
   const API_URL = import.meta.env.VITE_API_URL;
+  // Referencia al intervalo de actualización de ubicación
+  const locationIntervalRef = useRef(null);
 
 
   const getOrderCoords = (o) => {
@@ -33,6 +35,29 @@ export default function OrderDetailAndDelivery({ order, currentView, onBack, onA
       }
     }
     return null;
+  };
+
+  // Envía la posición GPS actual del repartidor al backend para que el comprador pueda verla
+  // forceUpdate=true permite enviarlo aunque order.tiene_repartidor sea false (ej: justo después de aceptar)
+  const pushDriverLocation = async (lat, lng, forceUpdate = false) => {
+    try {
+      if (!order || !order.id_pedido) return;
+      if (!forceUpdate && !order.tiene_repartidor) return;
+      const repartidorId = order.id_repartidor ||
+        (order.Repartidor && order.Repartidor[0] && order.Repartidor[0].id_usuario);
+      if (!repartidorId) return;
+      const token = localStorage.getItem('authToken');
+      await fetch(`${API_URL}/api/repartidor/${order.id_pedido}/ubicacion-repartidor`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({ id_repartidor: repartidorId, lat, lng })
+      });
+    } catch (err) {
+      console.warn('No se pudo actualizar ubicación del repartidor:', err);
+    }
   };
 
   const fetchVendorCoords = async (vendorId) => {
@@ -209,6 +234,8 @@ export default function OrderDetailAndDelivery({ order, currentView, onBack, onA
         navigator.geolocation.getCurrentPosition(async (pos) => {
           const dlat = pos.coords.latitude; const dlng = pos.coords.longitude;
           await placeMarker('driver', dlat, dlng);
+          // Publicar ubicación al backend para que el comprador la vea
+          await pushDriverLocation(dlat, dlng);
 
           let closestVendorDist = null;
           let closestVendor = null;
@@ -272,6 +299,7 @@ export default function OrderDetailAndDelivery({ order, currentView, onBack, onA
     setup();
     return () => {
       mounted = false;
+      if (locationIntervalRef.current) { clearInterval(locationIntervalRef.current); locationIntervalRef.current = null; }
       try { if (mapRef.current) { mapRef.current.remove(); mapRef.current = null; } } catch (e) { }
       orderMarkerRef.current = null; vendorMarkersRef.current = []; driverMarkerRef.current = null;
     };
@@ -339,6 +367,8 @@ export default function OrderDetailAndDelivery({ order, currentView, onBack, onA
           navigator.geolocation.getCurrentPosition(async (position) => {
             const driverLat = position.coords.latitude; const driverLng = position.coords.longitude;
             await placeMarker('driver', driverLat, driverLng);
+            // Publicar ubicación al backend (el pedido ahora tiene repartidor, forceUpdate porque el estado local aún no se actualizó)
+            await pushDriverLocation(driverLat, driverLng, true);
             if (vendorCoords && vendorCoords.length > 0) await drawRoute([driverLng, driverLat], [vendorCoords[0].lng, vendorCoords[0].lat]);
           }, (err) => { console.warn('geo err', err); }, { enableHighAccuracy: true, timeout: 10000 });
         }
@@ -354,6 +384,8 @@ export default function OrderDetailAndDelivery({ order, currentView, onBack, onA
           navigator.geolocation.getCurrentPosition(async (position) => {
             const driverLat = position.coords.latitude; const driverLng = position.coords.longitude;
             await placeMarker('driver', driverLat, driverLng);
+            // Actualizar ubicación en backend
+            await pushDriverLocation(driverLat, driverLng);
 
             // Re-evaluar qué falta
             if (order.vendedores) {

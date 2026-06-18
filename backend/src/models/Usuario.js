@@ -18,6 +18,10 @@ export default (sequelize) => {
       type: DataTypes.STRING(100),
       allowNull: false
     },
+    telefono: {
+      type: DataTypes.STRING(20),
+      allowNull: true
+    },
     estado: {
       type: DataTypes.ENUM('activo', 'bloqueado'),
       defaultValue: 'activo'

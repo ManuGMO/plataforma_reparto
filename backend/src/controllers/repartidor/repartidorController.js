@@ -626,6 +626,39 @@ export const aceptarPedido = async (req, res) => {
 };
 
 
+// Actualizar ubicación en tiempo real del repartidor en el pedido
+export const actualizarUbicacionRepartidor = async (req, res) => {
+  try {
+    const { pedidoId } = req.params;
+    const { id_repartidor, lat, lng } = req.body;
+
+    if (lat == null || lng == null) {
+      return res.status(400).json({ success: false, error: 'Coordenadas requeridas (lat, lng)' });
+    }
+
+    const pedido = await Pedido.findByPk(pedidoId, {
+      include: [{ model: Usuario, as: 'Repartidor', attributes: ['id_usuario'] }]
+    });
+
+    if (!pedido) {
+      return res.status(404).json({ success: false, error: 'Pedido no encontrado' });
+    }
+
+    // Verificar que quien actualiza es el repartidor asignado
+    const esAsignado = pedido.Repartidor && pedido.Repartidor.some(r => Number(r.id_usuario) === Number(id_repartidor));
+    if (!esAsignado) {
+      return res.status(403).json({ success: false, error: 'No tienes permisos para actualizar este pedido' });
+    }
+
+    await pedido.update({ lat_repartidor: lat, lng_repartidor: lng });
+
+    return res.json({ success: true, message: 'Ubicación del repartidor actualizada' });
+  } catch (error) {
+    console.error('Error al actualizar ubicación del repartidor:', error);
+    return res.status(500).json({ success: false, error: error.message });
+  }
+};
+
 // Confirmar recogida del pedido (repartidor recoge el pedido del vendedor)
 export const confirmarRecogida = async (req, res) => {
   const transaction = await sequelize.transaction();

@@ -9,7 +9,8 @@ import {
   confirmarEntrega,
   confirmarRecogida, 
   getPedidosActivos,
-  cancelarPedido
+  cancelarPedido,
+  actualizarUbicacionRepartidor
 } from '../../controllers/repartidor/repartidorController.js';
 
 
@@ -35,6 +36,9 @@ router.patch('/:pedidoId/recoger', confirmarRecogida);
 
 // Confirmar entrega del pedido
 router.patch('/:pedidoId/entregar', confirmarEntrega);
+
+// Actualizar ubicación en tiempo real del repartidor
+router.patch('/:pedidoId/ubicacion-repartidor', actualizarUbicacionRepartidor);
 
 // Cancelar pedido por parte del repartidor
 router.put('/pedidos/:pedidoId/cancelar-repartidor', cancelarPedido);

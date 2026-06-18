@@ -311,16 +311,16 @@ export const obtenerPedidosDelComprador = async (req, res) => {
           model: db.Usuario,
           as: "Vendedor",
           through: { attributes: ["estado_pedido"] },
-          required: false
-        }
-        ,
+          required: false,
+          attributes: ['id_usuario', 'nombre', 'latitud', 'longitud']
+        },
         // (opcional) repartidor asignado (si existe)
         {
           model: db.Usuario,
           as: "Repartidor",
           through: { attributes: [] },
           required: false,
-          attributes: ['id_usuario', 'nombre']
+          attributes: ['id_usuario', 'nombre', 'telefono', 'latitud', 'longitud']
         },
         {
           model: db.Valoracion,
@@ -379,6 +379,18 @@ export const obtenerPedidosDelComprador = async (req, res) => {
         'cancelado': 'cancelado'
       };
 
+      // Construir listado de vendedores con coords para el mapa
+      const vendedoresConCoords = pedido.Vendedor
+        ? pedido.Vendedor
+            .filter(v => v.latitud != null && v.longitud != null)
+            .map(v => ({
+              id: v.id_usuario,
+              nombre: v.nombre,
+              lat: Number(v.latitud),
+              lng: Number(v.longitud)
+            }))
+        : [];
+
       return {
         id: pedido.id_pedido,
         id_comprador: id_usuario,
@@ -391,7 +403,21 @@ export const obtenerPedidosDelComprador = async (req, res) => {
         total: pedido.total,
         tiene_repartidor: pedido.tiene_repartidor,
         items: items,
-        repartidor: pedido.Repartidor && pedido.Repartidor[0] ? { id: pedido.Repartidor[0].id_usuario, nombre: pedido.Repartidor[0].nombre } : null,
+        repartidor: pedido.Repartidor && pedido.Repartidor[0]
+          ? {
+              id: pedido.Repartidor[0].id_usuario,
+              nombre: pedido.Repartidor[0].nombre,
+              telefono: pedido.Repartidor[0].telefono || null,
+              // Usar ubicación de reparto en tiempo real (guardada en el pedido),
+              // NO la latitud/longitud del perfil (que puede ser la de vendedor)
+              lat: pedido.lat_repartidor != null ? Number(pedido.lat_repartidor) : null,
+              lng: pedido.lng_repartidor != null ? Number(pedido.lng_repartidor) : null
+            }
+          : null,
+        vendedores_coords: vendedoresConCoords,
+        // Coords del destino de entrega (comprador)
+        lat_destino: pedido.latitud != null ? Number(pedido.latitud) : null,
+        lng_destino: pedido.longitud != null ? Number(pedido.longitud) : null,
         direccion: pedido.direccion.split(',').slice(0, 2).join(','),
         ya_calificado: pedido.Valoracions && pedido.Valoracions.length > 0
       };

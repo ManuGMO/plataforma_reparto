@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import CalificacionModal from './CalificacionModal';
 
 export const getStatusColor = (estado) => {
@@ -51,10 +51,244 @@ export const getProgressStep = (estado) => {
   return steps[estado] || 1;
 };
 
+// ─── Mapa del comprador ──────────────────────────────────────────────────────
+
+function PedidoMapa({ pedido }) {
+  const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
+  const mapContainerRef = useRef(null);
+  const mapRef = useRef(null);
+  const buyerMarkerRef = useRef(null);
+  const vendorMarkersRef = useRef([]);
+  const driverMarkerRef = useRef(null);
+
+  const ensureMapboxCss = () => {
+    if (typeof document === 'undefined') return;
+    if (!document.querySelector('link[data-mapbox-gl]')) {
+      const link = document.createElement('link');
+      link.setAttribute('rel', 'stylesheet');
+      link.setAttribute('href', 'https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css');
+      link.setAttribute('data-mapbox-gl', '1');
+      document.head.appendChild(link);
+    }
+  };
+
+  const initMap = async (centerLng, centerLat) => {
+    try {
+      ensureMapboxCss();
+      const mb = (await import('mapbox-gl')).default || (await import('mapbox-gl'));
+      mb.accessToken = MAPBOX_TOKEN;
+      if (mapRef.current) {
+        mapRef.current.flyTo({ center: [centerLng, centerLat], zoom: 13 });
+        return mapRef.current;
+      }
+      mapRef.current = new mb.Map({
+        container: mapContainerRef.current,
+        style: 'mapbox://styles/mapbox/streets-v11',
+        center: [centerLng, centerLat],
+        zoom: 13
+      });
+      mapRef.current.addControl(new mb.NavigationControl());
+      mapRef.current.on('load', () => {
+        try { mapRef.current.resize && mapRef.current.resize(); } catch (e) { }
+      });
+      return mapRef.current;
+    } catch (err) { console.error('initMap error', err); }
+  };
+
+  const clearRoute = (id = 'route') => {
+    try {
+      if (!mapRef.current) return;
+      if (mapRef.current.getLayer && mapRef.current.getLayer(`${id}-line`)) {
+        mapRef.current.removeLayer(`${id}-line`);
+      }
+      if (mapRef.current.getSource && mapRef.current.getSource(id)) {
+        mapRef.current.removeSource(id);
+      }
+    } catch (e) { /* ignore */ }
+  };
+
+  const drawRoute = async (points, routeId = 'route', color = '#7c3aed') => {
+    try {
+      if (!MAPBOX_TOKEN || !mapRef.current || points.length < 2) return;
+      const coords = points.map(p => `${p[0]},${p[1]}`).join(';');
+      const res = await fetch(
+        `https://api.mapbox.com/directions/v5/mapbox/driving/${coords}?geometries=geojson&access_token=${MAPBOX_TOKEN}`
+      );
+      if (!res.ok) return;
+      const data = await res.json();
+      const route = data.routes && data.routes[0];
+      if (!route) return;
+      clearRoute(routeId);
+      mapRef.current.addSource(routeId, {
+        type: 'geojson',
+        data: { type: 'Feature', geometry: route.geometry }
+      });
+      mapRef.current.addLayer({
+        id: `${routeId}-line`,
+        type: 'line',
+        source: routeId,
+        layout: { 'line-cap': 'round', 'line-join': 'round' },
+        paint: { 'line-color': color, 'line-width': 4 }
+      });
+      const mb = (await import('mapbox-gl')).default || (await import('mapbox-gl'));
+      const coordsArr = route.geometry.coordinates;
+      const bounds = coordsArr.reduce(
+        (b, c) => b.extend([c[0], c[1]]),
+        new mb.LngLatBounds(coordsArr[0], coordsArr[0])
+      );
+      mapRef.current.fitBounds(bounds, { padding: 50 });
+    } catch (err) { console.error('Error dibujando ruta:', err); }
+  };
+
+  const placeMarker = async (type, lat, lng, label) => {
+    try {
+      if (!mapRef.current) return;
+      const mb = (await import('mapbox-gl')).default || (await import('mapbox-gl'));
+      const popup = new mb.Popup({ offset: 25 }).setHTML(
+        `<div style="color:#000; font-weight:600;">${label}</div>`
+      );
+      if (type === 'buyer') {
+        if (buyerMarkerRef.current) buyerMarkerRef.current.remove();
+        buyerMarkerRef.current = new mb.Marker({ color: 'red' })
+          .setLngLat([lng, lat]).setPopup(popup).addTo(mapRef.current);
+      } else if (type === 'vendor') {
+        const marker = new mb.Marker({ color: 'orange' })
+          .setLngLat([lng, lat]).setPopup(popup).addTo(mapRef.current);
+        vendorMarkersRef.current.push(marker);
+      } else if (type === 'driver') {
+        if (driverMarkerRef.current) driverMarkerRef.current.remove();
+        driverMarkerRef.current = new mb.Marker({ color: '#2563eb' })
+          .setLngLat([lng, lat]).setPopup(popup).addTo(mapRef.current);
+      }
+    } catch (err) { console.error('Error placeMarker', err); }
+  };
+
+  useEffect(() => {
+    if (!pedido) return;
+    let mounted = true;
+
+    const setup = async () => {
+      // ── 1. Determinar coords del comprador (destino de entrega) ──
+      const buyerLat = pedido.lat_destino;
+      const buyerLng = pedido.lng_destino;
+      const hasBuyer = buyerLat != null && buyerLng != null && !isNaN(buyerLat) && !isNaN(buyerLng);
+
+      // ── 2. Vendedores con coords ──
+      const vendors = (pedido.vendedores_coords || []).filter(
+        v => v.lat != null && v.lng != null && !isNaN(v.lat) && !isNaN(v.lng)
+      );
+
+      // ── 3. Repartidor ──
+      const driver = pedido.repartidor;
+      const hasDriver = driver && driver.lat != null && driver.lng != null &&
+        !isNaN(driver.lat) && !isNaN(driver.lng);
+
+      // ── 4. Centro del mapa ──
+      let centerLat = -12.0464;
+      let centerLng = -77.0428;
+      if (hasBuyer) { centerLat = buyerLat; centerLng = buyerLng; }
+      else if (vendors.length > 0) { centerLat = vendors[0].lat; centerLng = vendors[0].lng; }
+      else if (hasDriver) { centerLat = driver.lat; centerLng = driver.lng; }
+
+      await initMap(centerLng, centerLat);
+      if (!mounted) return;
+
+      // Esperar a que el mapa esté listo antes de añadir capas
+      const waitForLoad = () => new Promise(resolve => {
+        if (!mapRef.current) return resolve();
+        if (mapRef.current.isStyleLoaded()) return resolve();
+        mapRef.current.once('load', resolve);
+      });
+      await waitForLoad();
+      if (!mounted) return;
+
+      // ── 5. Marcadores ──
+      if (hasBuyer) await placeMarker('buyer', buyerLat, buyerLng, 'Tu ubicación (entrega)');
+      for (const v of vendors) await placeMarker('vendor', v.lat, v.lng, v.nombre || 'Vendedor');
+      if (hasDriver) await placeMarker('driver', driver.lat, driver.lng, driver.nombre || 'Repartidor');
+
+      // ── 6. Rutas según estado del pedido ──
+      const estado = pedido.estado;
+
+      if (estado === 'en-camino' || estado === 'entregado') {
+        // Repartidor -> Comprador (ruta principal en azul)
+        if (hasDriver && hasBuyer) {
+          await drawRoute(
+            [[driver.lng, driver.lat], [buyerLng, buyerLat]],
+            'route-driver-buyer',
+            '#2563eb'
+          );
+        }
+        // Repartidor -> Vendedores pendientes (ruta gris si hay vendedores aún)
+        if (hasDriver && vendors.length > 0) {
+          const points = [[driver.lng, driver.lat], ...vendors.map(v => [v.lng, v.lat])];
+          await drawRoute(points, 'route-driver-vendors', '#9ca3af');
+        }
+      } else if (estado === 'preparando' || estado === 'esperando-repartidor') {
+        // Vendedor(es) -> Comprador (ruta naranja, para que el comprador entienda el trayecto futuro)
+        if (vendors.length > 0 && hasBuyer) {
+          const points = [...vendors.map(v => [v.lng, v.lat]), [buyerLng, buyerLat]];
+          await drawRoute(points, 'route-vendors-buyer', '#f97316');
+        }
+      }
+    };
+
+    setup();
+
+    return () => {
+      mounted = false;
+      try {
+        if (mapRef.current) { mapRef.current.remove(); mapRef.current = null; }
+      } catch (e) { }
+      buyerMarkerRef.current = null;
+      vendorMarkersRef.current = [];
+      driverMarkerRef.current = null;
+    };
+  }, [pedido]);
+
+  // Determinar si hay algo que mostrar en el mapa
+  const hasMapData =
+    (pedido.lat_destino != null && pedido.lng_destino != null) ||
+    (pedido.vendedores_coords && pedido.vendedores_coords.length > 0) ||
+    (pedido.repartidor && pedido.repartidor.lat != null);
+
+  if (!hasMapData) return null;
+
+  return (
+    <div className="bg-gray-50 rounded-lg p-4">
+      <h3 className="font-semibold text-gray-900 mb-3">🗺️ Mapa del pedido</h3>
+
+      {/* Leyenda */}
+      <div className="flex flex-wrap gap-3 mb-3 text-xs text-gray-600">
+        <span className="flex items-center gap-1">
+          <span className="inline-block w-3 h-3 rounded-full bg-red-500"></span> Tu ubicación
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="inline-block w-3 h-3 rounded-full bg-orange-400"></span> Vendedor
+        </span>
+        {pedido.tiene_repartidor && (
+          <span className="flex items-center gap-1">
+            <span className="inline-block w-3 h-3 rounded-full bg-blue-600"></span> Repartidor
+          </span>
+        )}
+      </div>
+
+      <div ref={mapContainerRef} className="w-full h-64 rounded-md overflow-hidden" />
+
+      {/* Info repartidor bajo el mapa */}
+      {pedido.repartidor && pedido.repartidor.lat != null && (
+        <p className="text-xs text-gray-500 mt-2">
+          📍 Ubicación del repartidor actualizada
+        </p>
+      )}
+    </div>
+  );
+}
+
+// ─── Modal principal ─────────────────────────────────────────────────────────
 
 export default function PedidoModal({ pedido, showModal, onClose }) {
   const [showCalificacionModal, setShowCalificacionModal] = useState(false);
-
 
   if (!showModal || !pedido) return null;
 
@@ -118,6 +352,9 @@ export default function PedidoModal({ pedido, showModal, onClose }) {
             </div>
           </div>
 
+          {/* Mapa */}
+          <PedidoMapa pedido={pedido} />
+
           {/* Delivery Info - Solo mostrar si está en camino o entregado */}
           {(pedido.estado === 'en-camino' || pedido.estado === 'entregado') && (
             <div className="bg-gray-50 rounded-lg p-4">
@@ -127,9 +364,13 @@ export default function PedidoModal({ pedido, showModal, onClose }) {
                   <span className="text-lg">👨‍🚴</span>
                 </div>
                 <div>
-                  <p className="font-medium text-gray-900">Repartidor</p>
+                  <p className="font-medium text-gray-900">
+                    {pedido.repartidor?.nombre || 'Repartidor'}
+                  </p>
                   <p className="text-sm text-gray-600">⭐ Valoracion del repartidor</p>
-                  <p className="text-sm text-green-600">📱 numero de repartidor</p>
+                  {pedido.repartidor?.telefono && (
+                    <p className="text-sm text-green-600">📱 {pedido.repartidor.telefono}</p>
+                  )}
                 </div>
               </div>
             </div>

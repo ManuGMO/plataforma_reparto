@@ -63,6 +63,16 @@ export default (sequelize) => {
       allowNull: true,
     },
 
+    // Ubicación en tiempo real del repartidor durante el reparto (no su perfil)
+    lat_repartidor: {
+      type: DataTypes.DECIMAL(10, 7),
+      allowNull: true,
+    },
+    lng_repartidor: {
+      type: DataTypes.DECIMAL(10, 7),
+      allowNull: true,
+    },
+
     comprobante_pago: {
       type: DataTypes.STRING(500),
       allowNull: true,

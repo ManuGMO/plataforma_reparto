@@ -5,6 +5,27 @@ const logNotification = (receiverId, message, status, role) => {
   console.log(`[NOTIFICACIÓN] 📨 Para Usuario ID: ${receiverId} (Rol: ${role || 'N/A'}) | Mensaje: "${message}" | Estado: ${status}`);
 };
 
+// Notificar Repartidores (Pedido Pendiente - Aviso anticipado)
+const notificarRepartidoresPedidoPendiente = async (pedido) => {
+  try {
+    const repartidores = await db.Usuario.findAll({
+      include: [{
+        model: db.Rol,
+        where: { nombreRol: 'repartidor' }
+      }]
+    });
+
+    const mensaje = `📍 Hay un pedido nuevo cerca de ti (Pedido #${pedido.id_pedido}). Puede que pronto necesite repartición.`;
+
+    for (const repartidor of repartidores) {
+      await crearNotificacionDB(repartidor.id_usuario, pedido.id_pedido, 'pedido_pendiente', '📍 Pedido Entrante Cercano', mensaje, undefined, 'repartidor');
+    }
+    console.log(`📡 Aviso anticipado de pedido pendiente enviado a ${repartidores.length} repartidores.`);
+  } catch (error) {
+    console.error("❌ Error notificando repartidores (pedido pendiente):", error);
+  }
+};
+
 // Notificar al Vendedor de un nuevo pedido
 export const enviarNotificacionNuevoPedido = async (pedido) => {
   try {
@@ -22,6 +43,9 @@ export const enviarNotificacionNuevoPedido = async (pedido) => {
       const mensaje = `¡Tienes un nuevo pedido! Pedido #${pedido.id_pedido} por un total de $${pedido.total}`;
       await crearNotificacionDB(vendedor.id_usuario, pedido.id_pedido, 'pedido_nuevo', '🎉 Nuevo Pedido Recibido', mensaje, undefined, 'vendedor');
     }
+
+    // Aviso anticipado a repartidores de que hay un pedido nuevo cerca
+    await notificarRepartidoresPedidoPendiente(pedido);
 
   } catch (error) {
     console.error("❌ Error enviando notificación de nuevo pedido:", error);

@@ -4,6 +4,7 @@ export default function Register({ onGoLogin, showNotification, onRegister }) {
   const [form, setForm] = useState({
     name: "",
     email: "",
+    phone: "",
     password: "",
     confirm: "",
     userType: "",
@@ -35,7 +36,7 @@ export default function Register({ onGoLogin, showNotification, onRegister }) {
     if (onRegister) {
       setLoading(true);
       setError(null);
-      onRegister({ nombre: form.name, correo: form.email, contraseña: form.password, userType: form.userType })
+      onRegister({ nombre: form.name, correo: form.email, telefono: form.phone, contraseña: form.password, userType: form.userType })
         .then(() => {
           showNotification("Cuenta creada con éxito");
           onGoLogin();
@@ -77,7 +78,7 @@ export default function Register({ onGoLogin, showNotification, onRegister }) {
 
           <form className="space-y-5" onSubmit={handleSubmit}>
             <div className="space-y-2">
-              <label className="block text-gray-700 text-sm font-medium">Nombre Completo</label>
+              <label className="block text-gray-700 text-sm font-medium">Nombre</label>
               <input
                 name="name"
                 placeholder="Juan Pérez"
@@ -92,6 +93,17 @@ export default function Register({ onGoLogin, showNotification, onRegister }) {
                 name="email"
                 type="email"
                 placeholder="tu@email.com"
+                className="w-full border border-gray-200 rounded-xl p-3.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all bg-gray-50 focus:bg-white"
+                onChange={handleChange}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="block text-gray-700 text-sm font-medium">Teléfono</label>
+              <input
+                name="phone"
+                type="tel"
+                placeholder="+56987654321"
                 className="w-full border border-gray-200 rounded-xl p-3.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all bg-gray-50 focus:bg-white"
                 onChange={handleChange}
               />

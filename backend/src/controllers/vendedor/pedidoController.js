@@ -90,7 +90,7 @@ export const getPedidoDetalle = async (req, res) => {
           model: db.Usuario,
           through: db.pedido_comprador,
           as: "Comprador",
-          attributes: ["id_usuario", "nombre"]
+          attributes: ["id_usuario", "nombre", "telefono"]
         },
         {
           model: db.Usuario,
@@ -102,7 +102,7 @@ export const getPedidoDetalle = async (req, res) => {
           model: db.Usuario,
           through: db.pedido_repartidor,
           as: "Repartidor",
-          attributes: ["id_usuario", "nombre"]
+          attributes: ["id_usuario", "nombre", "telefono"]
         },
         {
           model: db.Producto.scope('conEliminados'),
@@ -149,13 +149,15 @@ export const getPedidoDetalle = async (req, res) => {
       // Comprador
       comprador: pedido.Comprador?.[0] ? {
         id: pedido.Comprador[0].id_usuario,
-        nombre: pedido.Comprador[0].nombre
+        nombre: pedido.Comprador[0].nombre,
+        telefono: pedido.Comprador[0].telefono || null
       } : null,
 
       // Repartidor
       repartidor: pedido.Repartidor?.[0] ? {
         id: pedido.Repartidor[0].id_usuario,
-        nombre: pedido.Repartidor[0].nombre
+        nombre: pedido.Repartidor[0].nombre,
+        telefono: pedido.Repartidor[0].telefono || null
       } : null,
 
       // Productos del vendedor específico (si aplica)
