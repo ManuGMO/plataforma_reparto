@@ -8,6 +8,7 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
       MYSQL_DATABASE: ${DB_NAME}
+      TZ: America/Santiago
     volumes:
       - db_data:/var/lib/mysql
     networks:
@@ -45,6 +46,7 @@ services:
       - JWT_SECRET=${JWT_SECRET}
       - ORS_API_KEY=
       - MAPBOX_TOKEN=${MAPBOX_TOKEN}
+      - TZ=America/Santiago
     depends_on:
       db:
         condition: service_healthy
